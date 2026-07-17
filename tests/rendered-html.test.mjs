@@ -1,6 +1,18 @@
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
-import test from "node:test";
+import { createServer } from "node:net";
+import { dirname, join } from "node:path";
+import test, { after, before } from "node:test";
+import { fileURLToPath } from "node:url";
+
+const projectRoot = dirname(
+  fileURLToPath(new URL("../package.json", import.meta.url)),
+);
+
+let baseUrl;
+let nextServer;
+let serverOutput = "";
 
 const productNames = [
   "Midnight Garden Riso Print",
@@ -13,25 +25,90 @@ const productNames = [
   "Pocket Familiar Charm",
 ];
 
-async function render() {
-  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
-  const { default: worker } = await import(workerUrl.href);
+function reservePort() {
+  return new Promise((resolve, reject) => {
+    const server = createServer();
 
-  return worker.fetch(
-    new Request("http://localhost/", {
-      headers: { accept: "text/html" },
-    }),
-    {
-      ASSETS: {
-        fetch: async () => new Response("Not found", { status: 404 }),
-      },
-    },
-    {
-      waitUntil() {},
-      passThroughOnException() {},
-    },
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+
+      if (!address || typeof address === "string") {
+        server.close();
+        reject(new Error("Unable to reserve a local test port."));
+        return;
+      }
+
+      server.close((error) => {
+        if (error) reject(error);
+        else resolve(address.port);
+      });
+    });
+  });
+}
+
+async function waitForServer(url) {
+  const deadline = Date.now() + 30_000;
+
+  while (Date.now() < deadline) {
+    if (nextServer.exitCode !== null) {
+      throw new Error(
+        `Next.js exited before accepting requests.\n${serverOutput}`,
+      );
+    }
+
+    try {
+      const response = await fetch(url);
+      if (response.ok) return;
+    } catch {
+      // The production server is still starting.
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  throw new Error(`Next.js did not start within 30 seconds.\n${serverOutput}`);
+}
+
+before(async () => {
+  const port = await reservePort();
+  const nextCli = join(
+    projectRoot,
+    "node_modules",
+    "next",
+    "dist",
+    "bin",
+    "next",
   );
+
+  baseUrl = `http://127.0.0.1:${port}`;
+  nextServer = spawn(process.execPath, [nextCli, "start"], {
+    cwd: projectRoot,
+    env: {
+      ...process.env,
+      NODE_ENV: "production",
+      PORT: String(port),
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  for (const stream of [nextServer.stdout, nextServer.stderr]) {
+    stream.on("data", (chunk) => {
+      serverOutput += chunk.toString();
+    });
+  }
+
+  await waitForServer(baseUrl);
+});
+
+after(() => {
+  nextServer?.kill();
+});
+
+async function render() {
+  return fetch(baseUrl, {
+    headers: { accept: "text/html" },
+  });
 }
 
 test("server-renders the complete Cyfurden booth", async () => {

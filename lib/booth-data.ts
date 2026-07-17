@@ -553,9 +553,9 @@ export const booth = {
   payment: {
     method: "manual-bank-transfer",
     isDemo: true,
-    bankName: "Demo Cooperative Bank",
-    accountName: "LANTERN AND LOOM STUDIO",
-    accountNumber: "0000 1234 5678",
+    bankName: "Vietcombank",
+    accountName: "HARVEY THEODORE",
+    accountNumber: "1026 4694 37",
     qrImage: {
       objectKey: "booths/lantern-and-loom/payment/demo-bank-qr.png",
       alt: "Demo bank-transfer QR code for Lantern and Loom",
