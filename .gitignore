@@ -43,3 +43,6 @@ next-env.d.ts
 # Local project planning and agent handoff material (intentionally untracked)
 /AGENTS.md
 /local-docs/
+
+# Local hosting metadata (deployment documentation lives in local-docs/)
+/.openai/
