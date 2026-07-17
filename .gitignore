@@ -13,7 +13,8 @@
 /out/
 
 # production
-/build
+/dist/
+/.wrangler/
 
 # misc
 .DS_Store
@@ -23,6 +24,7 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+/site-dev*.log
 
 # local env files
 .env*.local
@@ -34,3 +36,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local Oracle Object Storage configuration
+.dev.vars
+
+# Local project planning and agent handoff material (intentionally untracked)
+/AGENTS.md
+/local-docs/
