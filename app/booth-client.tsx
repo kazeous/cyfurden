@@ -365,6 +365,9 @@ export function BoothClient() {
           </div>
         </div>
         <div className="top-actions">
+          <a className="ghost-button top-info-button" href="/sign-in">
+            Manage booth
+          </a>
           <a className="ghost-button top-info-button" href="#booth-info">
             Booth notes <span aria-hidden="true">↓</span>
           </a>

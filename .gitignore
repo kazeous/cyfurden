@@ -11,6 +11,7 @@
 # next.js
 /.next/
 /out/
+/generated/prisma/
 
 # misc
 .DS_Store

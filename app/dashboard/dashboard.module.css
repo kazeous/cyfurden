@@ -1,0 +1,591 @@
+.dashboardShell,
+.newPage {
+  min-height: 100vh;
+  color: #22221f;
+  background:
+    radial-gradient(
+      circle at 12% 3%,
+      rgba(242, 198, 92, 0.24),
+      transparent 22rem
+    ),
+    radial-gradient(
+      circle at 94% 18%,
+      rgba(157, 199, 211, 0.24),
+      transparent 26rem
+    ),
+    #f4efe3;
+}
+
+.dashboardShell {
+  padding: 18px;
+}
+
+.topbar {
+  display: flex;
+  min-height: 76px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  width: min(1440px, 100%);
+  margin: 0 auto;
+  padding: 12px 16px;
+  border: 1px solid rgba(34, 34, 31, 0.14);
+  border-radius: 24px;
+  background: rgba(255, 253, 248, 0.9);
+  box-shadow: 0 12px 30px rgba(49, 43, 31, 0.08);
+  backdrop-filter: blur(12px);
+}
+
+.brand,
+.accountActions,
+.signOutButton,
+.boothCardHead,
+.boothActions,
+.primaryAction,
+.secondaryAction,
+.backLink {
+  display: flex;
+  align-items: center;
+}
+
+.brand {
+  gap: 11px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.brandMark {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border: 2px solid #355c4c;
+  border-radius: 50% 50% 43% 57%;
+  color: #fffdf8;
+  background: #355c4c;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.1rem;
+  transform: rotate(-6deg);
+}
+
+.brand strong,
+.brand small {
+  display: block;
+}
+
+.brand strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.05rem;
+}
+
+.brand small {
+  margin-top: 2px;
+  color: #67675f;
+  font-size: 0.7rem;
+}
+
+.accountActions {
+  gap: 12px;
+}
+
+.accountName {
+  color: #67675f;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.signOutButton {
+  min-height: 42px;
+  gap: 8px;
+  padding: 0 14px;
+  border: 1px solid rgba(34, 34, 31, 0.14);
+  border-radius: 999px;
+  color: #355c4c;
+  background: #fffdf8;
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.signOutButton svg,
+.secondaryAction svg {
+  width: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.workspace {
+  width: min(1440px, 100%);
+  min-height: calc(100vh - 130px);
+  margin: 18px auto 0;
+  padding: clamp(28px, 5vw, 68px);
+  border: 1px solid rgba(34, 34, 31, 0.14);
+  border-radius: 30px;
+  background: rgba(255, 253, 248, 0.94);
+  box-shadow: 0 24px 60px rgba(49, 43, 31, 0.08);
+}
+
+.heading {
+  max-width: 690px;
+}
+
+.eyebrow,
+.heading h1,
+.heading p,
+.newHeading h1,
+.newHeading p,
+.boothIdentity h2,
+.boothIdentity span,
+.boothStatus,
+.fieldHelp,
+.fieldError,
+.formMessage,
+.setupNote {
+  margin: 0;
+}
+
+.eyebrow {
+  color: #e96e4d;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.heading h1,
+.newHeading h1 {
+  margin-top: 10px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.4rem, 5vw, 4.6rem);
+  font-weight: 500;
+  letter-spacing: -0.05em;
+  line-height: 0.95;
+}
+
+.heading > p:last-child,
+.newHeading > p:last-child {
+  margin-top: 14px;
+  color: #67675f;
+  font-size: 0.9rem;
+  line-height: 1.65;
+}
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 22px;
+  color: #67675f;
+  font-size: 0.72rem;
+}
+
+.summary strong {
+  padding: 7px 11px;
+  border-radius: 999px;
+  color: #234236;
+  background: rgba(120, 149, 123, 0.16);
+}
+
+.boothGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 32px;
+}
+
+.boothCard,
+.createCard {
+  min-height: 250px;
+  border-radius: 24px;
+}
+
+.boothCard {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  padding: 22px;
+  border: 1px solid rgba(34, 34, 31, 0.14);
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(49, 43, 31, 0.07);
+}
+
+.boothCardHead {
+  min-width: 0;
+  gap: 13px;
+  align-items: flex-start;
+}
+
+.boothMark {
+  display: grid;
+  width: 50px;
+  height: 50px;
+  flex: 0 0 50px;
+  place-items: center;
+  border-radius: 17px;
+  color: #234236;
+  background: rgba(242, 198, 92, 0.32);
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 700;
+  transform: rotate(-3deg);
+}
+
+.boothIdentity {
+  min-width: 0;
+  flex: 1;
+}
+
+.boothIdentity h2 {
+  overflow: hidden;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.18rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.boothIdentity span {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  color: #67675f;
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roleBadge {
+  padding: 6px 9px;
+  border-radius: 999px;
+  color: #355c4c;
+  background: rgba(120, 149, 123, 0.14);
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.boothStatus {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 22px;
+  color: #67675f;
+  font-size: 0.72rem;
+}
+
+.boothStatus span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #78957b;
+  box-shadow: 0 0 0 4px rgba(120, 149, 123, 0.13);
+}
+
+.boothActions {
+  gap: 9px;
+  margin-top: auto;
+  padding-top: 24px;
+}
+
+.primaryAction,
+.secondaryAction {
+  min-height: 43px;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.primaryAction {
+  flex: 1;
+  color: #fff;
+  background: #355c4c;
+}
+
+.secondaryAction {
+  gap: 6px;
+  padding: 0 14px;
+  border: 1px solid rgba(34, 34, 31, 0.14);
+  color: #234236;
+  background: #fffdf8;
+}
+
+.createCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 26px;
+  border: 2px dashed rgba(53, 92, 76, 0.24);
+  color: #22221f;
+  background: rgba(244, 239, 227, 0.28);
+  text-align: center;
+  text-decoration: none;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.createCard:hover {
+  border-color: #78957b;
+  background: rgba(120, 149, 123, 0.08);
+  transform: translateY(-2px);
+}
+
+.plus {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  margin-bottom: 15px;
+  border: 1px solid rgba(34, 34, 31, 0.14);
+  border-radius: 50%;
+  background: #fffdf8;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.7rem;
+}
+
+.createCard strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.03rem;
+}
+
+.createCard > span:last-child {
+  max-width: 230px;
+  margin-top: 7px;
+  color: #67675f;
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.newPage {
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.newCard {
+  width: min(680px, 100%);
+  padding: clamp(26px, 6vw, 56px);
+  border: 1px solid rgba(34, 34, 31, 0.14);
+  border-radius: 30px;
+  background: rgba(255, 253, 248, 0.96);
+  box-shadow: 0 24px 60px rgba(49, 43, 31, 0.12);
+}
+
+.backLink {
+  width: max-content;
+  gap: 8px;
+  color: #355c4c;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.newHeading {
+  margin-top: 40px;
+}
+
+.newHeading h1 {
+  font-size: clamp(2.4rem, 7vw, 4rem);
+}
+
+.createForm {
+  display: grid;
+  gap: 22px;
+  margin-top: 34px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.field label {
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.field > input,
+.slugField {
+  width: 100%;
+  min-height: 50px;
+  border: 1px solid rgba(34, 34, 31, 0.18);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.field > input {
+  padding: 0 15px;
+}
+
+.slugField {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.slugField span {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  padding: 0 0 0 15px;
+  color: #67675f;
+  background: rgba(244, 239, 227, 0.5);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.slugField input {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 14px 0 3px;
+  border: 0;
+  outline: 0;
+  background: rgba(244, 239, 227, 0.5);
+}
+
+.fieldHelp,
+.fieldError {
+  font-size: 0.7rem;
+  line-height: 1.5;
+}
+
+.fieldHelp {
+  color: #67675f;
+}
+
+.fieldError,
+.formMessage {
+  color: #a64132;
+}
+
+.formMessage {
+  padding: 12px 14px;
+  border: 1px solid rgba(166, 65, 50, 0.2);
+  border-radius: 12px;
+  background: rgba(233, 110, 77, 0.08);
+  font-size: 0.75rem;
+}
+
+.createButton {
+  min-height: 50px;
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  background: #355c4c;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.createButton:disabled,
+.signOutButton:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.setupNote {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(34, 34, 31, 0.12);
+  color: #67675f;
+  font-size: 0.7rem;
+  line-height: 1.55;
+}
+
+@media (max-width: 1040px) {
+  .boothGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .dashboardShell {
+    padding: 8px;
+  }
+
+  .topbar {
+    min-height: 68px;
+    border-radius: 20px;
+  }
+
+  .brand small,
+  .accountName,
+  .signOutButton span {
+    display: none;
+  }
+
+  .signOutButton {
+    width: 42px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .workspace {
+    min-height: calc(100vh - 92px);
+    margin-top: 8px;
+    padding: 30px 18px;
+    border-radius: 22px;
+  }
+
+  .boothGrid {
+    grid-template-columns: 1fr;
+    margin-top: 24px;
+  }
+
+  .boothCard,
+  .createCard {
+    min-height: 232px;
+  }
+
+  .boothActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .primaryAction,
+  .secondaryAction {
+    width: 100%;
+  }
+
+  .newPage {
+    align-items: start;
+    padding: 8px;
+  }
+
+  .newCard {
+    min-height: calc(100vh - 16px);
+    padding: 28px 20px;
+    border-radius: 22px;
+  }
+
+  .newHeading {
+    margin-top: 34px;
+  }
+
+  .slugField {
+    display: block;
+  }
+
+  .slugField span {
+    min-height: 34px;
+    padding-right: 15px;
+  }
+
+  .slugField input {
+    padding: 0 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .createCard {
+    transition: none;
+  }
+}

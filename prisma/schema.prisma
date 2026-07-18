@@ -1,0 +1,455 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum BoothStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum BoothRole {
+  OWNER
+  ADMIN
+  STAFF
+}
+
+enum MembershipStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
+enum ProductStatus {
+  DRAFT
+  LIVE
+  SOLD_OUT
+  HIDDEN
+}
+
+enum VariantStatus {
+  AVAILABLE
+  LOW_STOCK
+  PREORDER
+  SOLD_OUT
+  HIDDEN
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  EXPIRED
+  FULFILLED
+}
+
+enum GachaBannerType {
+  CHARACTER
+  WEAPON
+  COLLECTION
+}
+
+enum GachaRarity {
+  COMMON
+  RARE
+  EPIC
+  LEGENDARY
+}
+
+enum PromotionProductRole {
+  BUY
+  REWARD
+}
+
+model User {
+  id                  String             @id
+  name                String
+  email               String             @unique
+  emailVerified       Boolean            @default(false)
+  image               String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  sessions            Session[]
+  accounts            Account[]
+  ownedBooths         Booth[]            @relation("BoothOwner")
+  memberships         BoothMembership[]
+  invitationsSent     TeamInvitation[]   @relation("InvitationSender")
+  invitationsAccepted TeamInvitation[]   @relation("InvitationAccepter")
+  storefrontUpdates   StorefrontConfig[] @relation("StorefrontUpdater")
+  ordersConfirmed     Order[]            @relation("OrderConfirmer")
+  auditLogs           AuditLog[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+model Booth {
+  id                  String                   @id @default(cuid())
+  slug                String                   @unique
+  name                String
+  status              BoothStatus              @default(DRAFT)
+  locale              String                   @default("en")
+  currency            String                   @default("VND")
+  ownerId             String
+  owner               User                     @relation("BoothOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+  memberships         BoothMembership[]
+  invitations         TeamInvitation[]
+  storefront          StorefrontConfig?
+  paymentInstructions BoothPaymentInstruction?
+  categories          Category[]
+  products            Product[]
+  promotions          QuantityPromotion[]
+  orders              Order[]
+  gacha               GachaConfig?
+  gachaBanners        GachaBanner[]
+  auditLogs           AuditLog[]
+
+  @@index([ownerId])
+  @@index([status])
+}
+
+model BoothMembership {
+  id        String           @id @default(cuid())
+  boothId   String
+  userId    String
+  role      BoothRole
+  status    MembershipStatus @default(ACTIVE)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  booth     Booth            @relation(fields: [boothId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([boothId, userId])
+  @@index([userId, status])
+}
+
+model TeamInvitation {
+  id           String           @id @default(cuid())
+  boothId      String
+  email        String
+  role         BoothRole
+  tokenHash    String           @unique
+  status       InvitationStatus @default(PENDING)
+  expiresAt    DateTime
+  acceptedAt   DateTime?
+  invitedById  String
+  acceptedById String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  booth        Booth            @relation(fields: [boothId], references: [id], onDelete: Cascade)
+  invitedBy    User             @relation("InvitationSender", fields: [invitedById], references: [id], onDelete: Restrict)
+  acceptedBy   User?            @relation("InvitationAccepter", fields: [acceptedById], references: [id], onDelete: SetNull)
+
+  @@index([boothId, email, status])
+  @@index([email, status])
+}
+
+model StorefrontConfig {
+  id                String    @id @default(cuid())
+  boothId           String    @unique
+  schemaVersion     Int       @default(1)
+  editVersion       Int       @default(1)
+  draftDocument     Json
+  publishedDocument Json?
+  publishedAt       DateTime?
+  updatedById       String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  booth             Booth     @relation(fields: [boothId], references: [id], onDelete: Cascade)
+  updatedBy         User?     @relation("StorefrontUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+}
+
+model BoothPaymentInstruction {
+  id                        String   @id @default(cuid())
+  boothId                   String   @unique
+  bankName                  String
+  accountName               String
+  accountNumber             String
+  qrObjectKey               String?
+  transferReferenceTemplate String   @default("CYF-{ORDER}")
+  instructions              String   @db.Text
+  disclaimer                String   @db.Text
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  booth                     Booth    @relation(fields: [boothId], references: [id], onDelete: Cascade)
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  boothId     String
+  slug        String
+  name        String
+  description String?
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  booth       Booth     @relation(fields: [boothId], references: [id], onDelete: Cascade)
+  products    Product[]
+
+  @@unique([boothId, slug])
+  @@index([boothId, sortOrder])
+}
+
+model Product {
+  id               String             @id @default(cuid())
+  boothId          String
+  categoryId       String?
+  slug             String
+  sku              String?
+  name             String
+  eyebrow          String?
+  shortDescription String?
+  description      String             @db.Text
+  priceCents       Int
+  status           ProductStatus      @default(DRAFT)
+  featured         Boolean            @default(false)
+  tags             String[]
+  optionGroups     Json?
+  sortOrder        Int                @default(0)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  booth            Booth              @relation(fields: [boothId], references: [id], onDelete: Cascade)
+  category         Category?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  variants         ProductVariant[]
+  images           ProductImage[]
+  orderItems       OrderItem[]
+  promotionLinks   PromotionProduct[]
+
+  @@unique([boothId, slug])
+  @@unique([boothId, sku])
+  @@index([boothId, status])
+  @@index([boothId, sortOrder])
+}
+
+model ProductVariant {
+  id              String           @id @default(cuid())
+  productId       String
+  sku             String
+  label           String
+  priceCents      Int?
+  status          VariantStatus    @default(AVAILABLE)
+  stockQuantity   Int?
+  fulfillmentNote String?          @db.Text
+  optionValues    Json?
+  sortOrder       Int              @default(0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  product         Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderItems      OrderItem[]
+  gachaPoolItems  GachaPoolEntry[]
+
+  @@unique([productId, sku])
+  @@index([productId, sortOrder])
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  objectKey String
+  alt       String
+  width     Int?
+  height    Int?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, objectKey])
+  @@index([productId, sortOrder])
+}
+
+model QuantityPromotion {
+  id             String             @id @default(cuid())
+  boothId        String
+  name           String             @default("Quantity promotion")
+  buyQuantity    Int                @default(3)
+  rewardQuantity Int                @default(1)
+  active         Boolean            @default(false)
+  repeatable     Boolean            @default(true)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  booth          Booth              @relation(fields: [boothId], references: [id], onDelete: Cascade)
+  products       PromotionProduct[]
+
+  @@index([boothId])
+}
+
+model PromotionProduct {
+  promotionId String
+  productId   String
+  role        PromotionProductRole
+  promotion   QuantityPromotion    @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  product     Product              @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([promotionId, productId, role])
+}
+
+model Order {
+  id                String      @id @default(cuid())
+  boothId           String
+  code              String
+  status            OrderStatus @default(PENDING)
+  customerName      String
+  customerEmail     String
+  customerPhone     String?
+  customerNote      String?     @db.Text
+  subtotalCents     Int
+  totalCents        Int
+  currency          String      @default("VND")
+  transferReference String
+  idempotencyKey    String
+  placedAt          DateTime    @default(now())
+  expiresAt         DateTime?
+  confirmedAt       DateTime?
+  confirmedById     String?
+  fulfilledAt       DateTime?
+  updatedAt         DateTime    @updatedAt
+  booth             Booth       @relation(fields: [boothId], references: [id], onDelete: Restrict)
+  confirmedBy       User?       @relation("OrderConfirmer", fields: [confirmedById], references: [id], onDelete: SetNull)
+  items             OrderItem[]
+
+  @@unique([boothId, code])
+  @@unique([boothId, idempotencyKey])
+  @@index([boothId, status, placedAt])
+}
+
+model OrderItem {
+  id               String          @id @default(cuid())
+  orderId          String
+  productId        String?
+  productVariantId String?
+  titleSnapshot    String
+  variantSnapshot  String?
+  unitPriceCents   Int
+  quantity         Int
+  order            Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product          Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productVariant   ProductVariant? @relation(fields: [productVariantId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+}
+
+model GachaConfig {
+  id           String   @id @default(cuid())
+  boothId      String   @unique
+  enabled      Boolean  @default(false)
+  title        String   @default("Wish upon the shelf")
+  introduction String   @default("Meet a surprise from this booth.") @db.Text
+  gameTheme    String   @default("anemo")
+  pityEnabled  Boolean  @default(true)
+  guaranteedAt Int      @default(50)
+  rates        Json
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  booth        Booth    @relation(fields: [boothId], references: [id], onDelete: Cascade)
+}
+
+model GachaBanner {
+  id            String           @id @default(cuid())
+  boothId       String
+  title         String
+  copy          String           @db.Text
+  type          GachaBannerType  @default(COLLECTION)
+  theme         String           @default("anemo")
+  featuredCount Int              @default(3)
+  startsAt      DateTime?
+  endsAt        DateTime?
+  active        Boolean          @default(false)
+  sortOrder     Int              @default(0)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  booth         Booth            @relation(fields: [boothId], references: [id], onDelete: Cascade)
+  pool          GachaPoolEntry[]
+
+  @@index([boothId, sortOrder])
+}
+
+model GachaPoolEntry {
+  id               String          @id @default(cuid())
+  bannerId         String
+  productVariantId String?
+  displayName      String
+  rarity           GachaRarity     @default(COMMON)
+  weight           Int             @default(1)
+  featured         Boolean         @default(false)
+  sortOrder        Int             @default(0)
+  banner           GachaBanner     @relation(fields: [bannerId], references: [id], onDelete: Cascade)
+  productVariant   ProductVariant? @relation(fields: [productVariantId], references: [id], onDelete: SetNull)
+
+  @@index([bannerId, sortOrder])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  boothId     String
+  actorUserId String
+  action      String
+  entityType  String
+  entityId    String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  booth       Booth    @relation(fields: [boothId], references: [id], onDelete: Cascade)
+  actor       User     @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([boothId, createdAt])
+  @@index([actorUserId])
+}

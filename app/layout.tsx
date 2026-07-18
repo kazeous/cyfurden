@@ -31,13 +31,13 @@ export async function generateMetadata(): Promise<Metadata> {
       template: "%s · Cyfurden",
     },
     description:
-      "A tiny convention booth for small-batch art, pocket companions, and manual pre-order pickup.",
+      "Original artist booths for small-batch art, convention pre-orders, and manual pickup.",
     applicationName: "Cyfurden",
     openGraph: {
       type: "website",
-      title: "Lantern & Loom on Cyfurden",
+      title: "Cyfurden artist booths",
       description:
-        "Browse paper treasures, wearable keepsakes, and convention exclusives from Lantern & Loom.",
+        "Discover independent artists, small-batch merchandise, and convention exclusives.",
       siteName: "Cyfurden",
       images: [
         {
@@ -50,8 +50,8 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     twitter: {
       card: "summary_large_image",
-      title: "Lantern & Loom on Cyfurden",
-      description: "A pocket-sized artist booth for slow evenings.",
+      title: "Cyfurden artist booths",
+      description: "A pocket-sized home for original artist booths.",
       images: ["/og.png"],
     },
   };
