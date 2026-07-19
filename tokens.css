@@ -1,0 +1,111 @@
+/* Hallmark · final critique: P5 H5 E5 S5 R5 V4 */
+/* Hallmark · design-system: Cyfurden · genre: editorial · designed-as-app */
+/* Hallmark · contrast: pass (40–41) · slop: pass (1–58) · mobile: pass (34, 49–57) */
+
+:root {
+  --color-paper: oklch(96.5% 0.012 85);
+  --color-paper-2: oklch(98.7% 0.006 85);
+  --color-paper-3: oklch(94.8% 0.009 245);
+  --color-panel: oklch(99.2% 0.004 85);
+  --color-panel-glass: oklch(99.2% 0.004 85 / 0.96);
+  --color-panel-glass-soft: oklch(99.2% 0.004 85 / 0.88);
+  --color-paper-glass: oklch(96.5% 0.012 85 / 0.5);
+  --color-ink: oklch(31% 0.055 255);
+  --color-ink-2: oklch(41% 0.045 255);
+  --color-muted: oklch(56% 0.035 255);
+  --color-muted-2: oklch(64% 0.025 255);
+  --color-rule: oklch(89% 0.015 245);
+  --color-rule-strong: oklch(82% 0.025 245);
+  --color-accent: oklch(52% 0.16 20);
+  --color-accent-ink: oklch(99% 0.004 85);
+  --color-accent-soft: oklch(96% 0.025 20);
+  --color-accent-line: oklch(82% 0.075 20);
+  --color-accent-alpha: oklch(62% 0.16 20 / 0.22);
+  --color-action: oklch(49% 0.105 140);
+  --color-action-hover: oklch(43% 0.095 140);
+  --color-action-ink: oklch(99% 0.004 85);
+  --color-action-soft: oklch(95% 0.032 140);
+  --color-action-line: oklch(80% 0.07 140);
+  --color-action-alpha: oklch(62% 0.115 140 / 0.16);
+  --color-focus: oklch(55% 0.17 20);
+  --color-warning: oklch(56% 0.11 75);
+  --color-warning-ink: oklch(40% 0.085 75);
+  --color-warning-soft: oklch(96% 0.035 85);
+  --color-warning-line: oklch(82% 0.08 85);
+  --color-warning-alpha: oklch(74% 0.14 85 / 0.22);
+  --color-success: oklch(49% 0.095 140);
+  --color-success-ink: oklch(40% 0.085 140);
+  --color-success-soft: oklch(96% 0.025 140);
+  --color-success-line: oklch(82% 0.055 140);
+  --color-error: oklch(54% 0.17 25);
+  --color-error-ink: oklch(43% 0.145 25);
+  --color-error-soft: oklch(96% 0.025 25);
+  --color-error-line: oklch(82% 0.07 25);
+  --color-info: oklch(55% 0.12 255);
+  --color-info-ink: oklch(42% 0.105 255);
+  --color-info-soft: oklch(95% 0.025 255);
+  --color-info-line: oklch(83% 0.045 255);
+  --color-lilac-ink: oklch(43% 0.05 315);
+  --color-lilac-soft: oklch(95% 0.02 315);
+  --color-dark: oklch(29% 0.055 255);
+  --color-dark-panel: oklch(35% 0.055 255);
+  --color-dark-line: oklch(45% 0.045 255);
+  --color-dark-ink: oklch(94% 0.018 255);
+  --color-art-warm: oklch(84% 0.075 45);
+  --color-art-cool: oklch(56% 0.075 255);
+  --color-transparent: transparent;
+  --color-light-overlay: oklch(99% 0.004 85 / 0.28);
+  --color-light-overlay-strong: oklch(99% 0.004 85 / 0.72);
+  --color-dark-overlay: oklch(25% 0.035 255 / 0.58);
+  --color-shadow-soft: oklch(25% 0.035 255 / 0.05);
+  --color-shadow-medium: oklch(25% 0.035 255 / 0.1);
+  --color-shadow-strong: oklch(20% 0.035 255 / 0.2);
+
+  --font-display: Georgia, "Times New Roman", ui-serif, serif;
+  --font-body:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+
+  --space-3xs: 0.125rem;
+  --space-2xs: 0.25rem;
+  --space-xs: 0.5rem;
+  --space-sm: 0.75rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2.5rem;
+  --space-2xl: 4rem;
+  --space-3xl: 6rem;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-md: 1.25rem;
+  --text-lg: 1.5625rem;
+  --text-xl: 1.953rem;
+  --text-2xl: 2.441rem;
+  --text-display: clamp(2rem, 3.4vw, 2.65rem);
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 120ms;
+  --dur-short: 220ms;
+  --dur-long: 420ms;
+
+  --rule-hairline: 1px solid var(--color-rule);
+  --radius-card: 0.75rem;
+  --radius-input: 0.5625rem;
+  --radius-button: 0.5625rem;
+  --radius-pill: 999px;
+
+  --shadow-whisper: 0 1px 2px oklch(20% 0.02 255 / 0.05);
+  --shadow-panel: 0 0 0 1px oklch(30% 0.02 255 / 0.04);
+
+  --z-base: 1;
+  --z-raised: 10;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-modal: 400;
+  --z-toast: 500;
+  --z-tooltip: 600;
+}

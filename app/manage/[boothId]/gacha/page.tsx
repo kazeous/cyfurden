@@ -1,34 +1,39 @@
 import Link from "next/link";
 import {
   PageHeading,
-  adminStyles as styles,
+  adminStyles as admin,
 } from "@/components/admin/admin-shell";
 import { SubmitButton } from "@/components/admin/form-controls";
-import { requireBoothMember } from "@/lib/authorization";
+import { requireBoothRole } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import {
   saveGachaAction,
   saveGachaBannerAction,
   saveGachaPoolAction,
 } from "../actions";
+import styles from "./gacha.module.css";
 
 export default async function GachaPage({
   params,
   searchParams,
 }: {
   params: Promise<{ boothId: string }>;
-  searchParams: Promise<{ banner?: string; saved?: string; new?: string }>;
+  searchParams: Promise<{
+    banner?: string;
+    saved?: string;
+    poolSaved?: string;
+    new?: string;
+  }>;
 }) {
   const { boothId } = await params;
   const filters = await searchParams;
-  const { membership } = await requireBoothMember(boothId);
-  const canEdit = membership.role === "OWNER" || membership.role === "ADMIN";
+  await requireBoothRole(boothId, ["OWNER", "ADMIN"]);
   const [config, banners, products] = await Promise.all([
     db.gachaConfig.findUnique({ where: { boothId } }),
     db.gachaBanner.findMany({
       where: { boothId },
       include: { pool: true },
-      orderBy: { sortOrder: "asc" },
+      orderBy: [{ active: "desc" }, { sortOrder: "asc" }],
     }),
     db.product.findMany({
       where: { boothId, status: { in: ["LIVE", "DRAFT"] } },
@@ -38,9 +43,10 @@ export default async function GachaPage({
   ]);
   const selectedBanner = filters.new
     ? null
-    : (banners.find((banner) => banner.id === filters.banner) ??
-      banners[0] ??
-      null);
+    : (banners.find((banner) => banner.id === filters.banner) ?? null);
+  const staleSelection = Boolean(
+    filters.banner && !filters.new && !selectedBanner,
+  );
   const selectedVariantIds = new Set(
     selectedBanner?.pool
       .map((entry) => entry.productVariantId)
@@ -50,77 +56,76 @@ export default async function GachaPage({
   return (
     <>
       <PageHeading
-        eyebrow="Minigame studio"
-        title="Gacha"
-        description="Turn booth items into a free, non-monetized surprise minigame."
+        eyebrow="Optional booth feature"
+        title="Free game"
+        description="Prepare a free surprise pool without payments, credits, or paid pulls."
         actions={
-          <>
-            <span className={styles.pill}>
-              {config?.enabled ? "Published" : "Not published"}
-            </span>
-            <Link
-              className={styles.button}
-              href={`/s/${(await db.booth.findUniqueOrThrow({ where: { id: boothId } })).slug}`}
-            >
-              Preview storefront
-            </Link>
-          </>
+          <span
+            className={admin.statusBadge}
+            data-status={config?.enabled ? "ACTIVE" : "DRAFT"}
+          >
+            {config?.enabled ? "Configuration enabled" : "Configuration off"}
+          </span>
         }
       />
 
-      <p className={styles.notice}>
-        Gacha in Cyfurden is free play only. It cannot sell pulls, take payment,
-        consume stored value, or affect manual bank-transfer orders.
-      </p>
+      <div className={styles.scopeNotice} role="note">
+        <strong>Configuration only</strong>
+        <span>
+          The visitor-facing game is not connected to the public storefront yet.
+          Saving here prepares content without claiming it is live.
+        </span>
+      </div>
+
       {filters.saved ? (
-        <p className={styles.notice}>Gacha draft saved.</p>
+        <p className={admin.successNotice} role="status">
+          Game configuration saved.
+        </p>
+      ) : null}
+      {filters.poolSaved ? (
+        <p className={admin.successNotice} role="status">
+          Reward pool saved.
+        </p>
       ) : null}
 
-      <form
-        action={saveGachaAction}
-        className={`${styles.panel} ${styles.stack}`}
-      >
-        <input type="hidden" name="boothId" value={boothId} />
-        <div className={styles.panelHeader}>
+      <section className={admin.panel} aria-labelledby="game-setup-title">
+        <div className={admin.panelHeader}>
           <div>
-            <h2>Game setup</h2>
-            <p>Availability, public copy, and transparent pity rules.</p>
+            <h2 id="game-setup-title">Game setup</h2>
+            <p>Control the draft copy and guarantee rule.</p>
           </div>
-          <span
-            className={styles.statusBadge}
-            data-status={config?.enabled ? "ACTIVE" : "DRAFT"}
-          >
-            {config?.enabled ? "open" : "closed"}
-          </span>
         </div>
-        <div className={styles.formGrid}>
-          <div className={styles.softPanel}>
-            <label className={styles.checkboxField}>
+        <form action={saveGachaAction} className={styles.setupForm}>
+          <input type="hidden" name="boothId" value={boothId} />
+          <div className={styles.formSection}>
+            <h3>Availability</h3>
+            <label className={admin.checkboxField}>
               <input
                 name="enabled"
                 type="checkbox"
                 defaultChecked={config?.enabled ?? false}
               />
               <span>
-                Open free play
-                <small>Visitors can use the minigame when enabled.</small>
+                Enable this configuration
+                <small>
+                  This does not publish a visitor-facing game in the current
+                  release.
+                </small>
               </span>
             </label>
-            <label className={styles.checkboxField} style={{ marginTop: 12 }}>
+            <label className={admin.checkboxField}>
               <input
                 name="pityEnabled"
                 type="checkbox"
                 defaultChecked={config?.pityEnabled ?? true}
               />
               <span>
-                Guaranteed reward rule
-                <small>
-                  Clearly display the maximum free draws before a guarantee.
-                </small>
+                Use a guaranteed reward rule
+                <small>Sets a transparent maximum number of free draws.</small>
               </span>
             </label>
-            <label className={styles.field} style={{ marginTop: 12 }}>
-              Guaranteed at
+            <label className={admin.field}>
+              Guaranteed by draw
               <input
                 name="guaranteedAt"
                 type="number"
@@ -130,27 +135,31 @@ export default async function GachaPage({
               />
             </label>
           </div>
-          <div className={styles.softPanel}>
-            <label className={styles.field}>
-              Minigame title
+
+          <div className={styles.formSection}>
+            <h3>Presentation</h3>
+            <label className={admin.field}>
+              Game title
               <input
                 name="title"
                 defaultValue={config?.title ?? "Wish upon the shelf"}
+                maxLength={80}
                 required
               />
             </label>
-            <label className={styles.field} style={{ marginTop: 12 }}>
+            <label className={admin.field}>
               Introduction
               <textarea
                 name="introduction"
                 defaultValue={
                   config?.introduction ?? "Meet a surprise from this booth."
                 }
+                maxLength={240}
                 required
               />
             </label>
-            <label className={styles.field} style={{ marginTop: 12 }}>
-              Game theme
+            <label className={admin.field}>
+              Visual theme
               <select
                 name="gameTheme"
                 defaultValue={config?.gameTheme ?? "anemo"}
@@ -161,210 +170,267 @@ export default async function GachaPage({
               </select>
             </label>
           </div>
-        </div>
-        {canEdit ? (
-          <SubmitButton
-            className={styles.buttonPrimary}
-            pendingLabel="Saving game…"
-          >
-            Save game setup
-          </SubmitButton>
-        ) : null}
-      </form>
 
-      <section className={styles.panel} style={{ marginTop: 18 }}>
-        <div className={styles.panelHeader}>
+          <div className={styles.formActions}>
+            <SubmitButton
+              className={admin.buttonPrimary}
+              pendingLabel="Saving setup…"
+            >
+              Save setup
+            </SubmitButton>
+          </div>
+        </form>
+      </section>
+
+      <section
+        className={`${admin.panel} ${styles.bannerPanel}`}
+        aria-labelledby="banners-title"
+      >
+        <div className={admin.panelHeader}>
           <div>
-            <h2>Banners & pool</h2>
-            <p>Create themed sets and choose which product variants appear.</p>
+            <h2 id="banners-title">Reward banners</h2>
+            <p>Group product variants into a clear free-play reward pool.</p>
           </div>
-          {canEdit ? (
-            <Link
-              className={styles.button}
-              href={`/manage/${boothId}/gacha?new=1`}
-            >
-              + Add banner
-            </Link>
-          ) : null}
+          <Link
+            className={admin.buttonPrimary}
+            href={`/manage/${boothId}/gacha?new=1`}
+          >
+            Add banner
+          </Link>
         </div>
-        {banners.length ? (
-          <div className={styles.filterRow}>
-            {banners.map((banner) => (
-              <Link
-                className={styles.tab}
-                href={`/manage/${boothId}/gacha?banner=${banner.id}`}
-                key={banner.id}
-              >
-                {banner.title} · {banner.active ? "active" : "draft"}
-              </Link>
-            ))}
-          </div>
+
+        {staleSelection ? (
+          <p className={admin.errorNotice} role="alert">
+            That banner no longer exists. Choose another banner below.
+          </p>
         ) : null}
 
-        {selectedBanner || filters.new ? (
-          <div className={styles.splitLayout} style={{ marginTop: 18 }}>
-            <form
-              action={saveGachaBannerAction}
-              className={`${styles.softPanel} ${styles.stack}`}
-            >
-              <input type="hidden" name="boothId" value={boothId} />
-              <input
-                type="hidden"
-                name="bannerId"
-                value={selectedBanner?.id ?? ""}
-              />
-              <h3>
-                {selectedBanner
-                  ? `Editing ${selectedBanner.title}`
-                  : "New banner"}
-              </h3>
-              <label className={styles.field}>
-                Banner title
-                <input
-                  name="bannerTitle"
-                  defaultValue={selectedBanner?.title ?? "Merch event wish"}
-                  required
-                />
-              </label>
-              <label className={styles.field}>
-                Public copy
-                <textarea
-                  name="bannerCopy"
-                  defaultValue={
-                    selectedBanner?.copy ?? "Featured finds from this shelf."
-                  }
-                  required
-                />
-              </label>
-              <div className={styles.formGrid}>
-                <label className={styles.field}>
-                  Banner type
-                  <select
-                    name="bannerType"
-                    defaultValue={selectedBanner?.type ?? "COLLECTION"}
-                  >
-                    <option value="CHARACTER">Character</option>
-                    <option value="WEAPON">Object</option>
-                    <option value="COLLECTION">Collection</option>
-                  </select>
-                </label>
-                <label className={styles.field}>
-                  Theme
-                  <select
-                    name="bannerTheme"
-                    defaultValue={selectedBanner?.theme ?? "anemo"}
-                  >
-                    <option value="anemo">Breeze</option>
-                    <option value="ember">Ember</option>
-                    <option value="starlight">Starlight</option>
-                  </select>
-                </label>
-                <label className={styles.field}>
-                  Featured count
-                  <input
-                    name="featuredCount"
-                    type="number"
-                    min="1"
-                    max="10"
-                    defaultValue={selectedBanner?.featuredCount ?? 3}
-                  />
-                </label>
-              </div>
-              <label className={styles.checkboxField}>
-                <input
-                  name="bannerActive"
-                  type="checkbox"
-                  defaultChecked={selectedBanner?.active ?? false}
-                />
-                Banner active
-              </label>
-              {canEdit ? (
-                <SubmitButton
-                  className={styles.buttonPrimary}
-                  pendingLabel="Saving banner…"
-                >
-                  Save banner
-                </SubmitButton>
-              ) : null}
-            </form>
-
-            <form
-              action={saveGachaPoolAction}
-              className={`${styles.editorPane} ${styles.stack}`}
-            >
-              <input type="hidden" name="boothId" value={boothId} />
-              <input
-                type="hidden"
-                name="bannerId"
-                value={selectedBanner?.id ?? ""}
-              />
-              <div className={styles.panelHeader}>
-                <div>
-                  <h3>Wish pool</h3>
-                  <p>
-                    Select variants from this booth. Rewards are virtual
-                    previews only.
-                  </p>
-                </div>
-                <span className={styles.pill}>
-                  {selectedVariantIds.size} selected
-                </span>
-              </div>
-              {selectedBanner ? (
-                products.length ? (
-                  products.flatMap((product) =>
-                    product.variants.map((variant) => (
-                      <label className={styles.checkboxField} key={variant.id}>
-                        <input
-                          type="checkbox"
-                          name="variantId"
-                          value={variant.id}
-                          defaultChecked={selectedVariantIds.has(variant.id)}
-                        />
+        <div className={styles.bannerWorkspace}>
+          <aside className={styles.bannerIndex} aria-label="Reward banners">
+            {banners.length ? (
+              <ul>
+                {banners.map((banner) => {
+                  const selected = banner.id === selectedBanner?.id;
+                  return (
+                    <li key={banner.id}>
+                      <Link
+                        aria-current={selected ? "page" : undefined}
+                        className={styles.bannerLink}
+                        data-active={selected || undefined}
+                        href={`/manage/${boothId}/gacha?banner=${banner.id}`}
+                      >
                         <span>
-                          {product.name} · {variant.label}
-                          <small>{variant.status.toLocaleLowerCase()}</small>
+                          <strong>{banner.title}</strong>
+                          <small>{banner.pool.length} rewards</small>
                         </span>
-                      </label>
-                    )),
-                  )
-                ) : (
-                  <div className={styles.emptyState}>
-                    <div>
-                      <span className={styles.emptyIcon} aria-hidden="true">
-                        ⌕
-                      </span>
-                      <h3>No matching merch</h3>
-                      <p>Add products before building a gacha pool.</p>
-                    </div>
-                  </div>
-                )
-              ) : (
-                <p className={styles.helperText}>
-                  Save the banner before choosing its pool.
+                        <span
+                          className={admin.statusBadge}
+                          data-status={banner.active ? "ACTIVE" : "DRAFT"}
+                        >
+                          {banner.active ? "active" : "draft"}
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <div className={styles.compactEmpty}>
+                <h3>No banners yet</h3>
+                <p>
+                  Create one, then choose which variants belong in its pool.
                 </p>
-              )}
-              {selectedBanner && canEdit ? (
-                <SubmitButton
-                  className={styles.button}
-                  pendingLabel="Saving pool…"
+              </div>
+            )}
+          </aside>
+
+          <div className={styles.bannerEditor}>
+            {selectedBanner || filters.new ? (
+              <>
+                <form
+                  action={saveGachaBannerAction}
+                  className={styles.cardForm}
                 >
-                  Save pool
-                </SubmitButton>
-              ) : null}
-            </form>
+                  <input type="hidden" name="boothId" value={boothId} />
+                  <input
+                    type="hidden"
+                    name="bannerId"
+                    value={selectedBanner?.id ?? ""}
+                  />
+                  <div className={styles.editorHeading}>
+                    <div>
+                      <p>{selectedBanner ? "Edit banner" : "New banner"}</p>
+                      <h3>{selectedBanner?.title ?? "Banner details"}</h3>
+                    </div>
+                    {filters.new ? (
+                      <Link
+                        className={admin.button}
+                        href={`/manage/${boothId}/gacha`}
+                      >
+                        Cancel
+                      </Link>
+                    ) : null}
+                  </div>
+                  <label className={admin.field}>
+                    Banner title
+                    <input
+                      name="bannerTitle"
+                      defaultValue={selectedBanner?.title ?? ""}
+                      maxLength={80}
+                      required
+                    />
+                  </label>
+                  <label className={admin.field}>
+                    Description
+                    <textarea
+                      name="bannerCopy"
+                      defaultValue={selectedBanner?.copy ?? ""}
+                      maxLength={240}
+                      required
+                    />
+                  </label>
+                  <div className={admin.formGridThree}>
+                    <label className={admin.field}>
+                      Banner type
+                      <select
+                        name="bannerType"
+                        defaultValue={selectedBanner?.type ?? "COLLECTION"}
+                      >
+                        <option value="CHARACTER">Character</option>
+                        <option value="WEAPON">Object</option>
+                        <option value="COLLECTION">Collection</option>
+                      </select>
+                    </label>
+                    <label className={admin.field}>
+                      Theme
+                      <select
+                        name="bannerTheme"
+                        defaultValue={selectedBanner?.theme ?? "anemo"}
+                      >
+                        <option value="anemo">Breeze</option>
+                        <option value="ember">Ember</option>
+                        <option value="starlight">Starlight</option>
+                      </select>
+                    </label>
+                    <label className={admin.field}>
+                      Featured rewards
+                      <input
+                        name="featuredCount"
+                        type="number"
+                        min="1"
+                        max="10"
+                        defaultValue={selectedBanner?.featuredCount ?? 3}
+                      />
+                    </label>
+                  </div>
+                  <label className={admin.checkboxField}>
+                    <input
+                      name="bannerActive"
+                      type="checkbox"
+                      defaultChecked={selectedBanner?.active ?? false}
+                    />
+                    <span>
+                      Mark configuration active
+                      <small>Used when the public game is implemented.</small>
+                    </span>
+                  </label>
+                  <SubmitButton
+                    className={admin.buttonPrimary}
+                    pendingLabel="Saving banner…"
+                  >
+                    Save banner
+                  </SubmitButton>
+                </form>
+
+                {selectedBanner ? (
+                  <form
+                    action={saveGachaPoolAction}
+                    className={styles.cardForm}
+                  >
+                    <input type="hidden" name="boothId" value={boothId} />
+                    <input
+                      type="hidden"
+                      name="bannerId"
+                      value={selectedBanner.id}
+                    />
+                    <div className={styles.editorHeading}>
+                      <div>
+                        <p>Reward pool</p>
+                        <h3>Choose product variants</h3>
+                      </div>
+                      <span className={admin.pill}>
+                        {selectedVariantIds.size} selected
+                      </span>
+                    </div>
+                    {products.some((product) => product.variants.length) ? (
+                      <div className={styles.variantList}>
+                        {products.flatMap((product) =>
+                          product.variants.map((variant) => (
+                            <label
+                              className={admin.checkboxField}
+                              key={variant.id}
+                            >
+                              <input
+                                type="checkbox"
+                                name="variantId"
+                                value={variant.id}
+                                defaultChecked={selectedVariantIds.has(
+                                  variant.id,
+                                )}
+                              />
+                              <span>
+                                {product.name} · {variant.label}
+                                <small>
+                                  {variant.status.toLocaleLowerCase()}
+                                </small>
+                              </span>
+                            </label>
+                          )),
+                        )}
+                      </div>
+                    ) : (
+                      <div className={styles.compactEmpty}>
+                        <h3>No eligible variants</h3>
+                        <p>
+                          Add a draft or live product before building a pool.
+                        </p>
+                        <Link
+                          className={admin.button}
+                          href={`/manage/${boothId}/products?new=1`}
+                        >
+                          Add product
+                        </Link>
+                      </div>
+                    )}
+                    <SubmitButton
+                      className={admin.button}
+                      pendingLabel="Saving pool…"
+                    >
+                      Save reward pool
+                    </SubmitButton>
+                  </form>
+                ) : (
+                  <p className={styles.helperText}>
+                    Save the banner before choosing its reward pool.
+                  </p>
+                )}
+              </>
+            ) : (
+              <div className={styles.editorEmpty}>
+                <h3>Select a banner to edit</h3>
+                <p>
+                  Banner details and reward choices stay together in this panel.
+                </p>
+                <Link
+                  className={admin.buttonPrimary}
+                  href={`/manage/${boothId}/gacha?new=1`}
+                >
+                  Create banner
+                </Link>
+              </div>
+            )}
           </div>
-        ) : (
-          <div className={styles.emptyState}>
-            <div>
-              <span className={styles.emptyIcon} aria-hidden="true">
-                ✦
-              </span>
-              <h3>No banners yet</h3>
-              <p>Create the first themed pool for this free minigame.</p>
-            </div>
-          </div>
-        )}
+        </div>
       </section>
     </>
   );

@@ -1,21 +1,28 @@
+import type { Metadata } from "next";
 import {
   PageHeading,
-  adminStyles as styles,
+  adminStyles as admin,
 } from "@/components/admin/admin-shell";
-import { SubmitButton } from "@/components/admin/form-controls";
 import { requireBoothMember } from "@/lib/authorization";
 import { db } from "@/lib/db";
-import { inviteTeamMemberAction, updateTeamMemberAction } from "../actions";
+import {
+  InviteMemberForm,
+  MemberAccessForm,
+  RevokeInvitationForm,
+} from "./team-controls";
+import styles from "./team.module.css";
+
+export const metadata: Metadata = {
+  title: "Team access",
+  robots: { index: false, follow: false },
+};
 
 export default async function TeamPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ boothId: string }>;
-  searchParams: Promise<{ invited?: string }>;
 }) {
   const { boothId } = await params;
-  const messages = await searchParams;
   const { membership: viewerMembership } = await requireBoothMember(boothId);
   const isOwner = viewerMembership.role === "OWNER";
   const [members, invitations] = await Promise.all([
@@ -30,197 +37,151 @@ export default async function TeamPage({
     }),
   ]);
   const activeMembers = members.filter((member) => member.status === "ACTIVE");
+  const usedSlots = activeMembers.length + invitations.length;
+  const remainingSlots = Math.max(0, 10 - usedSlots);
 
   return (
-    <>
+    <div className={styles.teamPage}>
       <PageHeading
         eyebrow="Access management"
         title="Team"
-        description="Invite collaborators and control what they can do in this booth."
+        description="Keep booth access clear, intentional, and easy to hand off."
+        actions={
+          <span className={admin.pill}>
+            {activeMembers.length} active / {invitations.length} pending
+          </span>
+        }
       />
 
-      {messages.invited ? (
-        <p className={styles.notice}>
-          Invitation recorded. Email delivery is not configured yet, so no
-          delivery claim is made.
-        </p>
-      ) : null}
       {!isOwner ? (
-        <p className={styles.notice}>
-          Only the booth owner can invite people or change team access.
-        </p>
+        <div className={styles.readOnlyNotice} role="status">
+          <strong>Read-only access</strong>
+          <span>
+            You can see the people in this booth, but only the owner can invite
+            teammates or change access.
+          </span>
+        </div>
       ) : null}
 
-      <section className={styles.panel}>
-        <div className={styles.panelHeader}>
-          <div>
-            <h2>Team access</h2>
-            <p>
-              Owners control roles; every server mutation verifies booth
-              membership.
-            </p>
-          </div>
-        </div>
+      <div className={styles.teamGrid}>
+        <aside className={styles.inviteCard}>
+          {isOwner ? (
+            <InviteMemberForm
+              boothId={boothId}
+              remainingSlots={remainingSlots}
+            />
+          ) : (
+            <div className={styles.readOnlyCard}>
+              <p className={styles.cardEyebrow}>Owner controls</p>
+              <h2>Invite a teammate</h2>
+              <p>
+                Ask the booth owner to create an invitation link. You cannot
+                change access from a staff or admin account.
+              </p>
+            </div>
+          )}
 
-        <div className={styles.metrics}>
-          <article className={styles.metricCard}>
-            <span className={styles.metricIcon} aria-hidden="true">
-              ♧
-            </span>
-            <span>
-              <strong>{activeMembers.length}</strong>
-              <small>Active members</small>
-            </span>
-          </article>
-          <article className={styles.metricCard}>
-            <span className={styles.metricIcon} aria-hidden="true">
-              ✉
-            </span>
-            <span>
-              <strong>{invitations.length}</strong>
-              <small>Pending invites</small>
-            </span>
-          </article>
-          <article className={styles.metricCard}>
-            <span className={styles.metricIcon} aria-hidden="true">
-              ◇
-            </span>
-            <span>
-              <strong>{activeMembers.length}/10</strong>
-              <small>Team places used</small>
-            </span>
-          </article>
-        </div>
-
-        <div className={styles.splitLayout}>
-          <form
-            action={inviteTeamMemberAction}
-            className={`${styles.softPanel} ${styles.stack}`}
+          <section
+            className={styles.pendingSection}
+            aria-labelledby="pending-title"
           >
-            <input type="hidden" name="boothId" value={boothId} />
-            <div>
-              <h3>Invite a teammate</h3>
-              <p>Choose what they can do. Roles can be changed later.</p>
-            </div>
-            <label className={styles.field}>
-              Email
-              <input
-                name="email"
-                type="email"
-                placeholder="staff@example.com"
-                required
-                disabled={!isOwner}
-              />
-            </label>
-            <label className={styles.field}>
-              Role
-              <select name="role" defaultValue="STAFF" disabled={!isOwner}>
-                <option value="STAFF">Staff · process orders</option>
-                <option value="ADMIN">
-                  Admin · catalogue, design, and orders
-                </option>
-              </select>
-            </label>
-            {isOwner ? (
-              <SubmitButton
-                className={styles.buttonPrimary}
-                pendingLabel="Recording invitation…"
-              >
-                Record invitation
-              </SubmitButton>
-            ) : null}
-          </form>
-
-          <section className={styles.softPanel}>
-            <div className={styles.panelHeader}>
+            <div className={styles.sectionHeading}>
               <div>
-                <h3>Members</h3>
-                <p>{members.length} people with booth access</p>
+                <p className={styles.cardEyebrow}>Open links</p>
+                <h2 id="pending-title">Pending invitations</h2>
               </div>
+              <span className={styles.countBadge}>{invitations.length}</span>
             </div>
-            <ul className={styles.memberList}>
-              {members.map((member) => (
-                <li className={styles.memberCard} key={member.id}>
-                  <div>
-                    <strong>{member.user.name}</strong>
-                    <small>{member.user.email}</small>
-                  </div>
-                  {member.role === "OWNER" ? (
-                    <div className={styles.inlineActions}>
-                      <span className={styles.statusBadge} data-status="ACTIVE">
-                        owner
-                      </span>
-                      <span className={styles.statusBadge} data-status="ACTIVE">
-                        enabled
+            {invitations.length ? (
+              <ul className={styles.invitationList}>
+                {invitations.map((invitation) => (
+                  <li className={styles.invitationItem} key={invitation.id}>
+                    <div className={styles.itemIdentity}>
+                      <strong>{invitation.email}</strong>
+                      <span>
+                        {invitation.role === "ADMIN" ? "Admin" : "Staff"} ·
+                        expires{" "}
+                        {invitation.expiresAt.toLocaleDateString("en-GB")}
                       </span>
                     </div>
-                  ) : (
-                    <form
-                      action={updateTeamMemberAction}
-                      className={styles.inlineActions}
-                    >
-                      <input type="hidden" name="boothId" value={boothId} />
-                      <input
-                        type="hidden"
-                        name="membershipId"
-                        value={member.id}
+                    {isOwner ? (
+                      <RevokeInvitationForm
+                        boothId={boothId}
+                        invitationId={invitation.id}
                       />
-                      <select
-                        className={styles.searchInput}
-                        name="role"
-                        defaultValue={member.role}
-                        disabled={!isOwner}
-                        aria-label={`Role for ${member.user.name}`}
+                    ) : (
+                      <span className={styles.statusBadge}>Pending</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className={styles.emptyCopy}>
+                No open invitations. New links appear here until they are used,
+                revoked, or expire.
+              </p>
+            )}
+          </section>
+        </aside>
+
+        <section className={styles.membersCard} aria-labelledby="members-title">
+          <div className={styles.sectionHeading}>
+            <div>
+              <p className={styles.cardEyebrow}>People with access</p>
+              <h2 id="members-title">Members</h2>
+            </div>
+            <span className={styles.countBadge}>{members.length}</span>
+          </div>
+          <p className={styles.cardIntro}>
+            Owners cannot be removed. Disabled members keep their history but
+            cannot open this booth until re-enabled.
+          </p>
+
+          <ul className={styles.memberList}>
+            {members.map((member) => {
+              const memberName = member.user.name || member.user.email;
+              return (
+                <li className={styles.memberItem} key={member.id}>
+                  <div className={styles.memberIdentity}>
+                    <span className={styles.avatar} aria-hidden="true">
+                      {memberName.slice(0, 1).toUpperCase()}
+                    </span>
+                    <div>
+                      <strong>{memberName}</strong>
+                      <span>{member.user.email}</span>
+                    </div>
+                  </div>
+                  {member.role === "OWNER" ? (
+                    <div className={styles.memberBadges}>
+                      <span className={styles.statusBadge}>Owner</span>
+                      <span className={styles.statusBadge}>Always active</span>
+                    </div>
+                  ) : isOwner ? (
+                    <MemberAccessForm
+                      boothId={boothId}
+                      membershipId={member.id}
+                      role={member.role}
+                      status={member.status}
+                      memberName={memberName}
+                    />
+                  ) : (
+                    <div className={styles.memberBadges}>
+                      <span className={styles.statusBadge}>
+                        {member.role === "ADMIN" ? "Admin" : "Staff"}
+                      </span>
+                      <span
+                        className={`${styles.statusBadge} ${member.status === "DISABLED" ? styles.disabledBadge : ""}`}
                       >
-                        <option value="STAFF">staff</option>
-                        <option value="ADMIN">admin</option>
-                      </select>
-                      <select
-                        className={styles.searchInput}
-                        name="status"
-                        defaultValue={member.status}
-                        disabled={!isOwner}
-                        aria-label={`Status for ${member.user.name}`}
-                      >
-                        <option value="ACTIVE">enabled</option>
-                        <option value="DISABLED">disabled</option>
-                      </select>
-                      {isOwner ? (
-                        <SubmitButton
-                          className={styles.button}
-                          pendingLabel="Saving…"
-                        >
-                          Save
-                        </SubmitButton>
-                      ) : null}
-                    </form>
+                        {member.status === "ACTIVE" ? "Active" : "Disabled"}
+                      </span>
+                    </div>
                   )}
                 </li>
-              ))}
-            </ul>
-
-            {invitations.length ? (
-              <div className={styles.stack} style={{ marginTop: 20 }}>
-                <h3>Pending invitations</h3>
-                {invitations.map((invitation) => (
-                  <div className={styles.listItem} key={invitation.id}>
-                    <span>
-                      <strong>{invitation.email}</strong>
-                      <small>
-                        {invitation.role.toLocaleLowerCase()} · expires{" "}
-                        {invitation.expiresAt.toLocaleDateString("en-GB")}
-                      </small>
-                    </span>
-                    <span className={styles.statusBadge} data-status="PENDING">
-                      pending
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </section>
-        </div>
-      </section>
-    </>
+              );
+            })}
+          </ul>
+        </section>
+      </div>
+    </div>
   );
 }

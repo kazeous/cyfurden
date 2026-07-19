@@ -11,6 +11,13 @@ type AuthMode = "sign-in" | "sign-up";
 interface AuthFormProps {
   googleEnabled: boolean;
   mode: AuthMode;
+  returnTo?: string;
+}
+
+function safeReturnTo(value: string | undefined) {
+  return value && value.startsWith("/") && !value.startsWith("//")
+    ? value
+    : "/dashboard";
 }
 
 function GoogleIcon() {
@@ -36,11 +43,12 @@ function GoogleIcon() {
   );
 }
 
-export function AuthForm({ googleEnabled, mode }: AuthFormProps) {
+export function AuthForm({ googleEnabled, mode, returnTo }: AuthFormProps) {
   const router = useRouter();
   const isSignUp = mode === "sign-up";
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const destination = safeReturnTo(returnTo);
 
   const handleEmailSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -66,13 +74,13 @@ export function AuthForm({ googleEnabled, mode }: AuthFormProps) {
     try {
       const result = isSignUp
         ? await signUp.email({
-            callbackURL: "/dashboard",
+            callbackURL: destination,
             email,
             name: String(form.get("name") ?? "").trim(),
             password,
           })
         : await signIn.email({
-            callbackURL: "/dashboard",
+            callbackURL: destination,
             email,
             password,
           });
@@ -87,7 +95,7 @@ export function AuthForm({ googleEnabled, mode }: AuthFormProps) {
         return;
       }
 
-      router.replace("/dashboard");
+      router.replace(destination);
       router.refresh();
     } catch {
       setError("Something went wrong. Please wait a moment and try again.");
@@ -102,7 +110,7 @@ export function AuthForm({ googleEnabled, mode }: AuthFormProps) {
 
     try {
       const result = await signIn.social({
-        callbackURL: "/dashboard",
+        callbackURL: destination,
         provider: "google",
       });
 

@@ -8,7 +8,9 @@ import {
 } from "@aws-sdk/client-s3";
 import {
   PaymentQrValidationError,
+  ProductImageValidationError,
   validatePaymentQrBytes,
+  validateProductImageBytes,
 } from "@/lib/payment-qr";
 
 type OracleUploadConfig = {
@@ -23,6 +25,13 @@ export class OracleQrUploadError extends Error {
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);
     this.name = "OracleQrUploadError";
+  }
+}
+
+export class OracleProductImageUploadError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "OracleProductImageUploadError";
   }
 }
 
@@ -125,5 +134,57 @@ export async function discardUploadedPaymentQr(objectKey: string) {
     );
   } catch (error) {
     console.error("Could not discard unattached payment QR upload", error);
+  }
+}
+
+export async function uploadProductImage({
+  boothId,
+  file,
+}: {
+  boothId: string;
+  file: File;
+}) {
+  try {
+    const image = validateProductImageBytes(
+      new Uint8Array(await file.arrayBuffer()),
+    );
+    const config = getOracleUploadConfig();
+    const safeBoothId = boothId.replace(/[^a-zA-Z0-9_-]/g, "");
+    const objectKey = `booths/${safeBoothId}/products/${randomUUID()}.${image.extension}`;
+
+    await createOracleClient(config).send(
+      new PutObjectCommand({
+        Bucket: config.bucket,
+        Body: image.bytes,
+        CacheControl: "public, max-age=31536000, immutable",
+        ContentDisposition: "inline",
+        ContentType: image.contentType,
+        Key: objectKey,
+      }),
+    );
+
+    return objectKey;
+  } catch (error) {
+    if (error instanceof OracleProductImageUploadError) throw error;
+    if (error instanceof ProductImageValidationError) {
+      throw new OracleProductImageUploadError(error.message, { cause: error });
+    }
+
+    console.error("Oracle product image upload failed", error);
+    throw new OracleProductImageUploadError(
+      "The product image could not be uploaded. Check your connection and try again.",
+      { cause: error },
+    );
+  }
+}
+
+export async function discardUploadedProductImage(objectKey: string) {
+  try {
+    const config = getOracleUploadConfig();
+    await createOracleClient(config).send(
+      new DeleteObjectCommand({ Bucket: config.bucket, Key: objectKey }),
+    );
+  } catch (error) {
+    console.error("Could not discard unattached product image", error);
   }
 }

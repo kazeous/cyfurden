@@ -45,33 +45,106 @@ const sectionMeta: Record<
     label: "Featured spotlight",
     description: "Announcement, headline, and welcome copy",
     lane: "wide",
-    icon: "✦",
+    icon: "F",
   },
   "booth-info": {
     label: "Booth information",
     description: "Creator, convention, location, and hours",
     lane: "side",
-    icon: "⌂",
+    icon: "I",
   },
   browse: {
     label: "Browse controls",
     description: "Search, filter, and collection controls",
     lane: "wide",
-    icon: "⌕",
+    icon: "B",
   },
   catalogue: {
     label: "Product collection",
     description: "The public product catalogue",
     lane: "wide",
-    icon: "◇",
+    icon: "P",
   },
   cart: {
     label: "Shopping cart",
     description: "Cart and manual bank-transfer handoff",
     lane: "side",
-    icon: "▣",
+    icon: "C",
   },
 };
+
+const editorTabs = ["layout", "content", "style"] as const;
+
+function ControlIcon({
+  name,
+}: {
+  name:
+    | "content"
+    | "drag"
+    | "down"
+    | "hidden"
+    | "layout"
+    | "style"
+    | "up"
+    | "visible";
+}) {
+  if (name === "drag") {
+    return (
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        <circle cx="5" cy="4" r="1.2" />
+        <circle cx="11" cy="4" r="1.2" />
+        <circle cx="5" cy="8" r="1.2" />
+        <circle cx="11" cy="8" r="1.2" />
+        <circle cx="5" cy="12" r="1.2" />
+        <circle cx="11" cy="12" r="1.2" />
+      </svg>
+    );
+  }
+
+  if (name === "up" || name === "down") {
+    const points = name === "up" ? "3 10 8 5 13 10" : "3 6 8 11 13 6";
+    return (
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        <polyline points={points} />
+      </svg>
+    );
+  }
+
+  if (name === "visible" || name === "hidden") {
+    return (
+      <svg viewBox="0 0 18 18" aria-hidden="true">
+        <path d="M2 9s2.5-4 7-4 7 4 7 4-2.5 4-7 4-7-4-7-4Z" />
+        <circle cx="9" cy="9" r="2" />
+        {name === "hidden" ? <path d="m3 3 12 12" /> : null}
+      </svg>
+    );
+  }
+
+  if (name === "layout") {
+    return (
+      <svg viewBox="0 0 18 18" aria-hidden="true">
+        <rect x="2.5" y="3" width="5" height="12" rx="1" />
+        <rect x="10.5" y="3" width="5" height="5" rx="1" />
+        <rect x="10.5" y="10.5" width="5" height="4.5" rx="1" />
+      </svg>
+    );
+  }
+
+  if (name === "content") {
+    return (
+      <svg viewBox="0 0 18 18" aria-hidden="true">
+        <path d="M4 4h10M4 9h10M4 14h7" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 18 18" aria-hidden="true">
+      <circle cx="9" cy="9" r="6" />
+      <circle cx="9" cy="9" r="2" />
+    </svg>
+  );
+}
 
 const documentFieldNames = [
   "name",
@@ -262,14 +335,48 @@ export function StorefrontDesigner({
     setAnnouncement(`${sectionMeta[section].label} selected for editing.`);
   };
 
-  const reorderSection = (source: SectionId, target: SectionId) => {
+  const focusEditorTab = (nextTab: EditorTab) => {
+    setTab(nextTab);
+    globalThis.requestAnimationFrame(() => {
+      globalThis.document.getElementById(`storefront-${nextTab}-tab`)?.focus();
+    });
+  };
+
+  const handleTabKeyDown = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    currentTab: EditorTab,
+  ) => {
+    const currentIndex = editorTabs.indexOf(currentTab);
+    let nextIndex: number | null = null;
+
+    if (event.key === "ArrowRight") {
+      nextIndex = (currentIndex + 1) % editorTabs.length;
+    } else if (event.key === "ArrowLeft") {
+      nextIndex = (currentIndex - 1 + editorTabs.length) % editorTabs.length;
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = editorTabs.length - 1;
+    }
+
+    if (nextIndex === null) return;
+    event.preventDefault();
+    focusEditorTab(editorTabs[nextIndex]);
+  };
+
+  const reorderSection = (
+    source: SectionId,
+    target: SectionId,
+    placement: "before" | "after",
+  ) => {
     if (source === target) return;
     const nextOrder = document.sectionOrder.filter((item) => item !== source);
-    const targetIndex = nextOrder.indexOf(target);
+    const targetIndex =
+      nextOrder.indexOf(target) + (placement === "after" ? 1 : 0);
     nextOrder.splice(targetIndex, 0, source);
     updateDocument("sectionOrder", nextOrder);
     setAnnouncement(
-      `${sectionMeta[source].label} moved before ${sectionMeta[target].label}.`,
+      `${sectionMeta[source].label} moved ${placement} ${sectionMeta[target].label}.`,
     );
   };
 
@@ -321,47 +428,13 @@ export function StorefrontDesigner({
       draggedSection ??
       (event.dataTransfer.getData("text/plain") as SectionId | "");
     if (source && storefrontSectionIds.includes(source as SectionId)) {
-      reorderSection(source as SectionId, target);
+      const bounds = event.currentTarget.getBoundingClientRect();
+      const placement =
+        event.clientY >= bounds.top + bounds.height / 2 ? "after" : "before";
+      reorderSection(source as SectionId, target, placement);
     }
     setDraggedSection(null);
     setDropTarget(null);
-  };
-
-  const handlePointerDown = (section: SectionId) => {
-    setDraggedSection(section);
-    setDropTarget(section);
-  };
-
-  const handlePointerEnter = (section: SectionId) => {
-    if (draggedSection && draggedSection !== section) {
-      setDropTarget(section);
-    }
-  };
-
-  const handlePointerUp = (section: SectionId) => {
-    if (!draggedSection) return;
-    const source = draggedSection;
-    if (source !== section) {
-      const nextOrder = document.sectionOrder.filter((item) => item !== source);
-      const targetIndex = nextOrder.indexOf(section);
-      nextOrder.splice(targetIndex, 0, source);
-      updateDocument("sectionOrder", nextOrder);
-      setAnnouncement(
-        `${sectionMeta[source].label} moved before ${sectionMeta[section].label}.`,
-      );
-    }
-    setDraggedSection(null);
-    setDropTarget(null);
-  };
-
-  const handlePreviewKeyDown = (
-    event: KeyboardEvent<HTMLElement>,
-    section: SectionId,
-  ) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      selectSection(section);
-    }
   };
 
   const renderPreviewContent = (section: SectionId) => {
@@ -377,7 +450,7 @@ export function StorefrontDesigner({
           </div>
         ) : (
           <EmptyPreview
-            icon="✦"
+            icon="F"
             title={document.tagline}
             copy="Featured products will appear here."
           />
@@ -389,7 +462,7 @@ export function StorefrontDesigner({
             <strong>{document.creatorName}</strong>
             <span>{document.eventName || "Next convention"}</span>
             <small>
-              {document.eventVenue} · {document.eventBoothLabel}
+              {document.eventVenue} / {document.eventBoothLabel}
             </small>
           </div>
         );
@@ -397,8 +470,8 @@ export function StorefrontDesigner({
         return (
           <div className={styles.browsePreview}>
             <span>All</span>
-            <div>⌕ Search items…</div>
-            <div>↕ Recommended</div>
+            <div>Search items...</div>
+            <div>Sort: Recommended</div>
           </div>
         );
       case "catalogue":
@@ -413,7 +486,7 @@ export function StorefrontDesigner({
           </div>
         ) : (
           <EmptyPreview
-            icon="◇"
+            icon="P"
             title="No merch is live yet"
             copy="Products will appear here as soon as the booth adds them."
           />
@@ -421,9 +494,9 @@ export function StorefrontDesigner({
       case "cart":
         return (
           <EmptyPreview
-            icon="▣"
+            icon="C"
             title="Your cart is empty"
-            copy={`${payment.bankName || "Bank transfer"} · manual review`}
+            copy={`${payment.bankName || "Bank transfer"} / manual review`}
           />
         );
     }
@@ -472,7 +545,7 @@ export function StorefrontDesigner({
 
         <div className={styles.builderHeader}>
           <span className={styles.builderMark} aria-hidden="true">
-            ▤
+            SF
           </span>
           <div>
             <strong>Storefront builder</strong>
@@ -482,18 +555,20 @@ export function StorefrontDesigner({
         </div>
 
         <div className={styles.tabs} role="tablist" aria-label="Editor panels">
-          {(["layout", "content", "style"] as const).map((item) => (
+          {editorTabs.map((item) => (
             <button
               key={item}
+              id={`storefront-${item}-tab`}
               type="button"
               role="tab"
+              aria-controls={`storefront-${item}-panel`}
               aria-selected={tab === item}
+              tabIndex={tab === item ? 0 : -1}
               className={tab === item ? styles.activeTab : undefined}
               onClick={() => setTab(item)}
+              onKeyDown={(event) => handleTabKeyDown(event, item)}
             >
-              <span aria-hidden="true">
-                {item === "layout" ? "▦" : item === "content" ? "T" : "◉"}
-              </span>
+              <ControlIcon name={item} />
               {item[0].toUpperCase() + item.slice(1)}
             </button>
           ))}
@@ -501,7 +576,12 @@ export function StorefrontDesigner({
 
         <div className={styles.panelBody}>
           {tab === "layout" ? (
-            <section aria-labelledby="layout-panel-title">
+            <section
+              id="storefront-layout-panel"
+              role="tabpanel"
+              aria-labelledby="storefront-layout-tab"
+              tabIndex={0}
+            >
               <div className={styles.panelIntro}>
                 <div>
                   <h2 id="layout-panel-title">Page sections</h2>
@@ -519,29 +599,26 @@ export function StorefrontDesigner({
                         selectedSection === section ? styles.selectedRow : ""
                       }`}
                       key={section}
-                      draggable
-                      onDragStart={(event) => handleDragStart(event, section)}
                       onDragOver={(event) => {
                         event.preventDefault();
                         setDropTarget(section);
                       }}
                       onDrop={(event) => handleDrop(event, section)}
-                      onDragEnd={() => {
-                        setDraggedSection(null);
-                        setDropTarget(null);
-                      }}
-                      onPointerDown={() => handlePointerDown(section)}
-                      onPointerEnter={() => handlePointerEnter(section)}
-                      onPointerUp={() => handlePointerUp(section)}
                       data-drop-target={dropTarget === section || undefined}
                     >
                       <button
                         type="button"
                         className={styles.dragHandle}
+                        draggable
+                        onDragStart={(event) => handleDragStart(event, section)}
+                        onDragEnd={() => {
+                          setDraggedSection(null);
+                          setDropTarget(null);
+                        }}
                         onClick={() => selectSection(section)}
-                        aria-label={`Select ${meta.label}; drag to reorder`}
+                        aria-label={`Select ${meta.label}. Drag this handle to reorder.`}
                       >
-                        ⠿
+                        <ControlIcon name="drag" />
                       </button>
                       <button
                         type="button"
@@ -562,7 +639,7 @@ export function StorefrontDesigner({
                         aria-pressed={visible}
                         aria-label={`${visible ? "Hide" : "Show"} ${meta.label}`}
                       >
-                        {visible ? "●" : "○"}
+                        <ControlIcon name={visible ? "visible" : "hidden"} />
                       </button>
                       <div className={styles.moveButtons}>
                         <button
@@ -571,7 +648,7 @@ export function StorefrontDesigner({
                           disabled={index === 0}
                           aria-label={`Move ${meta.label} up`}
                         >
-                          ↑
+                          <ControlIcon name="up" />
                         </button>
                         <button
                           type="button"
@@ -579,7 +656,7 @@ export function StorefrontDesigner({
                           disabled={index === document.sectionOrder.length - 1}
                           aria-label={`Move ${meta.label} down`}
                         >
-                          ↓
+                          <ControlIcon name="down" />
                         </button>
                       </div>
                     </div>
@@ -594,7 +671,12 @@ export function StorefrontDesigner({
           ) : null}
 
           {tab === "content" ? (
-            <section aria-labelledby="content-panel-title">
+            <section
+              id="storefront-content-panel"
+              role="tabpanel"
+              aria-labelledby="storefront-content-tab"
+              tabIndex={0}
+            >
               <div className={styles.panelIntro}>
                 <div>
                   <p className={styles.editorEyebrow}>Selected section</p>
@@ -738,7 +820,7 @@ export function StorefrontDesigner({
 
               {selectedSection === "browse" ? (
                 <div className={styles.informationCard}>
-                  <span aria-hidden="true">⌕</span>
+                  <span aria-hidden="true">B</span>
                   <div>
                     <strong>Visitor controls are ready</strong>
                     <p>
@@ -752,7 +834,7 @@ export function StorefrontDesigner({
               {selectedSection === "catalogue" ? (
                 <div className={styles.controlStack}>
                   <div className={styles.informationCard}>
-                    <span aria-hidden="true">◇</span>
+                    <span aria-hidden="true">P</span>
                     <div>
                       <strong>{productCount} public catalogue items</strong>
                       <p>
@@ -775,7 +857,7 @@ export function StorefrontDesigner({
               {selectedSection === "cart" ? (
                 <div className={styles.controlStack}>
                   <div className={styles.informationCard}>
-                    <span aria-hidden="true">▣</span>
+                    <span aria-hidden="true">C</span>
                     <div>
                       <strong>Manual bank transfer only</strong>
                       <p>
@@ -853,7 +935,7 @@ export function StorefrontDesigner({
                         <img src={visibleQrUrl} alt="Payment QR preview" />
                       ) : hasStoredQr ? (
                         <div>
-                          <span aria-hidden="true">âœ“</span>
+                          <span aria-hidden="true">OK</span>
                           <strong>QR image saved</strong>
                           <small>
                             Public preview needs the Oracle delivery URL.
@@ -861,7 +943,7 @@ export function StorefrontDesigner({
                         </div>
                       ) : (
                         <div>
-                          <span aria-hidden="true">â–£</span>
+                          <span aria-hidden="true">QR</span>
                           <strong>No QR image yet</strong>
                           <small>
                             Customers can still use the account details.
@@ -958,14 +1040,19 @@ export function StorefrontDesigner({
           ) : null}
 
           {tab === "style" ? (
-            <section aria-labelledby="style-panel-title">
+            <section
+              id="storefront-style-panel"
+              role="tabpanel"
+              aria-labelledby="storefront-style-tab"
+              tabIndex={0}
+            >
               <div className={styles.panelIntro}>
                 <div>
                   <h2 id="style-panel-title">Look & feel</h2>
                   <p>Changes update the preview immediately.</p>
                 </div>
                 <span className={styles.selectedIcon} aria-hidden="true">
-                  ◉
+                  S
                 </span>
               </div>
               <div className={styles.controlStack}>
@@ -1041,7 +1128,7 @@ export function StorefrontDesigner({
           </span>
           <SubmitButton
             className={styles.saveButton}
-            pendingLabel="Saving draft…"
+            pendingLabel="Saving draft..."
           >
             Save draft
           </SubmitButton>
@@ -1052,22 +1139,24 @@ export function StorefrontDesigner({
         <div className={styles.previewToolbar}>
           <div>
             <strong>{selectedMeta.label}</strong>
-            <small>Draft preview · click a block to edit</small>
+            <small>Draft preview / click a block to edit</small>
           </div>
           <div className={styles.deviceSwitch} aria-label="Preview device">
             <button
               type="button"
               data-active={previewMode === "desktop" || undefined}
+              aria-pressed={previewMode === "desktop"}
               onClick={() => setPreviewMode("desktop")}
             >
-              ▣ Desktop
+              Desktop
             </button>
             <button
               type="button"
               data-active={previewMode === "phone" || undefined}
+              aria-pressed={previewMode === "phone"}
               onClick={() => setPreviewMode("phone")}
             >
-              ▯ Phone
+              Phone
             </button>
           </div>
           <form action={publishStorefrontAction} className={styles.publishForm}>
@@ -1099,11 +1188,11 @@ export function StorefrontDesigner({
                 <small>{document.eventStatusLabel}</small>
               </span>
               <button type="button" onClick={() => selectSection("booth-info")}>
-                ⓘ Booth info
+                Edit info
               </button>
             </div>
             <div className={styles.previewGrid}>
-              {visibleOrder.map((section) => {
+              {visibleOrder.map((section, visibleIndex) => {
                 const meta = sectionMeta[section];
                 const selected = selectedSection === section;
                 return (
@@ -1116,15 +1205,8 @@ export function StorefrontDesigner({
                     } ${selected ? styles.selectedBlock : ""} ${
                       draggedSection === section ? styles.draggingBlock : ""
                     }`}
-                    role="button"
-                    tabIndex={0}
-                    draggable
-                    aria-label={`${meta.label}. Click to edit or drag to reorder.`}
-                    aria-pressed={selected}
+                    style={{ gridRow: visibleIndex + 1 }}
                     data-drop-target={dropTarget === section || undefined}
-                    onClick={() => selectSection(section)}
-                    onKeyDown={(event) => handlePreviewKeyDown(event, section)}
-                    onDragStart={(event) => handleDragStart(event, section)}
                     onDragOver={(event) => {
                       event.preventDefault();
                       event.dataTransfer.dropEffect = "move";
@@ -1136,17 +1218,30 @@ export function StorefrontDesigner({
                       )
                     }
                     onDrop={(event) => handleDrop(event, section)}
-                    onDragEnd={() => {
-                      setDraggedSection(null);
-                      setDropTarget(null);
-                    }}
-                    onPointerDown={() => handlePointerDown(section)}
-                    onPointerEnter={() => handlePointerEnter(section)}
-                    onPointerUp={() => handlePointerUp(section)}
                   >
+                    <button
+                      type="button"
+                      className={styles.previewSelectButton}
+                      aria-label={`Edit ${meta.label}`}
+                      aria-pressed={selected}
+                      onClick={() => selectSection(section)}
+                    />
                     <span className={styles.blockBadge}>
-                      <i aria-hidden="true">⠿</i>
-                      {document.sectionOrder.indexOf(section) + 1}
+                      <button
+                        type="button"
+                        className={styles.previewDragHandle}
+                        draggable
+                        aria-label={`Drag ${meta.label} to reorder`}
+                        onDragStart={(event) => handleDragStart(event, section)}
+                        onDragEnd={() => {
+                          setDraggedSection(null);
+                          setDropTarget(null);
+                        }}
+                        onClick={() => selectSection(section)}
+                      >
+                        <ControlIcon name="drag" />
+                      </button>
+                      {visibleIndex + 1}
                       <b>{meta.label}</b>
                     </span>
                     {renderPreviewContent(section)}

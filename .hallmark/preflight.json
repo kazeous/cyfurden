@@ -1,0 +1,9 @@
+{
+  "date": "2026-07-19",
+  "framework": "Next.js 16 App Router",
+  "font_stack": "Georgia display with established Inter-led UI body",
+  "palette": "Warm Cyfurden paper, navy ink, forest action, coral selection",
+  "motion": "Motion-cut; no animation library installed",
+  "spacing": "Existing mixed scale, normalised to a 4-point token scale",
+  "preserve": ["brand palette", "font pairing", "routes", "application logic"]
+}

@@ -1,0 +1,188 @@
+/* Hallmark · genre: editorial · macrostructure: Split Studio · design-system: design.md · designed-as-app */
+/* Hallmark · pre-emit critique: P4 H4 E4 S5 R5 V4 */
+
+.page {
+  display: grid;
+  min-height: 100vh;
+  padding: 24px;
+  place-items: center;
+  color: var(--color-ink);
+  background:
+    radial-gradient(
+      circle at 12% 4%,
+      var(--color-accent-alpha),
+      var(--color-transparent) 22rem
+    ),
+    var(--color-paper-3);
+}
+
+.card {
+  width: min(560px, 100%);
+  padding: clamp(24px, 6vw, 52px);
+  border: 1px solid var(--color-rule);
+  border-radius: 26px;
+  background: var(--color-panel-glass);
+  box-shadow: 0 24px 60px var(--color-shadow-medium);
+}
+
+.brand {
+  display: inline-flex;
+  gap: 12px;
+  align-items: center;
+  color: var(--color-ink);
+  text-decoration: none;
+}
+
+.brand > span:last-child {
+  display: grid;
+  line-height: 1.1;
+}
+
+.brand strong {
+  font-size: 14px;
+}
+
+.brand small {
+  margin-top: 4px;
+  color: var(--color-muted);
+  font-size: 10px;
+}
+
+.brandMark {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 13px;
+  color: var(--color-accent-ink);
+  background: var(--color-accent);
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.content {
+  display: grid;
+  gap: 16px;
+  margin-top: clamp(56px, 10vw, 84px);
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--color-accent);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.content h1 {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--font-display);
+  font-size: clamp(34px, 7vw, 54px);
+  letter-spacing: -0.05em;
+  line-height: 1;
+}
+
+.content > p:not(.eyebrow) {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.acceptForm {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.primaryButton,
+.secondaryButton {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 850;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.primaryButton {
+  border: 1px solid var(--color-action);
+  color: var(--color-action-ink);
+  background: var(--color-action);
+  cursor: pointer;
+}
+
+.secondaryButton {
+  border: 1px solid var(--color-rule);
+  color: var(--color-ink);
+  background: var(--color-panel);
+}
+
+.primaryButton:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.primaryButton:focus-visible,
+.secondaryButton:focus-visible,
+.dashboardLink:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+.dashboardLink {
+  width: max-content;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.error,
+.success {
+  display: grid;
+  gap: 4px;
+  padding: 12px 16px;
+  border-radius: 13px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.error {
+  border: 1px solid var(--color-error-line);
+  color: var(--color-error-ink);
+  background: var(--color-error-soft);
+}
+
+.success {
+  border: 1px solid var(--color-success-line);
+  color: var(--color-success-ink);
+  background: var(--color-success-soft);
+}
+
+.success span {
+  color: var(--color-success-ink);
+}
+
+@media (max-width: 520px) {
+  .page {
+    padding: 8px;
+    align-items: start;
+  }
+
+  .card {
+    min-height: calc(100vh - 18px);
+    padding: 24px 20px;
+    border-radius: 20px;
+  }
+}

@@ -4,12 +4,15 @@ import { createHash, randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { requireBoothRole } from "@/lib/authorization";
+import { requireBoothRole, requireUser } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import {
   discardUploadedPaymentQr,
+  discardUploadedProductImage,
   OracleQrUploadError,
+  OracleProductImageUploadError,
   uploadPaymentQr,
+  uploadProductImage,
 } from "@/lib/oracle-uploads";
 import {
   storefrontDocumentSchema,
@@ -227,130 +230,227 @@ const variantStatusSchema = z.enum([
   "HIDDEN",
 ]);
 
-export async function saveProductAction(formData: FormData) {
+export type ProductSaveState = { error: string | null };
+
+const hasCode = (error: unknown, code: string) =>
+  typeof error === "object" &&
+  error !== null &&
+  "code" in error &&
+  (error as { code?: unknown }).code === code;
+
+export async function saveProductAction(
+  _previousState: ProductSaveState,
+  formData: FormData,
+): Promise<ProductSaveState> {
   const boothId = requiredText(formData, "boothId");
-  let productId = optionalText(formData, "productId");
+  const productId = optionalText(formData, "productId");
   const variantId = optionalText(formData, "variantId");
   const { session, booth } = await requireBoothRole(boothId, editorRoles);
   const name = requiredText(formData, "name");
   const slug = slugify(requiredText(formData, "slug") || name);
   const sku = requiredText(formData, "sku").toLocaleUpperCase();
-  const priceVnd = Number(requiredText(formData, "priceVnd"));
+  const rawPrice = requiredText(formData, "priceVnd");
+  const priceVnd = Number(rawPrice);
   if (
     !name ||
     !slug ||
     !sku ||
+    !rawPrice ||
     !Number.isFinite(priceVnd) ||
     priceVnd < 0 ||
     priceVnd > MAX_PRODUCT_PRICE_VND
   ) {
-    throw new Error(
-      `Name, slug, SKU, and a price between 0 and ${MAX_PRODUCT_PRICE_VND.toLocaleString("en-US")} VND are required.`,
-    );
+    return {
+      error: `Name, slug, SKU, and a price between 0 and ${MAX_PRODUCT_PRICE_VND.toLocaleString("en-US")} VND are required.`,
+    };
   }
 
   const priceCents = BigInt(Math.round(priceVnd * 100));
-  const status = productStatusSchema.parse(requiredText(formData, "status"));
-  const variantStatus = variantStatusSchema.parse(
+  const statusResult = productStatusSchema.safeParse(
+    requiredText(formData, "status"),
+  );
+  const variantStatusResult = variantStatusSchema.safeParse(
     requiredText(formData, "variantStatus"),
   );
+  if (!statusResult.success || !variantStatusResult.success) {
+    return { error: "Choose a valid product and variant status." };
+  }
+  const status = statusResult.data;
+  const variantStatus = variantStatusResult.data;
   const tags = requiredText(formData, "tags")
     .split(",")
     .map((tag) => tag.trim())
     .filter(Boolean)
     .slice(0, 12);
-  const imageObjectKey = optionalText(formData, "imageObjectKey");
-
-  const savedProductId = await db.$transaction(async (transaction) => {
-    if (productId) {
-      const existing = await transaction.product.findFirst({
+  const imageFile = formData.get("productImage");
+  const removeImage = booleanField(formData, "removeImage");
+  const existing = productId
+    ? await db.product.findFirst({
         where: { id: productId, boothId },
-      });
-      if (!existing) throw new Error("Product not found in this booth.");
-
-      await transaction.product.update({
-        where: { id: productId },
-        data: {
-          name,
-          slug,
-          sku,
-          eyebrow: optionalText(formData, "eyebrow"),
-          shortDescription: optionalText(formData, "shortDescription"),
-          description: requiredText(formData, "description"),
-          priceCents,
-          status,
-          featured: booleanField(formData, "featured"),
-          tags,
+        include: {
+          images: { orderBy: { sortOrder: "asc" }, take: 1 },
         },
+      })
+    : null;
+  if (productId && !existing) {
+    return {
+      error: "That product is no longer available. Refresh and try again.",
+    };
+  }
+
+  let uploadedImageObjectKey: string | null = null;
+  if (imageFile instanceof File && imageFile.size > 0) {
+    try {
+      uploadedImageObjectKey = await uploadProductImage({
+        boothId,
+        file: imageFile,
       });
-      if (variantId) {
-        await transaction.productVariant.updateMany({
-          where: { id: variantId, productId },
+    } catch (error) {
+      if (error instanceof OracleProductImageUploadError) {
+        return { error: error.message };
+      }
+      throw error;
+    }
+  }
+
+  const existingImage = existing?.images[0] ?? null;
+  const imageObjectKey = uploadedImageObjectKey
+    ? uploadedImageObjectKey
+    : removeImage
+      ? null
+      : (existingImage?.objectKey ?? null);
+  let savedProductId: string;
+
+  try {
+    savedProductId = await db.$transaction(async (transaction) => {
+      let nextProductId = productId;
+      const auditAction = productId ? "product.saved" : "product.created";
+
+      if (productId) {
+        const current = await transaction.product.findFirst({
+          where: { id: productId, boothId },
+        });
+        if (!current) throw new Error("Product not found in this booth.");
+
+        await transaction.product.update({
+          where: { id: productId },
           data: {
+            name,
+            slug,
             sku,
-            label: requiredText(formData, "variantLabel") || "Standard",
+            eyebrow: optionalText(formData, "eyebrow"),
+            shortDescription: optionalText(formData, "shortDescription"),
+            description: requiredText(formData, "description"),
             priceCents,
-            status: variantStatus,
-            stockQuantity: optionalText(formData, "stockQuantity")
-              ? parseInteger(formData.get("stockQuantity"), 0)
-              : null,
-            fulfillmentNote: optionalText(formData, "fulfillmentNote"),
+            status,
+            featured: booleanField(formData, "featured"),
+            tags,
           },
         });
-      }
-    } else {
-      const created = await transaction.product.create({
-        data: {
-          boothId,
-          name,
-          slug,
-          sku,
-          eyebrow: optionalText(formData, "eyebrow"),
-          shortDescription: optionalText(formData, "shortDescription"),
-          description: requiredText(formData, "description"),
-          priceCents,
-          status,
-          featured: booleanField(formData, "featured"),
-          tags,
-          variants: {
-            create: {
+        if (variantId) {
+          await transaction.productVariant.updateMany({
+            where: { id: variantId, productId },
+            data: {
               sku,
               label: requiredText(formData, "variantLabel") || "Standard",
               priceCents,
               status: variantStatus,
               stockQuantity: optionalText(formData, "stockQuantity")
-                ? parseInteger(formData.get("stockQuantity"), 0)
+                ? Math.max(0, parseInteger(formData.get("stockQuantity"), 0))
                 : null,
               fulfillmentNote: optionalText(formData, "fulfillmentNote"),
             },
+          });
+        }
+      } else {
+        const created = await transaction.product.create({
+          data: {
+            boothId,
+            name,
+            slug,
+            sku,
+            eyebrow: optionalText(formData, "eyebrow"),
+            shortDescription: optionalText(formData, "shortDescription"),
+            description: requiredText(formData, "description"),
+            priceCents,
+            status,
+            featured: booleanField(formData, "featured"),
+            tags,
+            variants: {
+              create: {
+                sku,
+                label: requiredText(formData, "variantLabel") || "Standard",
+                priceCents,
+                status: variantStatus,
+                stockQuantity: optionalText(formData, "stockQuantity")
+                  ? Math.max(0, parseInteger(formData.get("stockQuantity"), 0))
+                  : null,
+                fulfillmentNote: optionalText(formData, "fulfillmentNote"),
+              },
+            },
           },
-        },
-      });
-      productId = created.id;
-    }
+          select: { id: true },
+        });
+        nextProductId = created.id;
+      }
 
-    if (!productId) throw new Error("Product could not be saved.");
-    await transaction.productImage.deleteMany({ where: { productId } });
-    if (imageObjectKey) {
-      await transaction.productImage.create({
+      if (!nextProductId) throw new Error("Product could not be saved.");
+      if (uploadedImageObjectKey || removeImage || !productId) {
+        await transaction.productImage.deleteMany({
+          where: { productId: nextProductId },
+        });
+        if (imageObjectKey) {
+          await transaction.productImage.create({
+            data: {
+              productId: nextProductId,
+              objectKey: imageObjectKey,
+              alt:
+                requiredText(formData, "imageAlt") ||
+                existingImage?.alt ||
+                name,
+            },
+          });
+        }
+      } else if (existingImage && requiredText(formData, "imageAlt")) {
+        await transaction.productImage.update({
+          where: { id: existingImage.id },
+          data: { alt: requiredText(formData, "imageAlt") },
+        });
+      }
+      await transaction.auditLog.create({
         data: {
-          productId,
-          objectKey: imageObjectKey,
-          alt: requiredText(formData, "imageAlt") || name,
+          boothId,
+          actorUserId: session.user.id,
+          action: auditAction,
+          entityType: "Product",
+          entityId: nextProductId,
         },
       });
-    }
-    await transaction.auditLog.create({
-      data: {
-        boothId,
-        actorUserId: session.user.id,
-        action: productId ? "product.saved" : "product.created",
-        entityType: "Product",
-        entityId: productId,
-      },
+      return nextProductId;
     });
-    return productId;
-  });
+  } catch (error) {
+    if (uploadedImageObjectKey) {
+      await discardUploadedProductImage(uploadedImageObjectKey);
+    }
+    if (hasCode(error, "P2002")) {
+      return {
+        error:
+          "That slug or SKU is already used in this booth. Choose a unique value.",
+      };
+    }
+    if (
+      error instanceof Error &&
+      error.message === "Product not found in this booth."
+    ) {
+      return {
+        error: "That product is no longer available. Refresh and try again.",
+      };
+    }
+    console.error("Failed to save product", error);
+    return {
+      error: "We could not save this product. Check the fields and try again.",
+    };
+  }
 
   revalidatePath(`/manage/${boothId}/products`);
   revalidatePath(`/s/${booth.slug}`);
@@ -405,34 +505,98 @@ export async function savePromotionAction(formData: FormData) {
   revalidatePath(`/manage/${boothId}/products`);
 }
 
-export async function updateOrderStatusAction(formData: FormData) {
+export type OrderStatusActionState = {
+  status: "idle" | "success" | "error";
+  message: string;
+};
+
+export async function updateOrderStatusAction(
+  _previousState: OrderStatusActionState,
+  formData: FormData,
+): Promise<OrderStatusActionState> {
   const boothId = requiredText(formData, "boothId");
   const orderId = requiredText(formData, "orderId");
-  const nextStatus = z
+  const parsedStatus = z
     .enum(["PENDING", "CONFIRMED", "CANCELLED", "EXPIRED", "FULFILLED"])
-    .parse(requiredText(formData, "status"));
-  const { session } = await requireBoothRole(boothId, orderRoles);
-  const result = await db.order.updateMany({
-    where: { id: orderId, boothId },
-    data: {
-      status: nextStatus,
-      confirmedAt: nextStatus === "CONFIRMED" ? new Date() : undefined,
-      confirmedById: nextStatus === "CONFIRMED" ? session.user.id : undefined,
-      fulfilledAt: nextStatus === "FULFILLED" ? new Date() : undefined,
-    },
-  });
-  if (!result.count) throw new Error("Order not found in this booth.");
-  await db.auditLog.create({
-    data: {
-      boothId,
-      actorUserId: session.user.id,
-      action: `order.${nextStatus.toLocaleLowerCase()}`,
-      entityType: "Order",
-      entityId: orderId,
-      metadata: { manualReview: true },
-    },
-  });
-  revalidatePath(`/manage/${boothId}/orders`);
+    .safeParse(requiredText(formData, "status"));
+
+  if (!boothId || !orderId || !parsedStatus.success) {
+    return {
+      status: "error",
+      message: "Choose a valid order status and try again.",
+    };
+  }
+
+  try {
+    const nextStatus = parsedStatus.data;
+    const { session } = await requireBoothRole(boothId, orderRoles);
+    const result = await db.$transaction(async (transaction) => {
+      const order = await transaction.order.findFirst({
+        where: { id: orderId, boothId },
+        select: {
+          code: true,
+          status: true,
+          confirmedAt: true,
+          confirmedById: true,
+        },
+      });
+
+      if (!order) return null;
+      if (order.status === nextStatus) {
+        return { code: order.code, changed: false };
+      }
+
+      const now = new Date();
+      const keepsConfirmation =
+        nextStatus === "CONFIRMED" || nextStatus === "FULFILLED";
+
+      const updated = await transaction.order.updateMany({
+        where: { id: orderId, boothId },
+        data: {
+          status: nextStatus,
+          confirmedAt: keepsConfirmation ? (order.confirmedAt ?? now) : null,
+          confirmedById: keepsConfirmation
+            ? (order.confirmedById ?? session.user.id)
+            : null,
+          fulfilledAt: nextStatus === "FULFILLED" ? now : null,
+        },
+      });
+      if (!updated.count) return null;
+      await transaction.auditLog.create({
+        data: {
+          boothId,
+          actorUserId: session.user.id,
+          action: `order.${nextStatus.toLocaleLowerCase()}`,
+          entityType: "Order",
+          entityId: orderId,
+          metadata: { manualReview: true },
+        },
+      });
+      return { code: order.code, changed: true };
+    });
+
+    if (!result) {
+      return {
+        status: "error",
+        message: "This order was not found in the active booth.",
+      };
+    }
+
+    if (result.changed) revalidatePath(`/manage/${boothId}/orders`);
+    const label = nextStatus.toLocaleLowerCase().replaceAll("_", " ");
+    return {
+      status: "success",
+      message: result.changed
+        ? `${result.code} is now ${label}.`
+        : `${result.code} is already ${label}.`,
+    };
+  } catch (error) {
+    console.error("Order status update failed", error);
+    return {
+      status: "error",
+      message: "The status could not be saved. Try again.",
+    };
+  }
 }
 
 export async function saveGachaAction(formData: FormData) {
@@ -553,72 +717,365 @@ export async function saveGachaPoolAction(formData: FormData) {
     }
   });
   revalidatePath(`/manage/${boothId}/gacha`);
+  redirect(`/manage/${boothId}/gacha?banner=${bannerId}&poolSaved=1`);
 }
 
-export async function inviteTeamMemberAction(formData: FormData) {
+const teamInviteSchema = z.object({
+  email: z
+    .email("Enter a valid email address.")
+    .max(254)
+    .transform((value) => value.trim().toLocaleLowerCase()),
+  role: z.enum(["ADMIN", "STAFF"]),
+});
+
+const teamMemberUpdateSchema = z.object({
+  role: z.enum(["ADMIN", "STAFF"]),
+  status: z.enum(["ACTIVE", "DISABLED"]),
+});
+
+export type TeamInviteState = {
+  error?: string;
+  invitationPath?: string;
+  invitedEmail?: string;
+};
+
+export type TeamMutationState = {
+  error?: string;
+  success?: string;
+};
+
+export type InvitationAcceptanceState = TeamMutationState & {
+  boothName?: string;
+  workspacePath?: string;
+};
+
+const expireStaleInvitations = async (
+  transaction: Parameters<Parameters<typeof db.$transaction>[0]>[0],
+  boothId: string,
+  now: Date,
+) =>
+  transaction.teamInvitation.updateMany({
+    where: { boothId, status: "PENDING", expiresAt: { lte: now } },
+    data: { status: "EXPIRED" },
+  });
+
+export async function inviteTeamMemberAction(
+  _previousState: TeamInviteState,
+  formData: FormData,
+): Promise<TeamInviteState> {
   const boothId = requiredText(formData, "boothId");
   const { session } = await requireBoothRole(boothId, ["OWNER"]);
-  const email = z
-    .email()
-    .parse(requiredText(formData, "email").toLocaleLowerCase());
-  const role = z.enum(["ADMIN", "STAFF"]).parse(requiredText(formData, "role"));
-  const existingMember = await db.boothMembership.findFirst({
-    where: { boothId, user: { email } },
+  const parsed = teamInviteSchema.safeParse({
+    email: requiredText(formData, "email"),
+    role: requiredText(formData, "role"),
   });
-  if (existingMember)
-    throw new Error("This person already belongs to the booth.");
+  if (!parsed.success) {
+    return {
+      error: parsed.error.issues[0]?.message ?? "Check the invitation.",
+    };
+  }
 
-  const tokenHash = createHash("sha256").update(randomBytes(32)).digest("hex");
-  await db.teamInvitation.create({
-    data: {
-      boothId,
-      email,
-      role,
-      tokenHash,
-      invitedById: session.user.id,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    },
-  });
-  await db.auditLog.create({
-    data: {
-      boothId,
-      actorUserId: session.user.id,
-      action: "team.invited",
-      entityType: "TeamInvitation",
-      metadata: { email, role },
-    },
-  });
+  const token = randomBytes(32).toString("hex");
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+  try {
+    const result = await db.$transaction(
+      async (transaction) => {
+        const now = new Date();
+        await expireStaleInvitations(transaction, boothId, now);
+        const [existingMember, pendingInvite, activeMembers, pendingInvites] =
+          await Promise.all([
+            transaction.boothMembership.findFirst({
+              where: {
+                boothId,
+                user: {
+                  email: { equals: parsed.data.email, mode: "insensitive" },
+                },
+              },
+            }),
+            transaction.teamInvitation.findFirst({
+              where: {
+                boothId,
+                email: parsed.data.email,
+                status: "PENDING",
+                expiresAt: { gt: now },
+              },
+            }),
+            transaction.boothMembership.count({
+              where: { boothId, status: "ACTIVE" },
+            }),
+            transaction.teamInvitation.count({
+              where: { boothId, status: "PENDING", expiresAt: { gt: now } },
+            }),
+          ]);
+
+        if (existingMember) {
+          return { error: "This person already belongs to the booth." };
+        }
+        if (pendingInvite) {
+          return {
+            error: "An active invitation already exists for this email.",
+          };
+        }
+        if (activeMembers + pendingInvites >= 10) {
+          return {
+            error:
+              "This booth has filled all 10 active-member and pending-invitation places.",
+          };
+        }
+
+        const invitation = await transaction.teamInvitation.create({
+          data: {
+            boothId,
+            email: parsed.data.email,
+            role: parsed.data.role,
+            tokenHash,
+            invitedById: session.user.id,
+            expiresAt,
+          },
+        });
+        await transaction.auditLog.create({
+          data: {
+            boothId,
+            actorUserId: session.user.id,
+            action: "team.invited",
+            entityType: "TeamInvitation",
+            entityId: invitation.id,
+            metadata: { email: parsed.data.email, role: parsed.data.role },
+          },
+        });
+        return { invitation };
+      },
+      { isolationLevel: "Serializable" },
+    );
+
+    if ("error" in result) return { error: result.error };
+  } catch (error) {
+    console.error("Failed to create team invitation", error);
+    return {
+      error: "The invitation could not be created. Please try again.",
+    };
+  }
+
   revalidatePath(`/manage/${boothId}/team`);
-  redirect(`/manage/${boothId}/team?invited=1`);
+  return {
+    invitationPath: `/invitations/${token}`,
+    invitedEmail: parsed.data.email,
+  };
 }
 
-export async function updateTeamMemberAction(formData: FormData) {
+export async function revokeTeamInvitationAction(
+  _previousState: TeamMutationState,
+  formData: FormData,
+): Promise<TeamMutationState> {
+  const boothId = requiredText(formData, "boothId");
+  const invitationId = requiredText(formData, "invitationId");
+  const { session } = await requireBoothRole(boothId, ["OWNER"]);
+  let result: boolean;
+  try {
+    result = await db.$transaction(async (transaction) => {
+      const revoked = await transaction.teamInvitation.updateMany({
+        where: { id: invitationId, boothId, status: "PENDING" },
+        data: { status: "REVOKED" },
+      });
+      if (!revoked.count) return false;
+      await transaction.auditLog.create({
+        data: {
+          boothId,
+          actorUserId: session.user.id,
+          action: "team.invitation_revoked",
+          entityType: "TeamInvitation",
+          entityId: invitationId,
+        },
+      });
+      return true;
+    });
+  } catch (error) {
+    console.error("Failed to revoke team invitation", error);
+    return { error: "The invitation could not be revoked. Try again." };
+  }
+  if (!result) return { error: "This invitation is no longer active." };
+  revalidatePath(`/manage/${boothId}/team`);
+  return { success: "Invitation revoked." };
+}
+
+export async function updateTeamMemberAction(
+  _previousState: TeamMutationState,
+  formData: FormData,
+): Promise<TeamMutationState> {
   const boothId = requiredText(formData, "boothId");
   const membershipId = requiredText(formData, "membershipId");
   const { session } = await requireBoothRole(boothId, ["OWNER"]);
-  const membership = await db.boothMembership.findFirst({
-    where: { id: membershipId, boothId },
+  const parsed = teamMemberUpdateSchema.safeParse({
+    role: requiredText(formData, "role"),
+    status: requiredText(formData, "status"),
   });
-  if (!membership || membership.role === "OWNER") {
-    throw new Error("The booth owner cannot be changed here.");
+  if (!parsed.success)
+    return { error: "Choose a valid role and access state." };
+
+  let result: TeamMutationState;
+  try {
+    result = await db.$transaction(
+      async (transaction) => {
+        const now = new Date();
+        await expireStaleInvitations(transaction, boothId, now);
+        const membership = await transaction.boothMembership.findFirst({
+          where: { id: membershipId, boothId },
+        });
+        if (!membership) return { error: "This member could not be found." };
+        if (membership.role === "OWNER") {
+          return { error: "The booth owner cannot be changed here." };
+        }
+        if (membership.status !== "ACTIVE" && parsed.data.status === "ACTIVE") {
+          const [activeMembers, pendingInvites] = await Promise.all([
+            transaction.boothMembership.count({
+              where: { boothId, status: "ACTIVE" },
+            }),
+            transaction.teamInvitation.count({
+              where: { boothId, status: "PENDING", expiresAt: { gt: now } },
+            }),
+          ]);
+          if (activeMembers + pendingInvites >= 10) {
+            return {
+              error: "Revoke an invitation before enabling this member.",
+            };
+          }
+        }
+
+        await transaction.boothMembership.update({
+          where: { id: membershipId },
+          data: parsed.data,
+        });
+        await transaction.auditLog.create({
+          data: {
+            boothId,
+            actorUserId: session.user.id,
+            action: "team.member_updated",
+            entityType: "BoothMembership",
+            entityId: membershipId,
+            metadata: parsed.data,
+          },
+        });
+        return { success: "Member access updated." };
+      },
+      { isolationLevel: "Serializable" },
+    );
+  } catch (error) {
+    console.error("Failed to update team member", error);
+    return { error: "Member access could not be updated. Try again." };
   }
-  const role = z.enum(["ADMIN", "STAFF"]).parse(requiredText(formData, "role"));
-  const status = z
-    .enum(["ACTIVE", "DISABLED"])
-    .parse(requiredText(formData, "status"));
-  await db.boothMembership.update({
-    where: { id: membershipId },
-    data: { role, status },
-  });
-  await db.auditLog.create({
-    data: {
-      boothId,
-      actorUserId: session.user.id,
-      action: "team.member_updated",
-      entityType: "BoothMembership",
-      entityId: membershipId,
-      metadata: { role, status },
-    },
-  });
-  revalidatePath(`/manage/${boothId}/team`);
+
+  if (result.success) revalidatePath(`/manage/${boothId}/team`);
+  return result;
+}
+
+export async function acceptTeamInvitationAction(
+  _previousState: InvitationAcceptanceState,
+  formData: FormData,
+): Promise<InvitationAcceptanceState> {
+  const token = requiredText(formData, "token");
+  if (!/^[a-f0-9]{64}$/i.test(token)) {
+    return { error: "This invitation link is invalid." };
+  }
+  const session = await requireUser(`/invitations/${token}`);
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const sessionEmail = session.user.email.trim().toLocaleLowerCase();
+
+  let result: InvitationAcceptanceState;
+  try {
+    result = await db.$transaction(
+      async (transaction) => {
+        const invitation = await transaction.teamInvitation.findUnique({
+          where: { tokenHash },
+          include: { booth: true },
+        });
+        if (!invitation) return { error: "This invitation link is invalid." };
+        if (invitation.status !== "PENDING") {
+          return { error: "This invitation is no longer active." };
+        }
+        if (invitation.expiresAt <= new Date()) {
+          await transaction.teamInvitation.update({
+            where: { id: invitation.id },
+            data: { status: "EXPIRED" },
+          });
+          return { error: "This invitation has expired." };
+        }
+        if (invitation.email.toLocaleLowerCase() !== sessionEmail) {
+          return {
+            error: `Sign in as ${invitation.email} to accept this invitation.`,
+          };
+        }
+
+        const existingMembership = await transaction.boothMembership.findUnique(
+          {
+            where: {
+              boothId_userId: {
+                boothId: invitation.boothId,
+                userId: session.user.id,
+              },
+            },
+          },
+        );
+        if (existingMembership?.role === "OWNER") {
+          return { error: "The booth owner does not need an invitation." };
+        }
+        if (existingMembership) {
+          await transaction.boothMembership.update({
+            where: { id: existingMembership.id },
+            data: { role: invitation.role, status: "ACTIVE" },
+          });
+        } else {
+          await transaction.boothMembership.create({
+            data: {
+              boothId: invitation.boothId,
+              userId: session.user.id,
+              role: invitation.role,
+              status: "ACTIVE",
+            },
+          });
+        }
+        const accepted = await transaction.teamInvitation.updateMany({
+          where: { id: invitation.id, status: "PENDING" },
+          data: {
+            status: "ACCEPTED",
+            acceptedAt: new Date(),
+            acceptedById: session.user.id,
+          },
+        });
+        if (!accepted.count) {
+          return { error: "This invitation was already used." };
+        }
+        await transaction.auditLog.create({
+          data: {
+            boothId: invitation.boothId,
+            actorUserId: session.user.id,
+            action: "team.invitation_accepted",
+            entityType: "TeamInvitation",
+            entityId: invitation.id,
+            metadata: { role: invitation.role },
+          },
+        });
+        return {
+          boothName: invitation.booth.name,
+          workspacePath: `/manage/${invitation.boothId}/orders`,
+        };
+      },
+      { isolationLevel: "Serializable" },
+    );
+  } catch (error) {
+    console.error("Failed to accept team invitation", error);
+    return { error: "The invitation could not be accepted. Try again." };
+  }
+
+  if (result.workspacePath) {
+    revalidatePath("/dashboard");
+    revalidatePath(`/manage/${result.workspacePath.split("/")[2]}/team`);
+    return {
+      success: "Invitation accepted.",
+      boothName: result.boothName,
+      workspacePath: result.workspacePath,
+    };
+  }
+  return result;
 }

@@ -1,46 +1,36 @@
+/* Hallmark · genre: editorial · macrostructure: Index-First · design-system: design.md · designed-as-app */
+/* Hallmark · pre-emit critique: P4 H4 E4 S5 R5 V4 */
+
 .dashboardShell,
 .newPage {
   min-height: 100vh;
-  color: #22221f;
-  background:
-    radial-gradient(
-      circle at 12% 3%,
-      rgba(242, 198, 92, 0.24),
-      transparent 22rem
-    ),
-    radial-gradient(
-      circle at 94% 18%,
-      rgba(157, 199, 211, 0.24),
-      transparent 26rem
-    ),
-    #f4efe3;
+  color: var(--ink);
+  background: var(--color-paper-3);
 }
 
 .dashboardShell {
-  padding: 18px;
+  padding: 16px;
 }
 
 .topbar {
   display: flex;
-  min-height: 76px;
+  width: min(1240px, 100%);
+  min-height: 64px;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  width: min(1440px, 100%);
+  gap: 20px;
   margin: 0 auto;
-  padding: 12px 16px;
-  border: 1px solid rgba(34, 34, 31, 0.14);
-  border-radius: 24px;
-  background: rgba(255, 253, 248, 0.9);
-  box-shadow: 0 12px 30px rgba(49, 43, 31, 0.08);
-  backdrop-filter: blur(12px);
+  padding: 8px 4px;
 }
 
 .brand,
 .accountActions,
 .signOutButton,
+.pageHeader,
 .boothCardHead,
+.boothMeta,
 .boothActions,
+.headerAction,
 .primaryAction,
 .secondaryAction,
 .backLink {
@@ -49,23 +39,22 @@
 }
 
 .brand {
-  gap: 11px;
+  gap: 12px;
   color: inherit;
   text-decoration: none;
 }
 
 .brandMark {
   display: grid;
-  width: 46px;
-  height: 46px;
+  width: 42px;
+  height: 42px;
   place-items: center;
-  border: 2px solid #355c4c;
-  border-radius: 50% 50% 43% 57%;
-  color: #fffdf8;
-  background: #355c4c;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 1.1rem;
-  transform: rotate(-6deg);
+  border-radius: 13px;
+  color: var(--color-action-ink);
+  background: var(--forest);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
 }
 
 .brand strong,
@@ -74,14 +63,13 @@
 }
 
 .brand strong {
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 1.05rem;
+  font-size: 0.95rem;
 }
 
 .brand small {
-  margin-top: 2px;
-  color: #67675f;
-  font-size: 0.7rem;
+  margin-top: 4px;
+  color: var(--ink-muted);
+  font-size: 0.72rem;
 }
 
 .accountActions {
@@ -89,27 +77,33 @@
 }
 
 .accountName {
-  color: #67675f;
+  max-width: 260px;
+  overflow: hidden;
+  color: var(--ink-muted);
   font-size: 0.78rem;
   font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .signOutButton {
-  min-height: 42px;
+  min-height: 44px;
   gap: 8px;
-  padding: 0 14px;
-  border: 1px solid rgba(34, 34, 31, 0.14);
-  border-radius: 999px;
-  color: #355c4c;
-  background: #fffdf8;
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--forest-dark);
+  background: var(--color-panel);
   cursor: pointer;
-  font-size: 0.76rem;
+  font-size: 0.78rem;
   font-weight: 800;
 }
 
 .signOutButton svg,
-.secondaryAction svg {
-  width: 17px;
+.primaryAction svg,
+.secondaryAction svg,
+.headerAction svg {
+  width: 18px;
   fill: none;
   stroke: currentColor;
   stroke-linecap: round;
@@ -118,18 +112,23 @@
 }
 
 .workspace {
-  width: min(1440px, 100%);
-  min-height: calc(100vh - 130px);
-  margin: 18px auto 0;
-  padding: clamp(28px, 5vw, 68px);
-  border: 1px solid rgba(34, 34, 31, 0.14);
-  border-radius: 30px;
-  background: rgba(255, 253, 248, 0.94);
-  box-shadow: 0 24px 60px rgba(49, 43, 31, 0.08);
+  width: min(1240px, 100%);
+  min-height: calc(100vh - 96px);
+  margin: 8px auto 0;
+  padding: clamp(24px, 4vw, 48px) clamp(4px, 2vw, 24px);
+}
+
+.pageHeader {
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--line);
 }
 
 .heading {
-  max-width: 690px;
+  min-width: 0;
+  max-width: 68ch;
 }
 
 .eyebrow,
@@ -139,98 +138,106 @@
 .newHeading p,
 .boothIdentity h2,
 .boothIdentity span,
-.boothStatus,
+.boothSummary,
 .fieldHelp,
 .fieldError,
 .formMessage,
-.setupNote {
+.setupNote,
+.emptyState h2,
+.emptyState p {
   margin: 0;
 }
 
 .eyebrow {
-  color: #e96e4d;
-  font-size: 0.72rem;
+  color: var(--coral);
+  font-size: 0.7rem;
   font-weight: 900;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .heading h1,
 .newHeading h1 {
-  margin-top: 10px;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(2.4rem, 5vw, 4.6rem);
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3rem);
   font-weight: 500;
-  letter-spacing: -0.05em;
-  line-height: 0.95;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
 }
 
 .heading > p:last-child,
 .newHeading > p:last-child {
-  margin-top: 14px;
-  color: #67675f;
+  margin-top: 12px;
+  color: var(--ink-muted);
   font-size: 0.9rem;
-  line-height: 1.65;
+  line-height: 1.55;
 }
 
-.summary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  margin-top: 22px;
-  color: #67675f;
-  font-size: 0.72rem;
+.headerAction,
+.primaryAction,
+.secondaryAction {
+  min-height: 44px;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 850;
+  text-decoration: none;
+  white-space: nowrap;
 }
 
-.summary strong {
-  padding: 7px 11px;
-  border-radius: 999px;
-  color: #234236;
-  background: rgba(120, 149, 123, 0.16);
+.headerAction,
+.primaryAction {
+  color: var(--color-action-ink);
+  background: var(--forest);
+}
+
+.headerAction {
+  padding: 0 16px;
+  white-space: nowrap;
+}
+
+.headerAction > span {
+  font-size: 1.15rem;
+  line-height: 1;
 }
 
 .boothGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
-  margin-top: 32px;
-}
-
-.boothCard,
-.createCard {
-  min-height: 250px;
-  border-radius: 24px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 28px;
 }
 
 .boothCard {
   display: flex;
   min-width: 0;
+  min-height: 255px;
   flex-direction: column;
-  padding: 22px;
-  border: 1px solid rgba(34, 34, 31, 0.14);
-  background: #fff;
-  box-shadow: 0 10px 24px rgba(49, 43, 31, 0.07);
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--color-panel);
 }
 
 .boothCardHead {
   min-width: 0;
-  gap: 13px;
-  align-items: flex-start;
+  gap: 12px;
 }
 
 .boothMark {
   display: grid;
-  width: 50px;
-  height: 50px;
-  flex: 0 0 50px;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
   place-items: center;
-  border-radius: 17px;
-  color: #234236;
-  background: rgba(242, 198, 92, 0.32);
-  font-family: Georgia, "Times New Roman", serif;
+  border-radius: 14px;
+  color: var(--forest-dark);
+  background: var(--color-warning-alpha);
+  font-family: var(--font-display);
   font-weight: 700;
-  transform: rotate(-3deg);
 }
 
 .boothIdentity {
@@ -240,8 +247,8 @@
 
 .boothIdentity h2 {
   overflow: hidden;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 1.18rem;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -250,117 +257,123 @@
   display: block;
   margin-top: 4px;
   overflow: hidden;
-  color: #67675f;
+  color: var(--ink-muted);
   font-size: 0.72rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.boothMeta {
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.statusBadge,
 .roleBadge {
-  padding: 6px 9px;
-  border-radius: 999px;
-  color: #355c4c;
-  background: rgba(120, 149, 123, 0.14);
-  font-size: 0.62rem;
-  font-weight: 900;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.boothStatus {
-  display: flex;
+  display: inline-flex;
+  min-height: 28px;
   align-items: center;
-  gap: 7px;
-  margin-top: 22px;
-  color: #67675f;
-  font-size: 0.72rem;
+  gap: 8px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 850;
 }
 
-.boothStatus span {
+.statusBadge {
+  color: var(--color-warning-ink);
+  background: var(--color-warning-soft);
+}
+
+.statusBadge > span {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #78957b;
-  box-shadow: 0 0 0 4px rgba(120, 149, 123, 0.13);
+  background: var(--color-warning);
+}
+
+.statusBadge[data-status="PUBLISHED"] {
+  color: var(--forest-dark);
+  background: var(--color-action-alpha);
+}
+
+.statusBadge[data-status="PUBLISHED"] > span {
+  background: var(--leaf);
+}
+
+.statusBadge[data-status="ARCHIVED"] {
+  color: var(--color-muted);
+  background: var(--color-paper-3);
+}
+
+.statusBadge[data-status="ARCHIVED"] > span {
+  background: var(--color-muted);
+}
+
+.roleBadge {
+  color: var(--color-lilac-ink);
+  background: var(--color-lilac-soft);
+  text-transform: capitalize;
+}
+
+.boothSummary {
+  max-width: 68ch;
+  margin-top: 16px;
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+  line-height: 1.55;
 }
 
 .boothActions {
-  gap: 9px;
+  gap: 8px;
   margin-top: auto;
   padding-top: 24px;
 }
 
-.primaryAction,
-.secondaryAction {
-  min-height: 43px;
-  justify-content: center;
-  border-radius: 999px;
-  font-size: 0.76rem;
-  font-weight: 800;
-  text-decoration: none;
-}
-
 .primaryAction {
-  flex: 1;
-  color: #fff;
-  background: #355c4c;
+  min-width: 150px;
+  padding: 0 16px;
 }
 
 .secondaryAction {
-  gap: 6px;
-  padding: 0 14px;
-  border: 1px solid rgba(34, 34, 31, 0.14);
-  color: #234236;
-  background: #fffdf8;
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  color: var(--forest-dark);
+  background: var(--color-panel);
 }
 
-.createCard {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 26px;
-  border: 2px dashed rgba(53, 92, 76, 0.24);
-  color: #22221f;
-  background: rgba(244, 239, 227, 0.28);
-  text-align: center;
-  text-decoration: none;
-  transition:
-    border-color 160ms ease,
-    background 160ms ease,
-    transform 160ms ease;
-}
-
-.createCard:hover {
-  border-color: #78957b;
-  background: rgba(120, 149, 123, 0.08);
-  transform: translateY(-2px);
-}
-
-.plus {
+.emptyState {
   display: grid;
-  width: 52px;
-  height: 52px;
+  min-height: 360px;
   place-items: center;
-  margin-bottom: 15px;
-  border: 1px solid rgba(34, 34, 31, 0.14);
-  border-radius: 50%;
-  background: #fffdf8;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 1.7rem;
+  align-content: center;
+  padding: 32px;
+  text-align: center;
 }
 
-.createCard strong {
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 1.03rem;
+.emptyMark {
+  display: grid;
+  width: 56px;
+  height: 56px;
+  place-items: center;
+  margin-bottom: 16px;
+  border-radius: 17px;
+  color: var(--color-action-ink);
+  background: var(--forest);
+  font-family: var(--font-display);
 }
 
-.createCard > span:last-child {
-  max-width: 230px;
-  margin-top: 7px;
-  color: #67675f;
-  font-size: 0.72rem;
-  line-height: 1.5;
+.emptyState h2 {
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+}
+
+.emptyState p {
+  max-width: 58ch;
+  margin: 8px 0 20px;
+  color: var(--ink-muted);
+  font-size: 0.85rem;
+  line-height: 1.6;
 }
 
 .newPage {
@@ -370,35 +383,36 @@
 }
 
 .newCard {
-  width: min(680px, 100%);
-  padding: clamp(26px, 6vw, 56px);
-  border: 1px solid rgba(34, 34, 31, 0.14);
-  border-radius: 30px;
-  background: rgba(255, 253, 248, 0.96);
-  box-shadow: 0 24px 60px rgba(49, 43, 31, 0.12);
+  width: min(640px, 100%);
+  padding: clamp(28px, 6vw, 52px);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--color-panel);
+  box-shadow: 0 18px 48px var(--color-shadow-medium);
 }
 
 .backLink {
   width: max-content;
+  min-height: 44px;
   gap: 8px;
-  color: #355c4c;
-  font-size: 0.76rem;
+  color: var(--forest-dark);
+  font-size: 0.78rem;
   font-weight: 800;
   text-decoration: none;
 }
 
 .newHeading {
-  margin-top: 40px;
+  margin-top: 28px;
 }
 
 .newHeading h1 {
-  font-size: clamp(2.4rem, 7vw, 4rem);
+  font-size: clamp(2rem, 7vw, 2.8rem);
 }
 
 .createForm {
   display: grid;
-  gap: 22px;
-  margin-top: 34px;
+  gap: 24px;
+  margin-top: 32px;
 }
 
 .field {
@@ -407,21 +421,21 @@
 }
 
 .field label {
-  font-size: 0.76rem;
-  font-weight: 900;
+  font-size: 0.78rem;
+  font-weight: 850;
 }
 
 .field > input,
 .slugField {
   width: 100%;
-  min-height: 50px;
-  border: 1px solid rgba(34, 34, 31, 0.18);
-  border-radius: 14px;
-  background: #fff;
+  min-height: 48px;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: 12px;
+  background: var(--color-panel);
 }
 
 .field > input {
-  padding: 0 15px;
+  padding: 0 16px;
 }
 
 .slugField {
@@ -434,9 +448,9 @@
   align-self: stretch;
   display: flex;
   align-items: center;
-  padding: 0 0 0 15px;
-  color: #67675f;
-  background: rgba(244, 239, 227, 0.5);
+  padding: 0 0 0 16px;
+  color: var(--ink-muted);
+  background: var(--color-paper-3);
   font-size: 0.78rem;
   white-space: nowrap;
 }
@@ -444,45 +458,51 @@
 .slugField input {
   width: 100%;
   min-width: 0;
-  min-height: 48px;
-  padding: 0 14px 0 3px;
+  min-height: 46px;
+  padding: 0 16px 0 4px;
   border: 0;
   outline: 0;
-  background: rgba(244, 239, 227, 0.5);
+  background: var(--color-paper-3);
+}
+
+.slugField:focus-within {
+  border-color: var(--color-focus);
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
 }
 
 .fieldHelp,
 .fieldError {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   line-height: 1.5;
 }
 
 .fieldHelp {
-  color: #67675f;
+  color: var(--ink-muted);
 }
 
 .fieldError,
 .formMessage {
-  color: #a64132;
+  color: var(--color-error-ink);
 }
 
 .formMessage {
-  padding: 12px 14px;
-  border: 1px solid rgba(166, 65, 50, 0.2);
-  border-radius: 12px;
-  background: rgba(233, 110, 77, 0.08);
-  font-size: 0.75rem;
+  padding: 12px 16px;
+  border: 1px solid var(--color-accent-alpha);
+  border-radius: 10px;
+  background: var(--color-accent-alpha);
+  font-size: 0.78rem;
 }
 
 .createButton {
-  min-height: 50px;
+  min-height: 48px;
   border: 0;
-  border-radius: 999px;
-  color: #fff;
-  background: #355c4c;
+  border-radius: 12px;
+  color: var(--color-action-ink);
+  background: var(--forest);
   cursor: pointer;
   font-size: 0.82rem;
-  font-weight: 900;
+  font-weight: 850;
 }
 
 .createButton:disabled,
@@ -494,26 +514,20 @@
 .setupNote {
   margin-top: 24px;
   padding-top: 20px;
-  border-top: 1px solid rgba(34, 34, 31, 0.12);
-  color: #67675f;
-  font-size: 0.7rem;
+  border-top: 1px solid var(--line);
+  color: var(--ink-muted);
+  font-size: 0.72rem;
   line-height: 1.55;
 }
 
-@media (max-width: 1040px) {
-  .boothGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 680px) {
+@media (max-width: 760px) {
   .dashboardShell {
     padding: 8px;
   }
 
   .topbar {
-    min-height: 68px;
-    border-radius: 20px;
+    min-height: 58px;
+    padding: 4px 8px;
   }
 
   .brand small,
@@ -523,26 +537,35 @@
   }
 
   .signOutButton {
-    width: 42px;
+    width: 44px;
     justify-content: center;
     padding: 0;
   }
 
   .workspace {
-    min-height: calc(100vh - 92px);
-    margin-top: 8px;
-    padding: 30px 18px;
-    border-radius: 22px;
+    min-height: calc(100vh - 74px);
+    margin-top: 4px;
+    padding: 24px 8px;
+  }
+
+  .pageHeader {
+    align-items: stretch;
+    flex-direction: column;
+    padding-bottom: 24px;
+  }
+
+  .headerAction {
+    width: 100%;
   }
 
   .boothGrid {
     grid-template-columns: 1fr;
-    margin-top: 24px;
+    margin-top: 20px;
   }
 
-  .boothCard,
-  .createCard {
-    min-height: 232px;
+  .boothCard {
+    min-height: 240px;
+    padding: 20px;
   }
 
   .boothActions {
@@ -563,11 +586,7 @@
   .newCard {
     min-height: calc(100vh - 16px);
     padding: 28px 20px;
-    border-radius: 22px;
-  }
-
-  .newHeading {
-    margin-top: 34px;
+    border-radius: 16px;
   }
 
   .slugField {
@@ -576,16 +595,10 @@
 
   .slugField span {
     min-height: 34px;
-    padding-right: 15px;
+    padding-right: 16px;
   }
 
   .slugField input {
-    padding: 0 14px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .createCard {
-    transition: none;
+    padding: 0 16px;
   }
 }

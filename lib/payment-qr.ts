@@ -1,6 +1,8 @@
 export const PAYMENT_QR_MAX_BYTES = 5 * 1024 * 1024;
 
 export const paymentQrAccept = "image/png,image/jpeg,image/webp";
+export const PRODUCT_IMAGE_MAX_BYTES = PAYMENT_QR_MAX_BYTES;
+export const productImageAccept = paymentQrAccept;
 
 export type PaymentQrImage = {
   bytes: Uint8Array;
@@ -12,6 +14,13 @@ export class PaymentQrValidationError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "PaymentQrValidationError";
+  }
+}
+
+export class ProductImageValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ProductImageValidationError";
   }
 }
 
@@ -48,4 +57,21 @@ export function validatePaymentQrBytes(bytes: Uint8Array): PaymentQrImage {
   throw new PaymentQrValidationError(
     "Use a PNG, JPEG, or WebP image for the payment QR code.",
   );
+}
+
+export function validateProductImageBytes(bytes: Uint8Array): PaymentQrImage {
+  try {
+    return validatePaymentQrBytes(bytes);
+  } catch (error) {
+    if (error instanceof PaymentQrValidationError) {
+      const message =
+        bytes.byteLength > PRODUCT_IMAGE_MAX_BYTES
+          ? "Product images must be 5 MB or smaller."
+          : bytes.byteLength === 0
+            ? "Choose a product image to upload."
+            : "Use a PNG, JPEG, or WebP image for the product.";
+      throw new ProductImageValidationError(message);
+    }
+    throw error;
+  }
 }

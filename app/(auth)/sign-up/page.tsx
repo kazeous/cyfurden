@@ -6,10 +6,21 @@ export const metadata: Metadata = {
   description: "Create a Cyfurden account for your artist booths.",
 };
 
-export default function SignUpPage() {
+export default async function SignUpPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ returnTo?: string }>;
+}) {
   const googleEnabled = Boolean(
     process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET,
   );
 
-  return <AuthPage googleEnabled={googleEnabled} mode="sign-up" />;
+  const { returnTo } = await searchParams;
+  return (
+    <AuthPage
+      googleEnabled={googleEnabled}
+      mode="sign-up"
+      returnTo={returnTo}
+    />
+  );
 }

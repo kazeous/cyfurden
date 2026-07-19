@@ -62,7 +62,7 @@ export async function createBooth(
           name: parsed.data.name,
           slug: parsed.data.slug,
           ownerId: session.user.id,
-          status: "PUBLISHED",
+          status: "DRAFT",
         },
         select: { id: true },
       });
@@ -80,7 +80,6 @@ export async function createBooth(
           data: {
             boothId: booth.id,
             draftDocument: initialStorefrontDocument,
-            publishedDocument: initialStorefrontDocument,
             updatedById: session.user.id,
           },
         }),
@@ -138,5 +137,5 @@ export async function createBooth(
     };
   }
 
-  redirect(`/manage/${boothId}/orders`);
+  redirect(`/manage/${boothId}/storefront?new=1`);
 }

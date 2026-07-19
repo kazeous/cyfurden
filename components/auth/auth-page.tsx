@@ -5,9 +5,10 @@ import styles from "./auth.module.css";
 interface AuthPageProps {
   googleEnabled: boolean;
   mode: "sign-in" | "sign-up";
+  returnTo?: string;
 }
 
-export function AuthPage({ googleEnabled, mode }: AuthPageProps) {
+export function AuthPage({ googleEnabled, mode, returnTo }: AuthPageProps) {
   return (
     <main className={styles.page}>
       <div className={styles.shell}>
@@ -57,7 +58,11 @@ export function AuthPage({ googleEnabled, mode }: AuthPageProps) {
             </p>
           </aside>
 
-          <AuthForm googleEnabled={googleEnabled} mode={mode} />
+          <AuthForm
+            googleEnabled={googleEnabled}
+            mode={mode}
+            returnTo={returnTo}
+          />
         </section>
       </div>
     </main>

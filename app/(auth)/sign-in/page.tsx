@@ -6,10 +6,21 @@ export const metadata: Metadata = {
   description: "Sign in to manage your Cyfurden artist booths.",
 };
 
-export default function SignInPage() {
+export default async function SignInPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ returnTo?: string }>;
+}) {
   const googleEnabled = Boolean(
     process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET,
   );
 
-  return <AuthPage googleEnabled={googleEnabled} mode="sign-in" />;
+  const { returnTo } = await searchParams;
+  return (
+    <AuthPage
+      googleEnabled={googleEnabled}
+      mode="sign-in"
+      returnTo={returnTo}
+    />
+  );
 }

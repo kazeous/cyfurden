@@ -1,0 +1,439 @@
+/* Hallmark · genre: editorial · macrostructure: Index-First · design-system: design.md · designed-as-app */
+/* Hallmark · final critique: P5 H5 E5 S5 R5 V4 */
+/* Hallmark · contrast: pass (40–41) · slop: pass (1–58) · mobile: pass (34, 49–57) */
+
+.teamPage {
+  display: grid;
+  gap: 20px;
+}
+
+.teamGrid {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.78fr) minmax(0, 1.22fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.inviteCard,
+.membersCard {
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-card);
+  background: var(--color-panel);
+  box-shadow: var(--shadow-whisper);
+}
+
+.inviteFormWrap,
+.readOnlyCard {
+  display: grid;
+  gap: 16px;
+}
+
+.cardHeading,
+.sectionHeading,
+.copyRow,
+.memberItem,
+.memberIdentity,
+.memberBadges,
+.inlineForm,
+.memberEditForm {
+  display: flex;
+  align-items: center;
+}
+
+.cardHeading,
+.sectionHeading,
+.memberItem {
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.cardHeading h2,
+.sectionHeading h2,
+.readOnlyCard h2 {
+  margin: 4px 0 0;
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: 21px;
+  letter-spacing: -0.02em;
+}
+
+.cardEyebrow {
+  margin: 0;
+  color: var(--color-accent);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.cardIntro,
+.readOnlyCard p,
+.emptyCopy {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+}
+
+.slotBadge,
+.countBadge,
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.slotBadge {
+  padding: 8px 8px;
+  color: var(--color-success-ink);
+  background: var(--color-success-soft);
+}
+
+.countBadge {
+  min-width: 28px;
+  min-height: 28px;
+  color: var(--color-ink);
+  background: var(--color-paper-3);
+}
+
+.inviteForm,
+.memberEditForm {
+  display: grid;
+  gap: 12px;
+}
+
+.inviteForm label,
+.memberEditForm label {
+  display: grid;
+  gap: 8px;
+  color: var(--color-ink);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.inviteForm input,
+.inviteForm select,
+.memberEditForm select,
+.copyRow input {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-rule);
+  border-radius: 11px;
+  color: var(--color-ink);
+  background: var(--color-panel);
+  font: inherit;
+  font-size: var(--text-sm);
+}
+
+.inviteForm input:focus-visible,
+.inviteForm select:focus-visible,
+.memberEditForm select:focus-visible,
+.copyRow input:focus-visible,
+.primaryButton:focus-visible,
+.ghostButton:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+.inviteForm > .formError {
+  min-height: 1lh;
+}
+
+.inviteForm > .formError:empty {
+  visibility: hidden;
+}
+
+.primaryButton,
+.ghostButton,
+.copyRow button {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--color-transparent);
+  border-radius: 10px;
+  font: inherit;
+  font-size: var(--text-xs);
+  font-weight: 850;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.primaryButton {
+  color: var(--color-action-ink);
+  background: var(--color-action);
+}
+
+.ghostButton,
+.copyRow button {
+  border-color: var(--color-rule);
+  color: var(--color-ink);
+  background: var(--color-panel);
+}
+
+.primaryButton:disabled,
+.ghostButton:disabled,
+.copyRow button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.formError,
+.inlineError,
+.inlineSuccess {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.formError,
+.inlineError {
+  color: var(--color-error-ink);
+}
+
+.inlineSuccess {
+  color: var(--color-success-ink);
+}
+
+.invitationResult {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--color-success-line);
+  border-radius: 13px;
+  color: var(--color-success-ink);
+  background: var(--color-success-soft);
+}
+
+.invitationResult strong {
+  font-size: 12px;
+}
+
+.invitationResult p,
+.invitationResult small {
+  margin: 0;
+  color: var(--color-success-ink);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.copyRow {
+  gap: 8px;
+}
+
+.copyRow input {
+  min-width: 0;
+  color: var(--color-success-ink);
+  background: var(--color-panel);
+  font-size: 10px;
+}
+
+.pendingSection {
+  display: grid;
+  gap: 16px;
+  padding-top: 24px;
+  margin-top: 24px;
+  border-top: 1px solid var(--color-rule);
+}
+
+.invitationList,
+.memberList {
+  display: grid;
+  gap: 0;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.invitationItem,
+.memberItem {
+  min-width: 0;
+  padding: 16px 0;
+  border-top: 1px solid var(--color-rule);
+  background: var(--color-transparent);
+}
+
+.itemIdentity,
+.memberIdentity > div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.itemIdentity strong,
+.memberIdentity strong {
+  overflow: hidden;
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemIdentity span,
+.memberIdentity span {
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 10px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inlineForm {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.inlineForm .inlineError {
+  flex-basis: 100%;
+  text-align: right;
+}
+
+.memberItem {
+  align-items: flex-start;
+}
+
+.memberIdentity {
+  min-width: 0;
+  gap: 12px;
+}
+
+.avatar {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  place-items: center;
+  border-radius: 11px;
+  color: var(--color-accent-ink);
+  background: var(--color-accent);
+  font-family: var(--font-display);
+  font-size: 16px !important;
+  font-weight: 800;
+}
+
+.memberBadges {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.statusBadge {
+  min-height: 25px;
+  padding: 0 8px;
+  color: var(--color-success-ink);
+  background: var(--color-success-soft);
+}
+
+.disabledBadge {
+  color: var(--color-warning-ink);
+  background: var(--color-warning-soft);
+}
+
+.memberEditForm {
+  grid-template-columns: minmax(92px, auto) minmax(105px, auto) auto;
+  justify-content: end;
+  align-items: start;
+}
+
+.memberEditForm .inlineError,
+.memberEditForm .inlineSuccess {
+  grid-column: 1 / -1;
+  text-align: right;
+}
+
+.readOnlyNotice {
+  display: grid;
+  gap: 4px;
+  padding: 12px 16px;
+  border: 1px solid var(--color-warning-line);
+  border-radius: 13px;
+  color: var(--color-warning-ink);
+  background: var(--color-warning-soft);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.readOnlyNotice span {
+  color: var(--color-warning-ink);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  padding: 0;
+  margin: -4px;
+  border: 0;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+@media (max-width: 820px) {
+  .teamGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .inviteCard,
+  .membersCard {
+    padding: 16px;
+    border-radius: 17px;
+  }
+
+  .cardHeading,
+  .sectionHeading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .slotBadge {
+    align-self: flex-start;
+  }
+
+  .copyRow {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .copyRow button {
+    width: 100%;
+  }
+
+  .memberItem,
+  .invitationItem {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .memberBadges,
+  .memberEditForm,
+  .inlineForm {
+    justify-content: stretch;
+  }
+
+  .memberEditForm {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .memberEditForm .ghostButton {
+    grid-column: 1 / -1;
+  }
+
+  .memberEditForm .inlineError,
+  .memberEditForm .inlineSuccess {
+    text-align: left;
+  }
+
+  .inlineForm .ghostButton {
+    width: 100%;
+  }
+}
