@@ -146,10 +146,157 @@ export function ManagedStorefront({
     );
   };
 
+  const visibleSectionOrder = document.sectionOrder.filter((section) =>
+    document.visibleSections.includes(section),
+  );
+
+  const renderSection = (section: (typeof document.sectionOrder)[number]) => {
+    switch (section) {
+      case "featured":
+        return (
+          <section className={`${styles.storeSection} ${styles.featured}`}>
+            <p className={styles.eyebrow}>{document.announcement}</p>
+            <h1>{document.tagline}</h1>
+            <p>{document.introduction}</p>
+            <div className={styles.heroMeta}>
+              <span>{document.eventStatusLabel}</span>
+              <span>{document.eventHours}</span>
+            </div>
+          </section>
+        );
+      case "booth-info":
+        return (
+          <aside className={`${styles.storeSection} ${styles.boothInfo}`}>
+            <p className={styles.eyebrow}>Booth guide</p>
+            <h2>{document.creatorName}</h2>
+            <p>{document.creatorBio}</p>
+            <small>
+              {document.eventVenue} · {document.eventBoothLabel}
+            </small>
+          </aside>
+        );
+      case "browse":
+        return (
+          <section
+            className={`${styles.storeSection} ${styles.browseControls}`}
+            aria-label="Browse products"
+          >
+            <div>
+              <p className={styles.eyebrow}>Browse the booth</p>
+              <strong>
+                {visibleProducts.length} of {products.length} pieces shown
+              </strong>
+            </div>
+            <input
+              className={styles.search}
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search items"
+              aria-label="Search products"
+            />
+          </section>
+        );
+      case "catalogue":
+        return (
+          <section
+            className={`${styles.storeSection} ${styles.catalogue}`}
+            aria-labelledby="catalogue-heading"
+          >
+            <div className={styles.sectionHeader}>
+              <div>
+                <p className={styles.eyebrow}>Product collection</p>
+                <h2 id="catalogue-heading">Find a small wonder</h2>
+              </div>
+            </div>
+            {visibleProducts.length ? (
+              <div className={styles.grid}>
+                {visibleProducts.map((product) => {
+                  const available = product.variants.some((variant) =>
+                    ["AVAILABLE", "LOW_STOCK", "PREORDER"].includes(
+                      variant.status,
+                    ),
+                  );
+                  const price =
+                    product.variants[0]?.priceCents ?? product.priceCents;
+                  return (
+                    <article className={styles.card} key={product.id}>
+                      <ProductArt product={product} />
+                      <div className={styles.cardCopy}>
+                        <p className={styles.cardEyebrow}>
+                          {product.eyebrow ?? "New release"}
+                        </p>
+                        <h3>{product.name}</h3>
+                        <p>{product.shortDescription ?? product.description}</p>
+                        <div className={styles.cardFooter}>
+                          <strong>{money(price)}</strong>
+                          <button
+                            type="button"
+                            className={styles.addButton}
+                            onClick={() => add(product)}
+                            disabled={!available}
+                          >
+                            {available ? "Add to bag" : "Sold out"}
+                          </button>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className={styles.empty}>
+                <h3>No matching merch</h3>
+                <p>Try a different search.</p>
+              </div>
+            )}
+          </section>
+        );
+      case "cart":
+        return (
+          <section className={`${styles.storeSection} ${styles.cartSummary}`}>
+            <p className={styles.eyebrow}>Shopping cart</p>
+            <span className={styles.cartSummaryIcon} aria-hidden="true">
+              ▣
+            </span>
+            <h2>
+              {cartCount
+                ? `${cartCount} item${cartCount === 1 ? "" : "s"}`
+                : "Your bag is empty"}
+            </h2>
+            <p>
+              {cartCount
+                ? `${money(totalCents)} ready for manual reservation.`
+                : "Add a piece from the collection to begin."}
+            </p>
+            <button
+              type="button"
+              className={styles.addButton}
+              onClick={() => setCartOpen(true)}
+            >
+              {cartCount ? "Review bag" : "Open bag"}
+            </button>
+            <small>Manual bank transfer · no automatic verification</small>
+          </section>
+        );
+    }
+  };
+
   return (
     <main
       className={styles.app}
-      style={{ "--accent": document.accentColor } as React.CSSProperties}
+      data-theme={document.themePreset}
+      style={
+        {
+          "--accent": document.accentColor,
+          "--store-radius":
+            document.cornerRadius === "soft"
+              ? "16px"
+              : document.cornerRadius === "pill"
+                ? "38px"
+                : "26px",
+        } as React.CSSProperties
+      }
     >
       <header className={styles.topbar}>
         <div className={styles.brand}>
@@ -183,86 +330,20 @@ export function ManagedStorefront({
             </p>
           </section>
         ) : null}
-        <section className={styles.hero}>
-          <div>
-            <p className={styles.eyebrow}>{document.announcement}</p>
-            <h1>{document.tagline}</h1>
-            <p>{document.introduction}</p>
-            <div className={styles.heroMeta}>
-              <span>{document.eventStatusLabel}</span>
-              <span>{document.eventHours}</span>
+        <div className={styles.sectionFlow}>
+          {visibleSectionOrder.map((section) => (
+            <div
+              className={
+                section === "booth-info" || section === "cart"
+                  ? styles.sideSection
+                  : styles.wideSection
+              }
+              key={section}
+            >
+              {renderSection(section)}
             </div>
-          </div>
-          <aside>
-            <p className={styles.eyebrow}>Booth guide</p>
-            <h2>{document.creatorName}</h2>
-            <p>{document.creatorBio}</p>
-            <small>
-              {document.eventVenue} · {document.eventBoothLabel}
-            </small>
-          </aside>
-        </section>
-
-        <section
-          className={styles.catalogue}
-          aria-labelledby="catalogue-heading"
-        >
-          <div className={styles.sectionHeader}>
-            <div>
-              <p className={styles.eyebrow}>Product collection</p>
-              <h2 id="catalogue-heading">Find a small wonder</h2>
-            </div>
-            <input
-              className={styles.search}
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search items"
-              aria-label="Search products"
-            />
-          </div>
-          {visibleProducts.length ? (
-            <div className={styles.grid}>
-              {visibleProducts.map((product) => {
-                const available = product.variants.some((variant) =>
-                  ["AVAILABLE", "LOW_STOCK", "PREORDER"].includes(
-                    variant.status,
-                  ),
-                );
-                const price =
-                  product.variants[0]?.priceCents ?? product.priceCents;
-                return (
-                  <article className={styles.card} key={product.id}>
-                    <ProductArt product={product} />
-                    <div className={styles.cardCopy}>
-                      <p className={styles.cardEyebrow}>
-                        {product.eyebrow ?? "New release"}
-                      </p>
-                      <h3>{product.name}</h3>
-                      <p>{product.shortDescription ?? product.description}</p>
-                      <div className={styles.cardFooter}>
-                        <strong>{money(price)}</strong>
-                        <button
-                          type="button"
-                          className={styles.addButton}
-                          onClick={() => add(product)}
-                          disabled={!available}
-                        >
-                          {available ? "Add to bag" : "Sold out"}
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          ) : (
-            <div className={styles.empty}>
-              <h3>No matching merch</h3>
-              <p>Try a different search.</p>
-            </div>
-          )}
-        </section>
+          ))}
+        </div>
 
         <footer className={styles.footer}>
           <span>{document.eventFulfillment}</span>

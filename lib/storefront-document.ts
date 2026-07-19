@@ -30,7 +30,13 @@ export const storefrontDocumentSchema = z.object({
     .trim()
     .regex(/^#[0-9a-f]{6}$/i),
   cornerRadius: z.enum(["soft", "round", "pill"]),
-  sectionOrder: z.array(z.enum(storefrontSectionIds)).length(5),
+  sectionOrder: z
+    .array(z.enum(storefrontSectionIds))
+    .length(storefrontSectionIds.length)
+    .refine(
+      (sections) => new Set(sections).size === storefrontSectionIds.length,
+      "Section order must contain every storefront section exactly once.",
+    ),
   visibleSections: z.array(z.enum(storefrontSectionIds)).min(3),
 });
 

@@ -45,6 +45,12 @@ export async function saveStorefrontAction(formData: FormData) {
   const visibleSections = storefrontSectionIds.filter((section) =>
     booleanField(formData, `visible-${section}`),
   );
+  let sectionOrder: unknown = storefrontSectionIds;
+  try {
+    sectionOrder = JSON.parse(requiredText(formData, "sectionOrder"));
+  } catch {
+    sectionOrder = storefrontSectionIds;
+  }
   const document = storefrontDocumentSchema.parse({
     name: requiredText(formData, "name"),
     tagline: requiredText(formData, "tagline"),
@@ -64,7 +70,7 @@ export async function saveStorefrontAction(formData: FormData) {
     themePreset: requiredText(formData, "themePreset"),
     accentColor: requiredText(formData, "accentColor"),
     cornerRadius: requiredText(formData, "cornerRadius"),
-    sectionOrder: storefrontSectionIds,
+    sectionOrder,
     visibleSections,
   });
 
