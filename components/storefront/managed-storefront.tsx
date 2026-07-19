@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useMemo, useState } from "react";
@@ -83,6 +84,9 @@ export function ManagedStorefront({
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
+  const paymentQrUrl = payment?.qrObjectKey
+    ? resolveOracleImageUrl({ objectKey: payment.qrObjectKey })
+    : undefined;
   const visibleProducts = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
     return products.filter((product) => {
@@ -458,6 +462,13 @@ export function ManagedStorefront({
                 </form>
                 {payment ? (
                   <div className={styles.payment}>
+                    {paymentQrUrl ? (
+                      <img
+                        className={styles.paymentQr}
+                        src={paymentQrUrl}
+                        alt={`Bank transfer QR code for ${payment.accountName}`}
+                      />
+                    ) : null}
                     <strong>{payment.bankName}</strong>
                     <span>
                       {payment.accountName} · {payment.accountNumber}

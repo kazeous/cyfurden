@@ -1,9 +1,12 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import {
   type CSSProperties,
   type DragEvent,
   type KeyboardEvent,
+  useActionState,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -11,6 +14,8 @@ import {
   publishStorefrontAction,
   saveStorefrontAction,
 } from "@/app/manage/[boothId]/actions";
+import { resolveOracleImageUrl } from "@/lib/oracle-images";
+import { PAYMENT_QR_MAX_BYTES, paymentQrAccept } from "@/lib/payment-qr";
 import {
   type StorefrontDocument,
   storefrontSectionIds,
@@ -94,7 +99,6 @@ const paymentFieldNames = [
   "accountName",
   "accountNumber",
   "transferReferenceTemplate",
-  "qrObjectKey",
   "instructions",
   "disclaimer",
 ] as const satisfies ReadonlyArray<keyof StorefrontPaymentDraft>;
@@ -141,6 +145,7 @@ export function StorefrontDesigner({
   document: initialDocument,
   payment: initialPayment,
   editVersion,
+  qrUploadConfigured,
   productCount,
   featuredCount,
 }: {
@@ -149,6 +154,7 @@ export function StorefrontDesigner({
   document: StorefrontDocument;
   payment: StorefrontPaymentDraft;
   editVersion: number;
+  qrUploadConfigured: boolean;
   productCount: number;
   featuredCount: number;
 }) {
@@ -162,11 +168,31 @@ export function StorefrontDesigner({
   const [draggedSection, setDraggedSection] = useState<SectionId | null>(null);
   const [dropTarget, setDropTarget] = useState<SectionId | null>(null);
   const [dirty, setDirty] = useState(false);
+  const [qrFile, setQrFile] = useState<File | null>(null);
+  const [qrInputVersion, setQrInputVersion] = useState(0);
+  const [qrPreviewUrl, setQrPreviewUrl] = useState<string | null>(null);
+  const [qrSelectionError, setQrSelectionError] = useState<string | null>(null);
+  const [removeQr, setRemoveQr] = useState(false);
+  const [saveState, saveAction] = useActionState(saveStorefrontAction, {
+    error: null,
+  });
   const [announcement, setAnnouncement] = useState(
     "Select a block in the preview to edit it.",
   );
 
+  useEffect(
+    () => () => {
+      if (qrPreviewUrl) URL.revokeObjectURL(qrPreviewUrl);
+    },
+    [qrPreviewUrl],
+  );
+
   const selectedMeta = sectionMeta[selectedSection];
+  const storedQrUrl = payment.qrObjectKey
+    ? resolveOracleImageUrl({ objectKey: payment.qrObjectKey })
+    : undefined;
+  const visibleQrUrl = qrPreviewUrl || (!removeQr ? storedQrUrl : undefined);
+  const hasStoredQr = Boolean(payment.qrObjectKey) && !removeQr;
   const visibleOrder = useMemo(
     () =>
       document.sectionOrder.filter((section) =>
@@ -197,6 +223,36 @@ export function StorefrontDesigner({
     value: StorefrontPaymentDraft[Key],
   ) => {
     setPayment((current) => ({ ...current, [key]: value }));
+    setDirty(true);
+  };
+
+  const chooseQrImage = (file: File | undefined) => {
+    setQrSelectionError(null);
+    if (!file) return;
+
+    if (file.size > PAYMENT_QR_MAX_BYTES) {
+      setQrSelectionError("QR images must be 5 MB or smaller.");
+      setQrInputVersion((current) => current + 1);
+      return;
+    }
+
+    if (file.type && !paymentQrAccept.split(",").includes(file.type)) {
+      setQrSelectionError("Choose a PNG, JPEG, or WebP image.");
+      setQrInputVersion((current) => current + 1);
+      return;
+    }
+
+    setQrFile(file);
+    setQrPreviewUrl(URL.createObjectURL(file));
+    setRemoveQr(false);
+    setDirty(true);
+  };
+
+  const discardQrSelection = () => {
+    setQrFile(null);
+    setQrPreviewUrl(null);
+    setQrSelectionError(null);
+    setQrInputVersion((current) => current + 1);
     setDirty(true);
   };
 
@@ -375,8 +431,9 @@ export function StorefrontDesigner({
 
   return (
     <div className={styles.designer} style={previewStyle}>
-      <form action={saveStorefrontAction} className={styles.builderPanel}>
+      <form action={saveAction} className={styles.builderPanel}>
         <input type="hidden" name="boothId" value={boothId} />
+        <input type="hidden" name="removeQr" value={String(removeQr)} />
         {documentFieldNames.map((fieldName) => (
           <input
             key={fieldName}
@@ -767,17 +824,116 @@ export function StorefrontDesigner({
                       />
                     </Field>
                   </div>
-                  <Field
-                    label="Oracle QR object key"
-                    hint="The image remains in Oracle Object Storage."
+                  <section
+                    className={styles.qrUploader}
+                    aria-labelledby="payment-qr-heading"
                   >
+                    <div className={styles.qrCopy}>
+                      <div>
+                        <strong id="payment-qr-heading">
+                          Payment QR image
+                        </strong>
+                        <small>
+                          Upload a PNG, JPEG, or WebP image up to 5 MB. It is
+                          stored securely in Oracle Object Storage when you
+                          save.
+                        </small>
+                      </div>
+                      <span>
+                        {qrFile
+                          ? "Ready to save"
+                          : hasStoredQr
+                            ? "Uploaded"
+                            : "Optional"}
+                      </span>
+                    </div>
+
+                    <div className={styles.qrPreview}>
+                      {visibleQrUrl ? (
+                        <img src={visibleQrUrl} alt="Payment QR preview" />
+                      ) : hasStoredQr ? (
+                        <div>
+                          <span aria-hidden="true">âœ“</span>
+                          <strong>QR image saved</strong>
+                          <small>
+                            Public preview needs the Oracle delivery URL.
+                          </small>
+                        </div>
+                      ) : (
+                        <div>
+                          <span aria-hidden="true">â–£</span>
+                          <strong>No QR image yet</strong>
+                          <small>
+                            Customers can still use the account details.
+                          </small>
+                        </div>
+                      )}
+                    </div>
+
                     <input
-                      value={payment.qrObjectKey}
+                      key={qrInputVersion}
+                      id="payment-qr-image"
+                      className={styles.srOnly}
+                      type="file"
+                      name="qrImage"
+                      accept={paymentQrAccept}
+                      disabled={!qrUploadConfigured}
                       onChange={(event) =>
-                        updatePayment("qrObjectKey", event.target.value)
+                        chooseQrImage(event.target.files?.[0])
                       }
                     />
-                  </Field>
+                    <div className={styles.qrActions}>
+                      <label
+                        className={
+                          qrUploadConfigured
+                            ? styles.qrUploadButton
+                            : styles.qrUploadDisabled
+                        }
+                        htmlFor="payment-qr-image"
+                        aria-disabled={!qrUploadConfigured}
+                      >
+                        {qrFile || hasStoredQr
+                          ? "Replace image"
+                          : "Choose image"}
+                      </label>
+                      {qrFile ? (
+                        <button type="button" onClick={discardQrSelection}>
+                          Discard selection
+                        </button>
+                      ) : hasStoredQr ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRemoveQr(true);
+                            setDirty(true);
+                          }}
+                        >
+                          Remove QR
+                        </button>
+                      ) : removeQr && payment.qrObjectKey ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRemoveQr(false);
+                            setDirty(true);
+                          }}
+                        >
+                          Undo remove
+                        </button>
+                      ) : null}
+                    </div>
+                    {!qrUploadConfigured ? (
+                      <p className={styles.qrHelp}>
+                        Uploads are unavailable until the site owner completes
+                        Oracle Object Storage configuration.
+                      </p>
+                    ) : null}
+                    {qrSelectionError ? (
+                      <p className={styles.formError} role="alert">
+                        {qrSelectionError}
+                      </p>
+                    ) : null}
+                  </section>
                   <Field label="Customer payment instructions">
                     <textarea
                       value={payment.instructions}
@@ -874,6 +1030,11 @@ export function StorefrontDesigner({
           ) : null}
         </div>
 
+        {saveState.error ? (
+          <p className={styles.saveError} role="alert">
+            {saveState.error}
+          </p>
+        ) : null}
         <div className={styles.saveBar}>
           <span>
             {dirty ? "Unsaved draft changes" : `Draft v${editVersion}`}

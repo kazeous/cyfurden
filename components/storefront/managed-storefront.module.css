@@ -588,6 +588,17 @@
 .payment strong {
   color: #243651;
 }
+.paymentQr {
+  display: block;
+  width: min(100%, 240px);
+  max-height: 280px;
+  object-fit: contain;
+  padding: 8px;
+  margin-bottom: 7px;
+  border: 1px solid #e0d9cf;
+  border-radius: 14px;
+  background: white;
+}
 
 @media (max-width: 860px) {
   .hero,

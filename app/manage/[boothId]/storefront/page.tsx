@@ -5,6 +5,7 @@ import {
 } from "@/components/admin/admin-shell";
 import { requireBoothRole } from "@/lib/authorization";
 import { db } from "@/lib/db";
+import { isOracleQrUploadConfigured } from "@/lib/oracle-uploads";
 import { readStorefrontDocument } from "@/lib/storefront-document";
 
 export default async function StorefrontPage({
@@ -73,6 +74,7 @@ export default async function StorefrontPage({
             "Bank transfers are reviewed manually. Cyfurden does not verify or process payment automatically.",
         }}
         editVersion={config?.editVersion ?? 1}
+        qrUploadConfigured={isOracleQrUploadConfigured()}
         productCount={productCount}
         featuredCount={featuredCount}
       />
