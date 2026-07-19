@@ -18,6 +18,7 @@ import {
 
 const editorRoles = ["OWNER", "ADMIN"] as const;
 const orderRoles = ["OWNER", "ADMIN", "STAFF"] as const;
+const MAX_PRODUCT_PRICE_VND = 9_000_000_000_000;
 
 const requiredText = (formData: FormData, key: string) =>
   String(formData.get(key) ?? "").trim();
@@ -235,13 +236,20 @@ export async function saveProductAction(formData: FormData) {
   const slug = slugify(requiredText(formData, "slug") || name);
   const sku = requiredText(formData, "sku").toLocaleUpperCase();
   const priceVnd = Number(requiredText(formData, "priceVnd"));
-  if (!name || !slug || !sku || !Number.isFinite(priceVnd) || priceVnd < 0) {
+  if (
+    !name ||
+    !slug ||
+    !sku ||
+    !Number.isFinite(priceVnd) ||
+    priceVnd < 0 ||
+    priceVnd > MAX_PRODUCT_PRICE_VND
+  ) {
     throw new Error(
-      "Name, slug, SKU, and a valid non-negative price are required.",
+      `Name, slug, SKU, and a price between 0 and ${MAX_PRODUCT_PRICE_VND.toLocaleString("en-US")} VND are required.`,
     );
   }
 
-  const priceCents = Math.round(priceVnd * 100);
+  const priceCents = BigInt(Math.round(priceVnd * 100));
   const status = productStatusSchema.parse(requiredText(formData, "status"));
   const variantStatus = variantStatusSchema.parse(
     requiredText(formData, "variantStatus"),

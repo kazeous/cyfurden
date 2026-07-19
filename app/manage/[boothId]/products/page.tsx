@@ -235,7 +235,10 @@ export default async function ProductsPage({
                       <strong>{product.name}</strong>
                       <small>
                         {product.sku ?? "No SKU"} ·{" "}
-                        {(product.priceCents / 100).toLocaleString("vi-VN")} ₫
+                        {(Number(product.priceCents) / 100).toLocaleString(
+                          "vi-VN",
+                        )}{" "}
+                        ₫
                       </small>
                     </span>
                     <span
@@ -323,7 +326,10 @@ export default async function ProductsPage({
                     type="number"
                     min="0"
                     step="1000"
-                    defaultValue={selected ? selected.priceCents / 100 : 0}
+                    max="9000000000000"
+                    defaultValue={
+                      selected ? Number(selected.priceCents) / 100 : 0
+                    }
                     required
                   />
                 </label>

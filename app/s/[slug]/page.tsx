@@ -76,11 +76,20 @@ export default async function PublicBoothPage({
     managed.storefront.publishedDocument,
     managed.name,
   );
+  const products = managed.products.map((product) => ({
+    ...product,
+    priceCents: Number(product.priceCents),
+    variants: product.variants.map((variant) => ({
+      ...variant,
+      priceCents:
+        variant.priceCents === null ? null : Number(variant.priceCents),
+    })),
+  }));
   return (
     <ManagedStorefront
       booth={{ id: managed.id, slug: managed.slug }}
       document={document}
-      products={managed.products}
+      products={products}
       payment={managed.paymentInstructions}
       orderCode={order}
     />

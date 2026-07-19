@@ -69,8 +69,8 @@ export async function createPublicOrderAction(formData: FormData) {
     };
   });
   const totalCents = pricedLines.reduce(
-    (sum, line) => sum + line.unitPriceCents * line.quantity,
-    0,
+    (sum, line) => sum + line.unitPriceCents * BigInt(line.quantity),
+    BigInt(0),
   );
   const code = `CYF-${Date.now().toString(36).slice(-6).toUpperCase()}-${randomBytes(
     2,

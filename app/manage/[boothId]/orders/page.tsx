@@ -17,12 +17,12 @@ const statuses = [
   "FULFILLED",
 ] as const;
 
-const formatMoney = (priceCents: number, currency: string) =>
+const formatMoney = (priceCents: number | bigint, currency: string) =>
   new Intl.NumberFormat("vi-VN", {
     style: "currency",
     currency,
     maximumFractionDigits: 0,
-  }).format(priceCents / 100);
+  }).format(Number(priceCents) / 100);
 
 export default async function OrdersPage({
   params,
@@ -101,7 +101,7 @@ export default async function OrdersPage({
         <MetricCard
           icon="◇"
           label="Pending value"
-          value={formatMoney(totalPending._sum.totalCents ?? 0, "VND")}
+          value={formatMoney(totalPending._sum.totalCents ?? BigInt(0), "VND")}
           detail="Not automatically verified"
         />
         <MetricCard

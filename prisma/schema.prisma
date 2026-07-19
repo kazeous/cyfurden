@@ -260,7 +260,7 @@ model Product {
   eyebrow          String?
   shortDescription String?
   description      String             @db.Text
-  priceCents       Int
+  priceCents       BigInt
   status           ProductStatus      @default(DRAFT)
   featured         Boolean            @default(false)
   tags             String[]
@@ -286,7 +286,7 @@ model ProductVariant {
   productId       String
   sku             String
   label           String
-  priceCents      Int?
+  priceCents      BigInt?
   status          VariantStatus    @default(AVAILABLE)
   stockQuantity   Int?
   fulfillmentNote String?          @db.Text
@@ -352,8 +352,8 @@ model Order {
   customerEmail     String
   customerPhone     String?
   customerNote      String?     @db.Text
-  subtotalCents     Int
-  totalCents        Int
+  subtotalCents     BigInt
+  totalCents        BigInt
   currency          String      @default("VND")
   transferReference String
   idempotencyKey    String
@@ -379,7 +379,7 @@ model OrderItem {
   productVariantId String?
   titleSnapshot    String
   variantSnapshot  String?
-  unitPriceCents   Int
+  unitPriceCents   BigInt
   quantity         Int
   order            Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product          Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
