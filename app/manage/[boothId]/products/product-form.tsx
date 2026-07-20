@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
 import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
 import {
@@ -43,6 +44,37 @@ export type ProductEditorValue = {
 
 const initialState: ProductSaveState = { error: null };
 
+const isNextNavigationError = (error: unknown) => {
+  if (typeof error !== "object" || error === null || !("digest" in error)) {
+    return false;
+  }
+  const digest = String((error as { digest?: unknown }).digest ?? "");
+  return (
+    digest.startsWith("NEXT_REDIRECT") || digest.startsWith("NEXT_NOT_FOUND")
+  );
+};
+
+async function saveProductWithClientFallback(
+  previousState: ProductSaveState,
+  formData: FormData,
+): Promise<ProductSaveState> {
+  try {
+    return await saveProductAction(previousState, formData);
+  } catch (error) {
+    if (isNextNavigationError(error)) throw error;
+    Sentry.captureException(error, {
+      tags: {
+        "cyfurden.operation": "product.save",
+        "cyfurden.failure_surface": "server_action_transport",
+      },
+    });
+    return {
+      error:
+        "We could not send this product to the server. Your entries are still here. Check your connection and image size, then try again.",
+    };
+  }
+}
+
 export function ProductForm({
   boothId,
   value,
@@ -55,7 +87,7 @@ export function ProductForm({
   cancelHref: string;
 }) {
   const [state, formAction, pending] = useActionState(
-    saveProductAction,
+    saveProductWithClientFallback,
     initialState,
   );
   const [imageFile, setImageFile] = useState<File | null>(null);

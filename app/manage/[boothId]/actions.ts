@@ -1,6 +1,7 @@
 "use server";
 
 import { createHash, randomBytes } from "node:crypto";
+import * as Sentry from "@sentry/nextjs";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -239,6 +240,17 @@ const hasCode = (error: unknown, code: string) =>
   (error as { code?: unknown }).code === code;
 
 export async function saveProductAction(
+  previousState: ProductSaveState,
+  formData: FormData,
+): Promise<ProductSaveState> {
+  return Sentry.withServerActionInstrumentation(
+    "saveProductAction",
+    { recordResponse: false },
+    () => saveProduct(previousState, formData),
+  );
+}
+
+async function saveProduct(
   _previousState: ProductSaveState,
   formData: FormData,
 ): Promise<ProductSaveState> {
@@ -446,7 +458,30 @@ export async function saveProductAction(
         error: "That product is no longer available. Refresh and try again.",
       };
     }
+    Sentry.captureException(error, {
+      tags: {
+        "cyfurden.operation": "product.save",
+        "cyfurden.product.mode": productId ? "edit" : "create",
+        "cyfurden.product.image_upload": uploadedImageObjectKey
+          ? "completed"
+          : imageFile instanceof File && imageFile.size > 0
+            ? "requested"
+            : "none",
+      },
+      contexts: {
+        productSave: {
+          hasExistingProduct: Boolean(productId),
+          removeImage,
+        },
+      },
+    });
     console.error("Failed to save product", error);
+    if (hasCode(error, "P2020")) {
+      return {
+        error:
+          "The database rejected the price or stock value. If those values are correct, apply the latest database migrations and try again.",
+      };
+    }
     return {
       error: "We could not save this product. Check the fields and try again.",
     };

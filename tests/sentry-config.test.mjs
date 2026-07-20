@@ -10,6 +10,8 @@ test("keeps Sentry scoped to privacy-conscious error monitoring", async () => {
     edgeConfig,
     nextConfig,
     globalError,
+    productActions,
+    productForm,
     smokeScript,
     envExample,
   ] = await Promise.all([
@@ -19,6 +21,17 @@ test("keeps Sentry scoped to privacy-conscious error monitoring", async () => {
     readFile(new URL("../sentry.edge.config.ts", import.meta.url), "utf8"),
     readFile(new URL("../next.config.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/global-error.tsx", import.meta.url), "utf8"),
+    readFile(
+      new URL("../app/manage/[boothId]/actions.ts", import.meta.url),
+      "utf8",
+    ),
+    readFile(
+      new URL(
+        "../app/manage/[boothId]/products/product-form.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
     readFile(new URL("../scripts/test-sentry.mjs", import.meta.url), "utf8"),
     readFile(new URL("../.env.example", import.meta.url), "utf8"),
   ]);
@@ -42,6 +55,13 @@ test("keeps Sentry scoped to privacy-conscious error monitoring", async () => {
   assert.match(nextConfig, /deleteSourcemapsAfterUpload:\s*true/);
   assert.match(globalError, /Sentry\.captureException\(error\)/);
   assert.match(globalError, /onClick=\{reset\}/);
+  assert.match(productActions, /Sentry\.withServerActionInstrumentation\(/);
+  assert.match(productActions, /recordResponse:\s*false/);
+  assert.match(productActions, /Sentry\.captureException\(error/);
+  assert.doesNotMatch(productActions, /formData:\s*formData/);
+  assert.match(productForm, /saveProductWithClientFallback/);
+  assert.match(productForm, /server_action_transport/);
+  assert.match(productForm, /Sentry\.captureException\(error/);
   assert.match(smokeScript, /Cyfurden Sentry integration test/);
   assert.match(smokeScript, /sendDefaultPii:\s*false/);
   assert.match(smokeScript, /Sentry\.flush\(5_000\)/);
