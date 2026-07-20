@@ -18,6 +18,7 @@ import { resolveOracleImageUrl } from "@/lib/oracle-images";
 import { PAYMENT_QR_MAX_BYTES, paymentQrAccept } from "@/lib/payment-qr";
 import {
   type StorefrontDocument,
+  storefrontCornerRadiusPixels,
   storefrontSectionIds,
 } from "@/lib/storefront-document";
 import { SubmitButton } from "./form-controls";
@@ -39,37 +40,48 @@ export type StorefrontPaymentDraft = {
 
 const sectionMeta: Record<
   SectionId,
-  { label: string; description: string; lane: "wide" | "side"; icon: string }
+  {
+    label: string;
+    description: string;
+    lane: "wide" | "side";
+    icon: string;
+    previewRows: number;
+  }
 > = {
   featured: {
     label: "Featured spotlight",
     description: "Announcement, headline, and welcome copy",
     lane: "wide",
     icon: "F",
+    previewRows: 12,
   },
   "booth-info": {
     label: "Booth information",
     description: "Creator, convention, location, and hours",
     lane: "side",
     icon: "I",
+    previewRows: 12,
   },
   browse: {
     label: "Browse controls",
     description: "Search, filter, and collection controls",
     lane: "wide",
     icon: "B",
+    previewRows: 5,
   },
   catalogue: {
     label: "Product collection",
     description: "The public product catalogue",
     lane: "wide",
     icon: "P",
+    previewRows: 13,
   },
   cart: {
     label: "Shopping cart",
     description: "Cart and manual bank-transfer handoff",
     lane: "side",
     icon: "C",
+    previewRows: 12,
   },
 };
 
@@ -275,12 +287,7 @@ export function StorefrontDesigner({
   );
   const previewStyle = {
     "--designer-accent": document.accentColor,
-    "--designer-radius":
-      document.cornerRadius === "soft"
-        ? "10px"
-        : document.cornerRadius === "pill"
-          ? "24px"
-          : "16px",
+    "--designer-radius": `${storefrontCornerRadiusPixels[document.cornerRadius]}px`,
   } as CSSProperties;
 
   const updateDocument = <Key extends keyof StorefrontDocument>(
@@ -1205,7 +1212,11 @@ export function StorefrontDesigner({
                     } ${selected ? styles.selectedBlock : ""} ${
                       draggedSection === section ? styles.draggingBlock : ""
                     }`}
-                    style={{ gridRow: visibleIndex + 1 }}
+                    style={
+                      {
+                        "--preview-row-span": meta.previewRows,
+                      } as CSSProperties
+                    }
                     data-drop-target={dropTarget === section || undefined}
                     onDragOver={(event) => {
                       event.preventDefault();

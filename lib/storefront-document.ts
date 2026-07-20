@@ -8,6 +8,17 @@ export const storefrontSectionIds = [
   "cart",
 ] as const;
 
+export const storefrontCornerRadiusPixels = {
+  soft: 10,
+  round: 16,
+  pill: 24,
+} as const;
+
+export const storefrontLocaleDisplayCodes = {
+  en: "EN",
+  vi: "VN",
+} as const;
+
 export const storefrontDocumentSchema = z.object({
   name: z.string().trim().min(2).max(80),
   tagline: z.string().trim().min(2).max(140),

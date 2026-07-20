@@ -6,7 +6,11 @@ import {
 import { requireBoothRole } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { isOracleQrUploadConfigured } from "@/lib/oracle-uploads";
-import { readStorefrontDocument } from "@/lib/storefront-document";
+import {
+  readStorefrontDocument,
+  storefrontCornerRadiusPixels,
+  storefrontLocaleDisplayCodes,
+} from "@/lib/storefront-document";
 
 export default async function StorefrontPage({
   params,
@@ -36,9 +40,17 @@ export default async function StorefrontPage({
         description="Build the storefront directly on the preview, then save and publish when it is ready."
         actions={
           <>
-            <span className={styles.pill}>{document.cornerRadius} corners</span>
-            <span className={styles.pill}>
-              {document.locale.toUpperCase()} locale
+            <span
+              className={styles.pill}
+              aria-label={`Card corner radius: ${storefrontCornerRadiusPixels[document.cornerRadius]} pixels`}
+            >
+              {storefrontCornerRadiusPixels[document.cornerRadius]}px corners
+            </span>
+            <span
+              className={styles.pill}
+              aria-label={`Storefront language: ${document.locale === "en" ? "English" : "Vietnamese"}`}
+            >
+              {storefrontLocaleDisplayCodes[document.locale]} locale
             </span>
           </>
         }
