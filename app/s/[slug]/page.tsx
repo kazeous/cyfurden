@@ -2,9 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { ManagedStorefront } from "@/components/storefront/managed-storefront";
 import { db } from "@/lib/db";
-import { booth as staticBooth } from "@/lib/booth-data";
 import { readStorefrontDocument } from "@/lib/storefront-document";
-import { BoothClient } from "@/app/booth-client";
 
 async function getManagedBooth(slug: string) {
   try {
@@ -34,18 +32,26 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const managed = await getManagedBooth(slug);
-  const document = managed
-    ? readStorefrontDocument(
-        managed.storefront?.publishedDocument,
-        managed.name,
-      )
-    : null;
+  if (
+    !managed ||
+    managed.status !== "PUBLISHED" ||
+    !managed.storefront?.publishedDocument
+  ) {
+    return {
+      title: "Booth not found",
+      robots: { index: false, follow: false },
+    };
+  }
+  const document = readStorefrontDocument(
+    managed.storefront.publishedDocument,
+    managed.name,
+  );
   return {
-    title: document?.name ?? staticBooth.name,
-    description: document?.tagline ?? staticBooth.tagline,
+    title: document.name,
+    description: document.tagline,
     openGraph: {
-      title: document?.name ?? staticBooth.name,
-      description: document?.introduction ?? staticBooth.introduction,
+      title: document.name,
+      description: document.introduction,
     },
   };
 }
@@ -60,15 +66,11 @@ export default async function PublicBoothPage({
   const { slug } = await params;
   const { order } = await searchParams;
   const managed = await getManagedBooth(slug);
-  if (!managed) {
-    if (slug === staticBooth.slug) return <BoothClient />;
-    notFound();
-  }
   if (
+    !managed ||
     managed.status !== "PUBLISHED" ||
     !managed.storefront?.publishedDocument
   ) {
-    if (slug === staticBooth.slug) return <BoothClient />;
     notFound();
   }
   if (order) {

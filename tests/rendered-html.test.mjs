@@ -14,17 +14,6 @@ let baseUrl;
 let nextServer;
 let serverOutput = "";
 
-const productNames = [
-  "Midnight Garden Riso Print",
-  "Cloud Library Print",
-  "Lantern Moth Pin",
-  "Sleepy Comet Pin",
-  "Tiny Night Market Sticker Sheet",
-  "Rainy Day Postcard Set",
-  "Last Tram Cat Charm",
-  "Pocket Familiar Charm",
-];
-
 function reservePort() {
   return new Promise((resolve, reject) => {
     const server = createServer();
@@ -129,64 +118,55 @@ test("server-renders the Cyfurden landing page", async () => {
   assert.match(renderedContent, /Payment stays manual—and visibly so/);
   assert.match(renderedContent, /href="\/sign-up"/);
   assert.match(renderedContent, /href="\/sign-in"/);
-  assert.match(renderedContent, /href="\/s\/lantern-and-loom"/);
+  assert.doesNotMatch(renderedContent, /lantern-and-loom|Lantern &amp; Loom/i);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|stripe/i);
 });
 
-test("keeps the complete demo booth available on its public route", async () => {
+test("does not expose the removed Lantern & Loom demo booth", async () => {
   const response = await render("/s/lantern-and-loom");
 
-  assert.equal(response.status, 200);
+  assert.equal(response.status, 404);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
   const renderedContent = html.replace(/<!--\s*-->/g, "");
 
-  assert.match(renderedContent, /Moonrise Makers Market/);
-  assert.match(renderedContent, /Pocket-sized treasures/);
-  assert.match(renderedContent, /8 of 8 pieces shown/);
-  assert.match(renderedContent, /Manual bank transfer only/i);
-  assert.match(renderedContent, /No payment gateway/i);
-
-  const productCards = html.match(/<article class="product-card">/g) ?? [];
-  assert.equal(productCards.length, 8);
-  for (const productName of productNames) {
-    assert.match(renderedContent, new RegExp(productName));
-  }
-
-  assert.doesNotMatch(html, /codex-preview/i);
-  assert.doesNotMatch(html, /react-loading-skeleton/i);
-  assert.doesNotMatch(html, /stripe/i);
+  assert.match(renderedContent, /This page could not be found/i);
+  assert.doesNotMatch(
+    renderedContent,
+    /Moonrise Makers Market|Midnight Garden|Lantern &amp; Loom/i,
+  );
 });
 
-test("keeps Oracle images and the browser cart wired to local content", async () => {
-  const [client, boothData, imageResolver] = await Promise.all([
-    readFile(new URL("../app/booth-client.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../lib/booth-data.ts", import.meta.url), "utf8"),
+test("keeps Oracle images wired to managed storefront content", async () => {
+  const [storefront, reservationPage, imageResolver] = await Promise.all([
+    readFile(
+      new URL(
+        "../components/storefront/managed-storefront.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+    readFile(
+      new URL("../app/s/[slug]/reservation/[code]/page.tsx", import.meta.url),
+      "utf8",
+    ),
     readFile(new URL("../lib/oracle-images.ts", import.meta.url), "utf8"),
   ]);
 
-  assert.match(client, /resolveOracleImageUrl\(image\)/);
-  assert.match(client, /resolveOracleImageUrl\(booth\.payment\.qrImage\)/);
-  assert.match(boothData, /objectKey:\s*"booths\/lantern-and-loom\/products\//);
+  assert.match(storefront, /resolveOracleImageUrl\(image\)/);
   assert.match(
-    boothData,
-    /objectKey:\s*"booths\/lantern-and-loom\/payment\/demo-bank-qr\.png"/,
+    reservationPage,
+    /resolveOracleImageUrl\(\{ objectKey: payment\.qrObjectKey \}\)/,
   );
   assert.match(imageResolver, /NEXT_PUBLIC_ORACLE_OBJECT_BASE_URL/);
   assert.match(imageResolver, /segments\.map\(encodeObjectKeySegment\)/);
   assert.match(imageResolver, /return undefined/);
 
-  assert.match(client, /const CART_STORAGE_KEY = "cyfurden-cart-v1"/);
-  assert.match(client, /window\.localStorage\.getItem\(CART_STORAGE_KEY\)/);
-  assert.match(
-    client,
-    /window\.localStorage\.setItem\(CART_STORAGE_KEY, JSON\.stringify\(cart\)\)/,
+  assert.doesNotMatch(
+    `${storefront}${reservationPage}`,
+    /lantern-and-loom|booth-data|BoothClient|stripe/i,
   );
-  assert.match(client, /window\.localStorage\.removeItem\(CART_STORAGE_KEY\)/);
-
-  assert.doesNotMatch(client, /codex-preview|react-loading-skeleton|stripe/i);
-  assert.doesNotMatch(boothData, /stripe/i);
 });
 
 test("keeps bank details behind a successful managed reservation", async () => {

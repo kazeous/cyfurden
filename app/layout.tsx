@@ -27,7 +27,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     metadataBase: new URL(`${protocol}://${safeHost}`),
     title: {
-      default: "Cyfurden — Lantern & Loom Booth",
+      default: "Cyfurden — Artist booths for convention days",
       template: "%s · Cyfurden",
     },
     description:
@@ -39,20 +39,11 @@ export async function generateMetadata(): Promise<Metadata> {
       description:
         "Discover independent artists, small-batch merchandise, and convention exclusives.",
       siteName: "Cyfurden",
-      images: [
-        {
-          url: "/og.png",
-          width: 1536,
-          height: 1024,
-          alt: "Cyfurden and Lantern & Loom illustrated artist booth",
-        },
-      ],
     },
     twitter: {
-      card: "summary_large_image",
+      card: "summary",
       title: "Cyfurden artist booths",
       description: "A pocket-sized home for original artist booths.",
-      images: ["/og.png"],
     },
   };
 }

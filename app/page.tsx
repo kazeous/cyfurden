@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { booth, products } from "@/lib/booth-data";
 import styles from "./landing.module.css";
 
 export const metadata: Metadata = {
@@ -78,15 +77,6 @@ const functions = [
   },
 ] as const;
 
-const demoProducts = products.slice(0, 3);
-
-const formatPrice = (priceCents: number) =>
-  new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-    maximumFractionDigits: 0,
-  }).format(priceCents / 100);
-
 export default function Home() {
   return (
     <div className={styles.page}>
@@ -121,8 +111,8 @@ export default function Home() {
               <Link className={styles.primaryLink} href="/sign-up">
                 Create your booth <span aria-hidden="true">→</span>
               </Link>
-              <Link className={styles.secondaryLink} href={`/s/${booth.slug}`}>
-                Explore demo booth
+              <Link className={styles.secondaryLink} href="#workflow">
+                See how it works
               </Link>
             </div>
             <p className={styles.heroNote}>
@@ -136,29 +126,47 @@ export default function Home() {
               <div className={styles.boothBoard}>
                 <div className={styles.previewHeader}>
                   <div>
-                    <span className={styles.previewLabel}>Demo booth</span>
-                    <strong>{booth.name}</strong>
+                    <span className={styles.previewLabel}>
+                      Storefront preview
+                    </span>
+                    <strong>Your booth</strong>
                   </div>
-                  <span className={styles.statusPill}>
-                    {booth.event.statusLabel}
-                  </span>
+                  <span className={styles.statusPill}>Draft preview</span>
                 </div>
-                <p className={styles.previewTagline}>{booth.tagline}</p>
+                <p className={styles.previewTagline}>
+                  A storefront shaped around your work.
+                </p>
                 <ul className={styles.previewProductList}>
-                  {demoProducts.map((product, index) => (
-                    <li key={product.id}>
-                      <span
-                        className={`${styles.productSwatch} ${styles[`swatch${index + 1}`]}`}
-                        aria-hidden="true"
-                      />
-                      <span className={styles.previewProductName}>
-                        {product.name}
-                      </span>
-                      <span className={styles.previewPrice}>
-                        {formatPrice(product.priceCents)}
-                      </span>
-                    </li>
-                  ))}
+                  <li>
+                    <span
+                      className={`${styles.productSwatch} ${styles.swatch1}`}
+                      aria-hidden="true"
+                    />
+                    <span className={styles.previewProductName}>
+                      Featured work
+                    </span>
+                    <span className={styles.previewPrice}>Lead</span>
+                  </li>
+                  <li>
+                    <span
+                      className={`${styles.productSwatch} ${styles.swatch2}`}
+                      aria-hidden="true"
+                    />
+                    <span className={styles.previewProductName}>
+                      Product catalogue
+                    </span>
+                    <span className={styles.previewPrice}>Browse</span>
+                  </li>
+                  <li>
+                    <span
+                      className={`${styles.productSwatch} ${styles.swatch3}`}
+                      aria-hidden="true"
+                    />
+                    <span className={styles.previewProductName}>
+                      Reservation handoff
+                    </span>
+                    <span className={styles.previewPrice}>Reserve</span>
+                  </li>
                 </ul>
               </div>
 
@@ -182,8 +190,7 @@ export default function Home() {
               </div>
             </div>
             <figcaption>
-              An original Cyfurden demo using invented Lantern &amp; Loom
-              content.
+              A schematic preview of the storefront and reservation workflow.
             </figcaption>
           </figure>
         </section>
@@ -216,6 +223,7 @@ export default function Home() {
         </section>
 
         <section
+          id="workflow"
           className={styles.workflowSection}
           aria-labelledby="flow-title"
         >
@@ -285,16 +293,16 @@ export default function Home() {
           <div>
             <h2 id="final-title">Give your next table an online front door.</h2>
             <p>
-              Start with a booth of your own, or walk through the complete demo
-              first.
+              Start with a booth of your own and shape the public storefront
+              around your work.
             </p>
           </div>
           <div className={styles.finalActions}>
             <Link className={styles.primaryLink} href="/sign-up">
               Create your booth <span aria-hidden="true">→</span>
             </Link>
-            <Link className={styles.textLink} href={`/s/${booth.slug}`}>
-              Visit Lantern &amp; Loom <span aria-hidden="true">↗</span>
+            <Link className={styles.textLink} href="/sign-in">
+              Sign in to manage <span aria-hidden="true">→</span>
             </Link>
           </div>
         </section>
@@ -308,7 +316,6 @@ export default function Home() {
           </p>
         </div>
         <nav className={styles.footerLinks} aria-label="Footer navigation">
-          <Link href={`/s/${booth.slug}`}>Demo booth</Link>
           <Link href="/sign-in">Sign in</Link>
           <Link href="/sign-up">Create booth</Link>
         </nav>
