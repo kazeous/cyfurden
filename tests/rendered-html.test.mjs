@@ -188,3 +188,54 @@ test("keeps Oracle images and the browser cart wired to local content", async ()
   assert.doesNotMatch(client, /codex-preview|react-loading-skeleton|stripe/i);
   assert.doesNotMatch(boothData, /stripe/i);
 });
+
+test("keeps bank details behind a successful managed reservation", async () => {
+  const [storefront, action, confirmation, reservationPage] = await Promise.all(
+    [
+      readFile(
+        new URL(
+          "../components/storefront/managed-storefront.tsx",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+      readFile(new URL("../app/s/[slug]/actions.ts", import.meta.url), "utf8"),
+      readFile(
+        new URL(
+          "../components/storefront/reservation-confirmation.tsx",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+      readFile(
+        new URL("../app/s/[slug]/reservation/[code]/page.tsx", import.meta.url),
+        "utf8",
+      ),
+    ],
+  );
+
+  assert.doesNotMatch(storefront, /paymentQrUrl|payment\.bankName|paymentQr/);
+  assert.match(
+    storefront,
+    /receive manual bank-transfer instructions after\s+submitting/i,
+  );
+  assert.match(
+    action,
+    /\/reservation\/\$\{encodeURIComponent\(order\.code\)\}/,
+  );
+  assert.doesNotMatch(action, /\?order=/);
+
+  assert.match(confirmation, /Reservation number/);
+  assert.match(confirmation, /Bank transfer QR code/);
+  assert.match(confirmation, /Account number/);
+  assert.match(confirmation, /Reservation total/);
+  assert.match(confirmation, /Transfer reference/);
+  assert.match(confirmation, /does not verify\s+payment automatically/i);
+
+  assert.match(reservationPage, /code,/);
+  assert.match(reservationPage, /booth: \{ slug, status: "PUBLISHED" \}/);
+  assert.match(
+    reservationPage,
+    /totalMinorUnits: order\.totalCents\.toString\(\)/,
+  );
+});

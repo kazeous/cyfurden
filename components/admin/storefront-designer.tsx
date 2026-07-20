@@ -78,7 +78,7 @@ const sectionMeta: Record<
   },
   cart: {
     label: "Shopping cart",
-    description: "Cart and manual bank-transfer handoff",
+    description: "Cart and post-reservation payment setup",
     lane: "side",
     icon: "C",
     previewRows: 12,
@@ -503,7 +503,7 @@ export function StorefrontDesigner({
           <EmptyPreview
             icon="C"
             title="Your cart is empty"
-            copy={`${payment.bankName || "Bank transfer"} / manual review`}
+            copy="Customer details are collected before reservation."
           />
         );
     }
@@ -866,10 +866,10 @@ export function StorefrontDesigner({
                   <div className={styles.informationCard}>
                     <span aria-hidden="true">C</span>
                     <div>
-                      <strong>Manual bank transfer only</strong>
+                      <strong>Shown after reservation</strong>
                       <p>
-                        These instructions never claim that Cyfurden verified a
-                        payment.
+                        Customers see these manual bank-transfer instructions
+                        only after submitting their contact details.
                       </p>
                     </div>
                   </div>

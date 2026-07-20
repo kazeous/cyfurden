@@ -94,5 +94,7 @@ export async function createPublicOrderAction(formData: FormData) {
     },
   });
 
-  redirect(`/s/${slug}?order=${encodeURIComponent(order.code)}`);
+  redirect(
+    `/s/${encodeURIComponent(slug)}/reservation/${encodeURIComponent(order.code)}`,
+  );
 }

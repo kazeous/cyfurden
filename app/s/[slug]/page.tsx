@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ManagedStorefront } from "@/components/storefront/managed-storefront";
 import { db } from "@/lib/db";
 import { booth as staticBooth } from "@/lib/booth-data";
@@ -12,7 +12,6 @@ async function getManagedBooth(slug: string) {
       where: { slug },
       include: {
         storefront: true,
-        paymentInstructions: true,
         products: {
           where: { status: { in: ["LIVE", "SOLD_OUT"] } },
           include: {
@@ -72,6 +71,11 @@ export default async function PublicBoothPage({
     if (slug === staticBooth.slug) return <BoothClient />;
     notFound();
   }
+  if (order) {
+    redirect(
+      `/s/${encodeURIComponent(slug)}/reservation/${encodeURIComponent(order)}`,
+    );
+  }
   const document = readStorefrontDocument(
     managed.storefront.publishedDocument,
     managed.name,
@@ -90,8 +94,6 @@ export default async function PublicBoothPage({
       booth={{ id: managed.id, slug: managed.slug }}
       document={document}
       products={products}
-      payment={managed.paymentInstructions}
-      orderCode={order}
     />
   );
 }

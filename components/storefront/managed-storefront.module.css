@@ -259,8 +259,7 @@
 }
 .hero > div,
 .hero > aside,
-.catalogue,
-.confirmation {
+.catalogue {
   padding: clamp(24px, 5vw, 54px);
   border: 1px solid #cad7e7;
   border-radius: 26px;
@@ -287,8 +286,7 @@
   letter-spacing: -0.06em;
 }
 .hero p,
-.hero aside p,
-.confirmation p {
+.hero aside p {
   max-width: 640px;
   color: #66738a;
   line-height: 1.65;
@@ -318,16 +316,6 @@
   font-weight: 900;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-}
-.confirmation {
-  margin-bottom: 24px;
-  border-color: #9fca99;
-  background: #f4fbf1;
-}
-.confirmation h1 {
-  margin: 8px 0;
-  font-family: Georgia, serif;
-  font-size: clamp(26px, 4vw, 42px);
 }
 .catalogue {
   padding: clamp(20px, 4vw, 36px);
@@ -578,28 +566,6 @@
   font-size: 11px;
   line-height: 1.45;
 }
-.payment {
-  display: grid;
-  gap: 5px;
-  padding: 16px 0 0;
-  color: #66738a;
-  font-size: 12px;
-}
-.payment strong {
-  color: #243651;
-}
-.paymentQr {
-  display: block;
-  width: min(100%, 240px);
-  max-height: 280px;
-  object-fit: contain;
-  padding: 8px;
-  margin-bottom: 7px;
-  border: 1px solid #e0d9cf;
-  border-radius: 14px;
-  background: white;
-}
-
 @media (max-width: 860px) {
   .hero,
   .grid {

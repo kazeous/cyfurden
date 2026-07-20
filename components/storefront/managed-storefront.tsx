@@ -1,4 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useMemo, useState } from "react";
@@ -24,16 +23,6 @@ type ProductDto = {
     status: string;
     stockQuantity: number | null;
   }[];
-};
-
-type PaymentDto = {
-  bankName: string;
-  accountName: string;
-  accountNumber: string;
-  qrObjectKey: string | null;
-  transferReferenceTemplate: string;
-  instructions: string;
-  disclaimer: string;
 };
 
 type CartLine = { productId: string; variantId: string; quantity: number };
@@ -72,21 +61,14 @@ export function ManagedStorefront({
   booth,
   document,
   products,
-  payment,
-  orderCode,
 }: {
   booth: { id: string; slug: string };
   document: StorefrontDocument;
   products: ProductDto[];
-  payment: PaymentDto | null;
-  orderCode?: string;
 }) {
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
-  const paymentQrUrl = payment?.qrObjectKey
-    ? resolveOracleImageUrl({ objectKey: payment.qrObjectKey })
-    : undefined;
   const visibleProducts = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
     return products.filter((product) => {
@@ -324,16 +306,6 @@ export function ManagedStorefront({
       </header>
 
       <div className={styles.content}>
-        {orderCode ? (
-          <section className={styles.confirmation} role="status">
-            <p className={styles.eyebrow}>Reservation received</p>
-            <h1>Keep this reference: {orderCode}</h1>
-            <p>
-              Your booth owner will review the reservation manually. No bank
-              transfer has been verified by Cyfurden.
-            </p>
-          </section>
-        ) : null}
         <div className={styles.sectionFlow}>
           {visibleSectionOrder.map((section) => (
             <div
@@ -460,22 +432,6 @@ export function ManagedStorefront({
                     submitting. Cyfurden does not verify payment automatically.
                   </p>
                 </form>
-                {payment ? (
-                  <div className={styles.payment}>
-                    {paymentQrUrl ? (
-                      <img
-                        className={styles.paymentQr}
-                        src={paymentQrUrl}
-                        alt={`Bank transfer QR code for ${payment.accountName}`}
-                      />
-                    ) : null}
-                    <strong>{payment.bankName}</strong>
-                    <span>
-                      {payment.accountName} · {payment.accountNumber}
-                    </span>
-                    <small>{payment.instructions}</small>
-                  </div>
-                ) : null}
               </>
             ) : (
               <div className={styles.empty}>
