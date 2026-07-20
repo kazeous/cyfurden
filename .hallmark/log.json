@@ -1,5 +1,25 @@
 [
   {
+    "date": "2026-07-20",
+    "scope": "landing",
+    "macrostructure": "Narrative Workflow",
+    "theme": "Cyfurden locked editorial-utilitarian",
+    "enrichment": "Tier-A CSS booth preview",
+    "brief": "Introduce Cyfurden's artist-booth functions and preserve the demo storefront",
+    "critique": {
+      "philosophy": 5,
+      "hierarchy": 5,
+      "execution": 5,
+      "specificity": 5,
+      "restraint": 5,
+      "variety": 5
+    },
+    "slop_test": "pass (1-58)",
+    "verified_viewports": [320, 375, 414, 768, 1440],
+    "navigation": "N9 edge-aligned minimal",
+    "footer": "Ft1 mast-headed"
+  },
+  {
     "date": "2026-07-19",
     "scope": "app",
     "macrostructure": "Workbench + Index-First",

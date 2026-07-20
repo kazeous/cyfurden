@@ -105,13 +105,13 @@ after(() => {
   nextServer?.kill();
 });
 
-async function render() {
-  return fetch(baseUrl, {
+async function render(pathname = "/") {
+  return fetch(`${baseUrl}${pathname}`, {
     headers: { accept: "text/html" },
   });
 }
 
-test("server-renders the complete Cyfurden booth", async () => {
+test("server-renders the Cyfurden landing page", async () => {
   const response = await render();
 
   assert.equal(response.status, 200);
@@ -122,8 +122,26 @@ test("server-renders the complete Cyfurden booth", async () => {
 
   assert.match(
     renderedContent,
-    /<title>[^<]*Cyfurden[^<]*Lantern &amp; Loom Booth<\/title>/i,
+    /<title>Cyfurden — Artist booths for convention days<\/title>/i,
   );
+  assert.match(renderedContent, /A calmer booth for busy convention days/);
+  assert.match(renderedContent, /From first scan to final handoff/);
+  assert.match(renderedContent, /Payment stays manual—and visibly so/);
+  assert.match(renderedContent, /href="\/sign-up"/);
+  assert.match(renderedContent, /href="\/sign-in"/);
+  assert.match(renderedContent, /href="\/s\/lantern-and-loom"/);
+  assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|stripe/i);
+});
+
+test("keeps the complete demo booth available on its public route", async () => {
+  const response = await render("/s/lantern-and-loom");
+
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
+
+  const html = await response.text();
+  const renderedContent = html.replace(/<!--\s*-->/g, "");
+
   assert.match(renderedContent, /Moonrise Makers Market/);
   assert.match(renderedContent, /Pocket-sized treasures/);
   assert.match(renderedContent, /8 of 8 pieces shown/);
