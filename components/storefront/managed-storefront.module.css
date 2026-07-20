@@ -68,7 +68,7 @@
   border-radius: 14px;
   color: white;
   background: var(--accent);
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
   font-size: 22px;
   font-weight: 800;
 }
@@ -155,7 +155,7 @@
 .featured h1 {
   max-width: 700px;
   margin: 10px 0 16px;
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
   font-size: clamp(42px, 7vw, 76px);
   line-height: 0.97;
   letter-spacing: -0.06em;
@@ -191,7 +191,7 @@
 .boothInfo h2,
 .cartSummary h2 {
   margin: 10px 0 4px;
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
   font-size: 28px;
 }
 
@@ -280,7 +280,7 @@
 .hero h1 {
   max-width: 700px;
   margin: 10px 0 16px;
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
   font-size: clamp(42px, 7vw, 76px);
   line-height: 0.97;
   letter-spacing: -0.06em;
@@ -293,7 +293,7 @@
 }
 .hero h2 {
   margin: 10px 0 4px;
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
   font-size: 28px;
 }
 .heroMeta {
@@ -327,7 +327,7 @@
 }
 .sectionHeader h2 {
   margin: 5px 0 0;
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
   font-size: 32px;
 }
 .search {
@@ -395,7 +395,7 @@
   bottom: 13px;
   left: 15px;
   color: white;
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
   font-size: 18px;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
 }
@@ -412,7 +412,7 @@
 }
 .card h3 {
   margin: 0;
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
   font-size: 22px;
 }
 .cardCopy > p:not(.cardEyebrow) {
@@ -450,7 +450,7 @@
 .empty h3 {
   margin: 0;
   color: #243651;
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
   font-size: 24px;
 }
 .footer {
@@ -482,7 +482,7 @@
 }
 .cartHeader h2 {
   margin: 4px 0 0;
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
   font-size: 34px;
 }
 .close {
@@ -531,7 +531,7 @@
   font-size: 16px;
 }
 .total strong {
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
   font-size: 24px;
 }
 .orderForm {

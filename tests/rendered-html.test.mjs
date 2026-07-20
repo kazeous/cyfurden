@@ -122,6 +122,35 @@ test("server-renders the Cyfurden landing page", async () => {
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|stripe/i);
 });
 
+test("uses one bundled display and body font system", async () => {
+  const [layout, globals, tokens, storefront, auth] = await Promise.all([
+    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+    readFile(new URL("../tokens.css", import.meta.url), "utf8"),
+    readFile(
+      new URL(
+        "../components/storefront/managed-storefront.module.css",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+    readFile(
+      new URL("../components/auth/auth.module.css", import.meta.url),
+      "utf8",
+    ),
+  ]);
+
+  assert.match(layout, /@fontsource-variable\/manrope\/wght\.css/);
+  assert.match(layout, /@fontsource-variable\/ibm-plex-sans\/wght\.css/);
+  assert.match(tokens, /--font-display:\s*"Manrope Variable"/);
+  assert.match(tokens, /--font-body:\s*"IBM Plex Sans Variable"/);
+  assert.match(globals, /h1,[\s\S]*font-family: var\(--font-display\)/);
+  assert.doesNotMatch(
+    `${tokens}${storefront}${auth}`,
+    /Georgia|Times New Roman|\bInter\b/,
+  );
+});
+
 test("does not expose the removed Lantern & Loom demo booth", async () => {
   const response = await render("/s/lantern-and-loom");
 

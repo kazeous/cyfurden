@@ -42,7 +42,7 @@
 }
 
 .brand strong {
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-display);
   font-size: 1.06rem;
   letter-spacing: 0.02em;
 }
@@ -177,7 +177,7 @@
 .storyCopy h2 {
   max-width: 420px;
   margin: 22px 0 14px;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-display);
   font-size: clamp(2.05rem, 4vw, 3.3rem);
   line-height: 0.98;
   letter-spacing: -0.045em;
@@ -334,7 +334,7 @@
 
 .formHeading h1 {
   margin: 8px 0 10px;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-display);
   font-size: clamp(2rem, 4vw, 2.75rem);
   line-height: 1.05;
   letter-spacing: -0.035em;

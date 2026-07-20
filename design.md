@@ -26,12 +26,13 @@ Canonical OKLCH values live in `tokens.css`.
 
 ## Typography
 
-- Display: Georgia / Times fallback, weight 400–700, roman only.
-- Body: the established Inter-led UI stack, weight 400–800.
+- Display: Manrope Variable, weight 400–800.
+- Body: IBM Plex Sans Variable, weight 400–700.
 - Display tracking: `-0.04em` for page titles.
 - UI body floor: 14 px; core explanations use 14–16 px.
 
-The existing pairing is preserved to avoid an unplanned font-loading dependency.
+Both families are bundled through Fontsource packages so production rendering does
+not depend on a third-party font CDN.
 
 ## Spacing
 
@@ -93,8 +94,9 @@ The production export is [`tokens.css`](./tokens.css).
   --color-paper: oklch(96.5% 0.012 85);
   --color-ink: oklch(31% 0.055 255);
   --color-accent: oklch(52% 0.16 20);
-  --font-display: Georgia, "Times New Roman", serif;
-  --font-body: Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Manrope Variable", Manrope, ui-sans-serif, sans-serif;
+  --font-body:
+    "IBM Plex Sans Variable", "IBM Plex Sans", ui-sans-serif, sans-serif;
   --spacing-md: 1rem;
   --text-md: 1.25rem;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -111,8 +113,8 @@ The production export is [`tokens.css`](./tokens.css).
     "accent": { "$value": "oklch(52% 0.16 20)", "$type": "color" }
   },
   "font": {
-    "display": { "$value": "Georgia", "$type": "fontFamily" },
-    "body": { "$value": "Inter", "$type": "fontFamily" }
+    "display": { "$value": "Manrope Variable", "$type": "fontFamily" },
+    "body": { "$value": "IBM Plex Sans Variable", "$type": "fontFamily" }
   },
   "space": {
     "md": { "$value": "1rem", "$type": "dimension" }
