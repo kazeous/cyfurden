@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireBoothMember } from "@/lib/authorization";
 import { db } from "@/lib/db";
+import { expireStaleOrders } from "@/lib/order-inventory";
 import { OrderStatusForm } from "./order-status-form";
 import styles from "./orders.module.css";
 
@@ -39,7 +40,7 @@ const formatMoney = (priceCents: number | bigint, currency: string) =>
     style: "currency",
     currency,
     maximumFractionDigits: 0,
-  }).format(Number(priceCents) / 100);
+  }).format(BigInt(priceCents) / BigInt(100));
 
 const formatDate = (date: Date) =>
   new Intl.DateTimeFormat("en-GB", {
@@ -100,6 +101,7 @@ export default async function OrdersPage({
   const { boothId } = await params;
   const query = await searchParams;
   await requireBoothMember(boothId);
+  await expireStaleOrders(boothId);
 
   const selectedStatus = parseStatus(firstValue(query.status));
   const selectedDate = parseDateRange(firstValue(query.date));
@@ -317,7 +319,10 @@ export default async function OrdersPage({
                       {formatDate(order.placedAt)}
                     </td>
                     <td>
-                      <OrderItems items={order.items} />
+                      <OrderItems
+                        items={order.items}
+                        note={order.customerNote}
+                      />
                     </td>
                     <td className={styles.numericCell}>
                       <strong>
@@ -371,7 +376,7 @@ export default async function OrdersPage({
                     <dd>{formatMoney(order.totalCents, order.currency)}</dd>
                   </div>
                 </dl>
-                <OrderItems items={order.items} />
+                <OrderItems items={order.items} note={order.customerNote} />
                 <a
                   className={styles.emailLink}
                   href={`mailto:${order.customerEmail}`}
@@ -457,6 +462,7 @@ export default async function OrdersPage({
 
 function OrderItems({
   items,
+  note,
 }: {
   items: Array<{
     id: string;
@@ -464,6 +470,7 @@ function OrderItems({
     variantSnapshot: string | null;
     quantity: number;
   }>;
+  note: string | null;
 }) {
   const visibleItems = items.slice(0, 2);
   return (
@@ -480,6 +487,12 @@ function OrderItems({
           +{items.length - visibleItems.length} more
           {items.length - visibleItems.length === 1 ? " line" : " lines"}
         </small>
+      ) : null}
+      {note ? (
+        <details className={styles.customerNote}>
+          <summary>Customer note</summary>
+          <p>{note}</p>
+        </details>
       ) : null}
     </div>
   );

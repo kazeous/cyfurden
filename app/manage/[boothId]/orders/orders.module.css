@@ -379,6 +379,27 @@
   color: var(--orders-muted);
 }
 
+.customerNote {
+  max-width: 18rem;
+  margin-top: var(--space-xs);
+  color: var(--color-ink-2);
+  font-size: var(--text-xs);
+}
+
+.customerNote summary {
+  min-height: 2.75rem;
+  cursor: pointer;
+  font-weight: 800;
+  line-height: 2.75rem;
+  white-space: nowrap;
+}
+
+.customerNote p {
+  margin: 0 0 var(--space-xs);
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
 .numericCell {
   text-align: right !important;
   white-space: nowrap;

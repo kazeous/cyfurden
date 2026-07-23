@@ -405,6 +405,35 @@
   font-size: var(--text-sm);
 }
 
+.itemSummary {
+  display: grid;
+  gap: var(--space-xs);
+  padding: var(--space-md) 0;
+  margin: var(--space-md) 0 0;
+  border-bottom: var(--rule-hairline);
+  list-style: none;
+}
+
+.itemSummary li {
+  display: flex;
+  min-width: 0;
+  gap: var(--space-xs);
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: var(--text-sm);
+}
+
+.itemSummary span {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.itemSummary strong {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .copyStatus {
   min-height: 1.25rem;
   margin: var(--space-sm) 0 0;

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import * as Sentry from "@sentry/nextjs";
 import { notFound, redirect } from "next/navigation";
 import { ManagedStorefront } from "@/components/storefront/managed-storefront";
 import { db } from "@/lib/db";
+import { createOrderPaymentSnapshot } from "@/lib/order-rules";
 import { readStorefrontDocument } from "@/lib/storefront-document";
 
 async function getManagedBooth(slug: string) {
@@ -10,6 +12,7 @@ async function getManagedBooth(slug: string) {
       where: { slug },
       include: {
         storefront: true,
+        paymentInstructions: true,
         products: {
           where: { status: { in: ["LIVE", "SOLD_OUT"] } },
           include: {
@@ -20,8 +23,12 @@ async function getManagedBooth(slug: string) {
         },
       },
     });
-  } catch {
-    return null;
+  } catch (error) {
+    Sentry.captureException(error, {
+      tags: { "cyfurden.operation": "public_storefront.load" },
+    });
+    if (process.env.CYFURDEN_RENDER_TEST === "1") return null;
+    throw error;
   }
 }
 
@@ -83,12 +90,26 @@ export default async function PublicBoothPage({
     managed.name,
   );
   const products = managed.products.map((product) => ({
-    ...product,
-    priceCents: Number(product.priceCents),
+    id: product.id,
+    name: product.name,
+    eyebrow: product.eyebrow,
+    shortDescription: product.shortDescription,
+    description: product.description,
+    priceCents: product.priceCents.toString(),
+    featured: product.featured,
+    tags: product.tags,
+    images: product.images.map((image) => ({
+      objectKey: image.objectKey,
+      alt: image.alt,
+    })),
     variants: product.variants.map((variant) => ({
-      ...variant,
+      id: variant.id,
+      label: variant.label,
       priceCents:
-        variant.priceCents === null ? null : Number(variant.priceCents),
+        variant.priceCents === null ? null : variant.priceCents.toString(),
+      status: variant.status,
+      stockQuantity: variant.stockQuantity,
+      fulfillmentNote: variant.fulfillmentNote,
     })),
   }));
   return (
@@ -96,6 +117,9 @@ export default async function PublicBoothPage({
       booth={{ id: managed.id, slug: managed.slug }}
       document={document}
       products={products}
+      canAcceptReservations={Boolean(
+        createOrderPaymentSnapshot(managed.paymentInstructions),
+      )}
     />
   );
 }

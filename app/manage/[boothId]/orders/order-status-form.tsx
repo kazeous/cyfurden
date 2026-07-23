@@ -5,6 +5,10 @@ import {
   type OrderStatusActionState,
   updateOrderStatusAction,
 } from "../actions";
+import {
+  type OrderStatusName,
+  orderStatusTransitions,
+} from "@/lib/order-rules";
 import styles from "./orders.module.css";
 
 const orderStatuses = [
@@ -37,6 +41,14 @@ export function OrderStatusForm({
   );
   const statusId = useId();
   const messageId = useId();
+  const allowedStatuses = orderStatuses.filter(
+    (status) =>
+      status.value === currentStatus ||
+      orderStatusTransitions[currentStatus as OrderStatusName].includes(
+        status.value,
+      ),
+  );
+  const terminal = allowedStatuses.length === 1;
 
   return (
     <form
@@ -55,16 +67,16 @@ export function OrderStatusForm({
           id={statusId}
           name="status"
           defaultValue={currentStatus}
-          disabled={pending}
+          disabled={pending || terminal}
         >
-          {orderStatuses.map((status) => (
+          {allowedStatuses.map((status) => (
             <option key={status.value} value={status.value}>
               {status.label}
             </option>
           ))}
         </select>
-        <button type="submit" disabled={pending}>
-          {pending ? "Saving…" : "Save"}
+        <button type="submit" disabled={pending || terminal}>
+          {pending ? "Saving…" : terminal ? "Final" : "Save"}
         </button>
       </div>
       <p

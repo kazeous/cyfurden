@@ -430,7 +430,7 @@
   font-size: 15px;
 }
 .addButton {
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 14px;
   border-radius: 999px;
   color: white;
@@ -462,7 +462,7 @@
 }
 .overlay {
   position: fixed;
-  z-index: 50;
+  z-index: var(--z-modal);
   inset: 0;
   display: grid;
   justify-items: end;
@@ -487,8 +487,8 @@
 }
 .close {
   display: grid;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   border-radius: 50%;
   color: #243651;
@@ -518,8 +518,8 @@
 }
 .quantity button {
   display: grid;
-  width: 26px;
-  height: 26px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   border-radius: 8px;
   color: #243651;
@@ -559,6 +559,16 @@
 .orderForm textarea {
   min-height: 76px;
   resize: vertical;
+}
+.orderError {
+  margin: 0;
+  color: var(--color-error-ink);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+.orderError:empty {
+  display: none;
 }
 .disclaimer {
   margin: 0;

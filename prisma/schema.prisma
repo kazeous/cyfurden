@@ -357,6 +357,7 @@ model Order {
   currency          String      @default("VND")
   transferReference String
   idempotencyKey    String
+  paymentSnapshot   Json?
   placedAt          DateTime    @default(now())
   expiresAt         DateTime?
   confirmedAt       DateTime?
@@ -381,6 +382,7 @@ model OrderItem {
   variantSnapshot  String?
   unitPriceCents   BigInt
   quantity         Int
+  inventoryDebited Boolean         @default(false)
   order            Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product          Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
   productVariant   ProductVariant? @relation(fields: [productVariantId], references: [id], onDelete: SetNull)

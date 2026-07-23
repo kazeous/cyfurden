@@ -76,6 +76,7 @@ before(async () => {
     env: {
       ...process.env,
       NODE_ENV: "production",
+      CYFURDEN_RENDER_TEST: "1",
       PORT: String(port),
     },
     stdio: ["ignore", "pipe", "pipe"],
@@ -228,10 +229,7 @@ test("keeps bank details behind a successful managed reservation", async () => {
     storefront,
     /receive manual bank-transfer instructions after\s+submitting/i,
   );
-  assert.match(
-    action,
-    /\/reservation\/\$\{encodeURIComponent\(order\.code\)\}/,
-  );
+  assert.match(action, /\/reservation\/\$\{encodeURIComponent\(orderCode\)\}/);
   assert.doesNotMatch(action, /\?order=/);
 
   assert.match(confirmation, /Reservation number/);
@@ -242,7 +240,11 @@ test("keeps bank details behind a successful managed reservation", async () => {
   assert.match(confirmation, /does not verify\s+payment automatically/i);
 
   assert.match(reservationPage, /code,/);
-  assert.match(reservationPage, /booth: \{ slug, status: "PUBLISHED" \}/);
+  assert.match(reservationPage, /booth: \{ slug \}/);
+  assert.match(
+    reservationPage,
+    /readOrderPaymentSnapshot\(order\.paymentSnapshot\)/,
+  );
   assert.match(
     reservationPage,
     /totalMinorUnits: order\.totalCents\.toString\(\)/,

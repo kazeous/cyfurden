@@ -1,9 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { createPublicOrderAction } from "@/app/s/[slug]/actions";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import {
+  createPublicOrderAction,
+  type PublicOrderState,
+} from "@/app/s/[slug]/actions";
 import { resolveOracleImageUrl } from "@/lib/oracle-images";
-import type { StorefrontDocument } from "@/lib/storefront-document";
+import {
+  isPurchasableVariant,
+  maximumPurchasableQuantity,
+} from "@/lib/order-rules";
+import {
+  storefrontCornerRadiusPixels,
+  type StorefrontDocument,
+} from "@/lib/storefront-document";
 import styles from "./managed-storefront.module.css";
 
 type ProductDto = {
@@ -12,27 +22,80 @@ type ProductDto = {
   eyebrow: string | null;
   shortDescription: string | null;
   description: string;
-  priceCents: number;
+  priceCents: string;
   featured: boolean;
   tags: string[];
   images: { objectKey: string; alt: string }[];
   variants: {
     id: string;
     label: string;
-    priceCents: number | null;
+    priceCents: string | null;
     status: string;
     stockQuantity: number | null;
+    fulfillmentNote: string | null;
   }[];
 };
 
 type CartLine = { productId: string; variantId: string; quantity: number };
 
-const money = (cents: number) =>
+const initialOrderState: PublicOrderState = { status: "idle", message: "" };
+
+const money = (minorUnits: bigint | string) =>
   new Intl.NumberFormat("vi-VN", {
     style: "currency",
     currency: "VND",
     maximumFractionDigits: 0,
-  }).format(cents / 100);
+  }).format(BigInt(minorUnits) / BigInt(100));
+
+const createIdempotencyKey = () => globalThis.crypto.randomUUID();
+
+function readPersistedCart(
+  value: string | null,
+  products: ProductDto[],
+): { cart: CartLine[]; idempotencyKey: string } | null {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value) as {
+      cart?: unknown;
+      idempotencyKey?: unknown;
+    };
+    if (!Array.isArray(parsed.cart)) return null;
+
+    const cart = parsed.cart.flatMap((candidate) => {
+      if (!candidate || typeof candidate !== "object") return [];
+      const line = candidate as Partial<CartLine>;
+      const product = products.find((item) => item.id === line.productId);
+      const variant = product?.variants.find(
+        (item) => item.id === line.variantId,
+      );
+      if (
+        !product ||
+        !variant ||
+        !isPurchasableVariant(variant.status, variant.stockQuantity) ||
+        typeof line.quantity !== "number" ||
+        !Number.isInteger(line.quantity)
+      ) {
+        return [];
+      }
+      const quantity = Math.min(
+        Math.max(1, line.quantity),
+        maximumPurchasableQuantity(variant.stockQuantity),
+      );
+      return [{ productId: product.id, variantId: variant.id, quantity }];
+    });
+
+    return {
+      cart,
+      idempotencyKey:
+        typeof parsed.idempotencyKey === "string" &&
+        /^[0-9a-f-]{36}$/i.test(parsed.idempotencyKey)
+          ? parsed.idempotencyKey
+          : createIdempotencyKey(),
+    };
+  } catch {
+    return null;
+  }
+}
 
 function ProductArt({ product }: { product: ProductDto }) {
   const image = product.images[0];
@@ -61,14 +124,74 @@ export function ManagedStorefront({
   booth,
   document,
   products,
+  canAcceptReservations,
 }: {
   booth: { id: string; slug: string };
   document: StorefrontDocument;
   products: ProductDto[];
+  canAcceptReservations: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+  const [idempotencyKey, setIdempotencyKey] = useState("");
+  const [orderState, orderAction, orderPending] = useActionState(
+    createPublicOrderAction,
+    initialOrderState,
+  );
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const cartPanelRef = useRef<HTMLDivElement>(null);
+  const orderErrorRef = useRef<HTMLParagraphElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const storageKey = `cyfurden:cart:${booth.slug}`;
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      let persisted: ReturnType<typeof readPersistedCart> = null;
+      try {
+        persisted = readPersistedCart(
+          window.localStorage.getItem(storageKey),
+          products,
+        );
+      } catch {
+        // Storage can be unavailable in hardened/private browsing contexts.
+      }
+      setCart(persisted?.cart ?? []);
+      setIdempotencyKey(persisted?.idempotencyKey ?? createIdempotencyKey());
+      setHydrated(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [products, storageKey]);
+
+  useEffect(() => {
+    if (!hydrated || !idempotencyKey) return;
+    try {
+      window.localStorage.setItem(
+        storageKey,
+        JSON.stringify({ cart, idempotencyKey }),
+      );
+    } catch {
+      // The in-memory bag remains usable when persistence is unavailable.
+    }
+  }, [cart, hydrated, idempotencyKey, storageKey]);
+
+  useEffect(() => {
+    if (!cartOpen) return;
+    previousFocusRef.current = globalThis.document
+      .activeElement as HTMLElement | null;
+    closeButtonRef.current?.focus();
+    const previousOverflow = globalThis.document.body.style.overflow;
+    globalThis.document.body.style.overflow = "hidden";
+    return () => {
+      globalThis.document.body.style.overflow = previousOverflow;
+      previousFocusRef.current?.focus();
+    };
+  }, [cartOpen]);
+
+  useEffect(() => {
+    if (orderState.status === "error") orderErrorRef.current?.focus();
+  }, [orderState]);
   const visibleProducts = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
     return products.filter((product) => {
@@ -96,22 +219,29 @@ export function ManagedStorefront({
   const totalCents = cartDetails.reduce(
     (sum, detail) =>
       sum +
-      (detail.variant.priceCents ?? detail.product.priceCents) *
-        detail.line.quantity,
-    0,
+      BigInt(detail.variant.priceCents ?? detail.product.priceCents) *
+        BigInt(detail.line.quantity),
+    BigInt(0),
   );
 
+  const updateCart = (updater: (current: CartLine[]) => CartLine[]) => {
+    setCart((current) => updater(current));
+    setIdempotencyKey(createIdempotencyKey());
+  };
+
   const add = (product: ProductDto) => {
+    if (!canAcceptReservations) return;
     const variant = product.variants.find((item) =>
-      ["AVAILABLE", "LOW_STOCK", "PREORDER"].includes(item.status),
+      isPurchasableVariant(item.status, item.stockQuantity),
     );
     if (!variant) return;
-    setCart((current) => {
+    updateCart((current) => {
       const existing = current.find((line) => line.variantId === variant.id);
+      const maximum = maximumPurchasableQuantity(variant.stockQuantity);
       return existing
         ? current.map((line) =>
             line.variantId === variant.id
-              ? { ...line, quantity: line.quantity + 1 }
+              ? { ...line, quantity: Math.min(maximum, line.quantity + 1) }
               : line,
           )
         : [
@@ -123,13 +253,41 @@ export function ManagedStorefront({
   };
 
   const adjust = (variantId: string, delta: number) => {
-    setCart((current) =>
+    updateCart((current) =>
       current.flatMap((line) => {
         if (line.variantId !== variantId) return [line];
-        const quantity = line.quantity + delta;
+        const detail = cartDetails.find(
+          (entry) => entry.variant.id === variantId,
+        );
+        const maximum = maximumPurchasableQuantity(
+          detail?.variant.stockQuantity ?? null,
+        );
+        const quantity = Math.min(maximum, line.quantity + delta);
         return quantity > 0 ? [{ ...line, quantity }] : [];
       }),
     );
+  };
+
+  const handleCartKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setCartOpen(false);
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const focusable = cartPanelRef.current?.querySelectorAll<HTMLElement>(
+      "button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), a[href]",
+    );
+    if (!focusable?.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && globalThis.document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && globalThis.document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
   };
 
   const visibleSectionOrder = document.sectionOrder.filter((section) =>
@@ -199,12 +357,30 @@ export function ManagedStorefront({
               <div className={styles.grid}>
                 {visibleProducts.map((product) => {
                   const available = product.variants.some((variant) =>
-                    ["AVAILABLE", "LOW_STOCK", "PREORDER"].includes(
-                      variant.status,
-                    ),
+                    isPurchasableVariant(variant.status, variant.stockQuantity),
+                  );
+                  const firstAvailableVariant = product.variants.find(
+                    (variant) =>
+                      isPurchasableVariant(
+                        variant.status,
+                        variant.stockQuantity,
+                      ),
                   );
                   const price =
-                    product.variants[0]?.priceCents ?? product.priceCents;
+                    firstAvailableVariant?.priceCents ?? product.priceCents;
+                  const cartLine = firstAvailableVariant
+                    ? cart.find(
+                        (line) => line.variantId === firstAvailableVariant.id,
+                      )
+                    : undefined;
+                  const atStockLimit = Boolean(
+                    firstAvailableVariant &&
+                      cartLine &&
+                      cartLine.quantity >=
+                        maximumPurchasableQuantity(
+                          firstAvailableVariant.stockQuantity,
+                        ),
+                  );
                   return (
                     <article className={styles.card} key={product.id}>
                       <ProductArt product={product} />
@@ -220,9 +396,19 @@ export function ManagedStorefront({
                             type="button"
                             className={styles.addButton}
                             onClick={() => add(product)}
-                            disabled={!available}
+                            disabled={
+                              !available ||
+                              !canAcceptReservations ||
+                              atStockLimit
+                            }
                           >
-                            {available ? "Add to bag" : "Sold out"}
+                            {!canAcceptReservations
+                              ? "Reservations paused"
+                              : atStockLimit
+                                ? "Stock limit reached"
+                                : available
+                                  ? "Add to bag"
+                                  : "Sold out"}
                           </button>
                         </div>
                       </div>
@@ -262,7 +448,11 @@ export function ManagedStorefront({
             >
               {cartCount ? "Review bag" : "Open bag"}
             </button>
-            <small>Manual bank transfer · no automatic verification</small>
+            <small>
+              {canAcceptReservations
+                ? "Manual bank transfer · no automatic verification"
+                : "Reservations are paused until payment instructions are ready"}
+            </small>
           </section>
         );
     }
@@ -275,12 +465,7 @@ export function ManagedStorefront({
       style={
         {
           "--accent": document.accentColor,
-          "--store-radius":
-            document.cornerRadius === "soft"
-              ? "16px"
-              : document.cornerRadius === "pill"
-                ? "38px"
-                : "26px",
+          "--store-radius": `${storefrontCornerRadiusPixels[document.cornerRadius]}px`,
         } as React.CSSProperties
       }
     >
@@ -333,18 +518,32 @@ export function ManagedStorefront({
           role="dialog"
           aria-modal="true"
           aria-labelledby="bag-heading"
+          aria-describedby={
+            orderState.status === "error" ? "bag-order-error" : undefined
+          }
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !orderPending) {
+              setCartOpen(false);
+            }
+          }}
         >
-          <div className={styles.cartPanel}>
+          <div
+            className={styles.cartPanel}
+            ref={cartPanelRef}
+            onKeyDown={handleCartKeyDown}
+          >
             <div className={styles.cartHeader}>
               <div>
                 <p className={styles.eyebrow}>Shopping cart</p>
                 <h2 id="bag-heading">Your bag</h2>
               </div>
               <button
+                ref={closeButtonRef}
                 type="button"
                 className={styles.close}
                 onClick={() => setCartOpen(false)}
                 aria-label="Close bag"
+                disabled={orderPending}
               >
                 ×
               </button>
@@ -357,12 +556,16 @@ export function ManagedStorefront({
                       <div>
                         <strong>{product.name}</strong>
                         <small>{variant.label}</small>
+                        {variant.stockQuantity !== null ? (
+                          <small>{variant.stockQuantity} available</small>
+                        ) : null}
                       </div>
                       <div className={styles.quantity}>
                         <button
                           type="button"
                           onClick={() => adjust(variant.id, -1)}
                           aria-label={`Remove one ${product.name}`}
+                          disabled={orderPending}
                         >
                           −
                         </button>
@@ -371,14 +574,19 @@ export function ManagedStorefront({
                           type="button"
                           onClick={() => adjust(variant.id, 1)}
                           aria-label={`Add one ${product.name}`}
+                          disabled={
+                            orderPending ||
+                            line.quantity >=
+                              maximumPurchasableQuantity(variant.stockQuantity)
+                          }
                         >
                           +
                         </button>
                       </div>
                       <strong>
                         {money(
-                          (variant.priceCents ?? product.priceCents) *
-                            line.quantity,
+                          BigInt(variant.priceCents ?? product.priceCents) *
+                            BigInt(line.quantity),
                         )}
                       </strong>
                     </div>
@@ -389,11 +597,17 @@ export function ManagedStorefront({
                   <strong>{money(totalCents)}</strong>
                 </div>
                 <form
-                  action={createPublicOrderAction}
+                  action={orderAction}
                   className={styles.orderForm}
+                  aria-busy={orderPending}
                 >
                   <input type="hidden" name="boothId" value={booth.id} />
                   <input type="hidden" name="slug" value={booth.slug} />
+                  <input
+                    type="hidden"
+                    name="idempotencyKey"
+                    value={idempotencyKey}
+                  />
                   <input
                     type="hidden"
                     name="lines"
@@ -405,7 +619,9 @@ export function ManagedStorefront({
                       name="customerName"
                       required
                       minLength={2}
+                      maxLength={100}
                       placeholder="Your name"
+                      disabled={orderPending}
                     />
                   </label>
                   <label>
@@ -414,18 +630,40 @@ export function ManagedStorefront({
                       name="customerEmail"
                       type="email"
                       required
+                      maxLength={254}
                       placeholder="you@example.com"
+                      disabled={orderPending}
                     />
                   </label>
                   <label>
                     Note (optional)
                     <textarea
                       name="customerNote"
+                      maxLength={500}
                       placeholder="Pickup notes or questions"
+                      disabled={orderPending}
                     />
                   </label>
-                  <button className={styles.addButton} type="submit">
-                    Send reservation
+                  <p
+                    id="bag-order-error"
+                    className={styles.orderError}
+                    ref={orderErrorRef}
+                    role={orderState.status === "error" ? "alert" : undefined}
+                    tabIndex={orderState.status === "error" ? -1 : undefined}
+                  >
+                    {orderState.message}
+                  </p>
+                  <button
+                    className={styles.addButton}
+                    type="submit"
+                    disabled={
+                      orderPending ||
+                      !hydrated ||
+                      !idempotencyKey ||
+                      !canAcceptReservations
+                    }
+                  >
+                    {orderPending ? "Saving reservation…" : "Send reservation"}
                   </button>
                   <p className={styles.disclaimer}>
                     You will receive manual bank-transfer instructions after

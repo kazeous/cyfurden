@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { StorefrontDocument } from "@/lib/storefront-document";
 import styles from "./reservation-confirmation.module.css";
 
@@ -16,9 +16,18 @@ type PaymentDetails = {
 
 type ReservationDetails = {
   code: string;
+  status: "PENDING" | "CONFIRMED" | "CANCELLED" | "EXPIRED" | "FULFILLED";
   currency: string;
   totalMinorUnits: string;
   transferReference: string;
+  idempotencyKey: string;
+  items: Array<{
+    id: string;
+    title: string;
+    variant: string | null;
+    quantity: number;
+    unitPriceMinorUnits: string;
+  }>;
 };
 
 type CopyTarget = "reservation" | "account" | "reference";
@@ -27,6 +36,42 @@ const targetLabel: Record<CopyTarget, string> = {
   reservation: "reservation number",
   account: "account number",
   reference: "transfer reference",
+};
+
+const reservationStatusCopy: Record<
+  ReservationDetails["status"],
+  { heading: string; description: string; label: string }
+> = {
+  PENDING: {
+    heading: "Your items are reserved.",
+    description:
+      "Keep the number below. You will need it for this reservation and when contacting the booth owner.",
+    label: "Awaiting manual transfer review",
+  },
+  CONFIRMED: {
+    heading: "Your transfer was confirmed.",
+    description:
+      "The booth owner marked this reservation as confirmed after reviewing payment manually.",
+    label: "Confirmed manually",
+  },
+  FULFILLED: {
+    heading: "Your reservation was fulfilled.",
+    description:
+      "The booth owner marked every item in this reservation as fulfilled.",
+    label: "Fulfilled",
+  },
+  CANCELLED: {
+    heading: "This reservation was cancelled.",
+    description:
+      "Do not send a transfer for this reservation. Contact the booth owner if you believe this is a mistake.",
+    label: "Cancelled",
+  },
+  EXPIRED: {
+    heading: "This reservation expired.",
+    description:
+      "Do not send a transfer for this reservation. Return to the booth to check current availability.",
+    label: "Expired",
+  },
 };
 
 function formatMoney(minorUnits: string, currency: string) {
@@ -51,6 +96,25 @@ export function ReservationConfirmation({
   const [copied, setCopied] = useState<CopyTarget | null>(null);
   const [copyError, setCopyError] = useState(false);
   const total = formatMoney(reservation.totalMinorUnits, reservation.currency);
+  const statusCopy = reservationStatusCopy[reservation.status];
+  const paymentRequired = reservation.status === "PENDING";
+  const hasBankAccount = Boolean(
+    payment?.bankName && payment.accountName && payment.accountNumber,
+  );
+
+  useEffect(() => {
+    const storageKey = `cyfurden:cart:${boothSlug}`;
+    try {
+      const stored = window.localStorage.getItem(storageKey);
+      if (!stored) return;
+      const value = JSON.parse(stored) as { idempotencyKey?: unknown };
+      if (value.idempotencyKey === reservation.idempotencyKey) {
+        window.localStorage.removeItem(storageKey);
+      }
+    } catch {
+      // A completed reservation does not depend on browser storage cleanup.
+    }
+  }, [boothSlug, reservation.idempotencyKey]);
 
   const copy = async (target: CopyTarget, value: string) => {
     try {
@@ -90,11 +154,8 @@ export function ReservationConfirmation({
         <section className={styles.receipt} aria-labelledby="receipt-heading">
           <div className={styles.receiptCopy}>
             <p className={styles.eyebrow}>Reservation received</p>
-            <h1 id="receipt-heading">Your items are reserved.</h1>
-            <p>
-              Keep the number below. You will need it for this reservation and
-              when contacting the booth owner.
-            </p>
+            <h1 id="receipt-heading">{statusCopy.heading}</h1>
+            <p>{statusCopy.description}</p>
           </div>
           <div className={styles.referenceBlock}>
             <span>Reservation number</span>
@@ -116,14 +177,19 @@ export function ReservationConfirmation({
           >
             <div className={styles.sectionHeading}>
               <p className={styles.eyebrow}>Manual bank transfer</p>
-              <h2 id="payment-heading">Transfer to finish your reservation</h2>
+              <h2 id="payment-heading">
+                {paymentRequired
+                  ? "Transfer to finish your reservation"
+                  : statusCopy.heading}
+              </h2>
               <p>
-                Payment is checked by the booth owner. Cyfurden does not verify
-                payment automatically.
+                {paymentRequired
+                  ? "Payment is checked by the booth owner. Cyfurden does not verify payment automatically."
+                  : statusCopy.description}
               </p>
             </div>
 
-            {payment ? (
+            {paymentRequired && payment ? (
               <>
                 <ol className={styles.steps}>
                   <li>
@@ -156,27 +222,33 @@ export function ReservationConfirmation({
                   </div>
 
                   <dl className={styles.bankDetails}>
-                    <div>
-                      <dt>Bank</dt>
-                      <dd>{payment.bankName}</dd>
-                    </div>
-                    <div>
-                      <dt>Account name</dt>
-                      <dd>{payment.accountName}</dd>
-                    </div>
-                    <div>
-                      <dt>Account number</dt>
-                      <dd className={styles.copyValue}>
-                        <strong>{payment.accountNumber}</strong>
-                        <button
-                          type="button"
-                          onClick={() => copy("account", payment.accountNumber)}
-                          data-copied={copied === "account"}
-                        >
-                          {copied === "account" ? "Copied" : "Copy"}
-                        </button>
-                      </dd>
-                    </div>
+                    {hasBankAccount ? (
+                      <>
+                        <div>
+                          <dt>Bank</dt>
+                          <dd>{payment.bankName}</dd>
+                        </div>
+                        <div>
+                          <dt>Account name</dt>
+                          <dd>{payment.accountName}</dd>
+                        </div>
+                        <div>
+                          <dt>Account number</dt>
+                          <dd className={styles.copyValue}>
+                            <strong>{payment.accountNumber}</strong>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                copy("account", payment.accountNumber)
+                              }
+                              data-copied={copied === "account"}
+                            >
+                              {copied === "account" ? "Copied" : "Copy"}
+                            </button>
+                          </dd>
+                        </div>
+                      </>
+                    ) : null}
                     <div>
                       <dt>Reservation total</dt>
                       <dd className={styles.total}>{total}</dd>
@@ -205,13 +277,18 @@ export function ReservationConfirmation({
                 </div>
                 <p className={styles.disclaimer}>{payment.disclaimer}</p>
               </>
-            ) : (
+            ) : paymentRequired ? (
               <div className={styles.paymentUnavailable}>
                 <strong>Payment instructions are not available yet.</strong>
                 <p>
                   Keep your reservation number and contact the booth owner
                   before sending a transfer.
                 </p>
+              </div>
+            ) : (
+              <div className={styles.paymentUnavailable}>
+                <strong>No transfer action is required.</strong>
+                <p>{statusCopy.description}</p>
               </div>
             )}
           </section>
@@ -221,18 +298,37 @@ export function ReservationConfirmation({
             <h2 id="summary-heading">What happens next</h2>
             <dl>
               <div>
-                <dt>Amount due</dt>
+                <dt>{paymentRequired ? "Amount due" : "Reservation total"}</dt>
                 <dd>{total}</dd>
               </div>
               <div>
                 <dt>Status</dt>
-                <dd>Awaiting manual transfer review</dd>
+                <dd>{statusCopy.label}</dd>
               </div>
             </dl>
+            <ul className={styles.itemSummary} aria-label="Reserved items">
+              {reservation.items.map((item) => (
+                <li key={item.id}>
+                  <span>
+                    {item.title}
+                    {item.variant ? ` · ${item.variant}` : ""}
+                  </span>
+                  <strong>
+                    ×{item.quantity} ·{" "}
+                    {formatMoney(
+                      (
+                        BigInt(item.unitPriceMinorUnits) * BigInt(item.quantity)
+                      ).toString(),
+                      reservation.currency,
+                    )}
+                  </strong>
+                </li>
+              ))}
+            </ul>
             <p>
-              After transferring, keep your bank receipt. The booth owner will
-              review the payment outside Cyfurden and update the reservation
-              manually.
+              {paymentRequired
+                ? "After transferring, keep your bank receipt. The booth owner will review the payment outside Cyfurden and update the reservation manually."
+                : statusCopy.description}
             </p>
           </aside>
         </div>

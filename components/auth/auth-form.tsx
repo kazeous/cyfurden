@@ -49,6 +49,7 @@ export function AuthForm({ googleEnabled, mode, returnTo }: AuthFormProps) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const destination = safeReturnTo(returnTo);
+  const alternateAuthHref = `${isSignUp ? "/sign-in" : "/sign-up"}?returnTo=${encodeURIComponent(destination)}`;
 
   const handleEmailSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -249,7 +250,7 @@ export function AuthForm({ googleEnabled, mode, returnTo }: AuthFormProps) {
 
       <p className={styles.switchPrompt}>
         {isSignUp ? "Already have an account?" : "New to Cyfurden?"}{" "}
-        <Link href={isSignUp ? "/sign-in" : "/sign-up"}>
+        <Link href={alternateAuthHref}>
           {isSignUp ? "Sign in" : "Create an account"}
         </Link>
       </p>

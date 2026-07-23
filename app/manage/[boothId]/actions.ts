@@ -8,6 +8,11 @@ import { z } from "zod";
 import { requireBoothRole, requireUser } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import {
+  canTransitionOrderStatus,
+  type OrderStatusName,
+  releasesInventory,
+} from "@/lib/order-rules";
+import {
   discardUploadedPaymentQr,
   discardUploadedProductImage,
   OracleQrUploadError,
@@ -23,6 +28,7 @@ import {
 const editorRoles = ["OWNER", "ADMIN"] as const;
 const orderRoles = ["OWNER", "ADMIN", "STAFF"] as const;
 const MAX_PRODUCT_PRICE_VND = 9_000_000_000_000;
+const MAX_STOCK_QUANTITY = 2_147_483_647;
 
 const requiredText = (formData: FormData, key: string) =>
   String(formData.get(key) ?? "").trim();
@@ -49,6 +55,15 @@ const slugify = (value: string) =>
     .replace(/^-+|-+$/g, "")
     .slice(0, 70);
 
+const paymentDraftSchema = z.object({
+  bankName: z.string().trim().max(120),
+  accountName: z.string().trim().max(120),
+  accountNumber: z.string().trim().max(80),
+  transferReferenceTemplate: z.string().trim().max(120),
+  instructions: z.string().trim().max(2_000),
+  disclaimer: z.string().trim().max(1_000),
+});
+
 export type StorefrontSaveState = { error: string | null };
 
 export async function saveStorefrontAction(
@@ -66,7 +81,7 @@ export async function saveStorefrontAction(
   } catch {
     sectionOrder = storefrontSectionIds;
   }
-  const document = storefrontDocumentSchema.parse({
+  const documentResult = storefrontDocumentSchema.safeParse({
     name: requiredText(formData, "name"),
     tagline: requiredText(formData, "tagline"),
     introduction: requiredText(formData, "introduction"),
@@ -88,6 +103,33 @@ export async function saveStorefrontAction(
     sectionOrder,
     visibleSections,
   });
+  if (!documentResult.success) {
+    return {
+      error:
+        documentResult.error.issues[0]?.message ??
+        "Check the storefront fields and try again.",
+    };
+  }
+  const document = documentResult.data;
+  const paymentResult = paymentDraftSchema.safeParse({
+    bankName: requiredText(formData, "bankName"),
+    accountName: requiredText(formData, "accountName"),
+    accountNumber: requiredText(formData, "accountNumber"),
+    transferReferenceTemplate: requiredText(
+      formData,
+      "transferReferenceTemplate",
+    ),
+    instructions: requiredText(formData, "paymentInstructions"),
+    disclaimer: requiredText(formData, "paymentDisclaimer"),
+  });
+  if (!paymentResult.success) {
+    return {
+      error:
+        paymentResult.error.issues[0]?.message ??
+        "Check the payment instruction fields and try again.",
+    };
+  }
+  const payment = paymentResult.data;
 
   const existingPayment = await db.boothPaymentInstruction.findUnique({
     where: { boothId },
@@ -130,29 +172,27 @@ export async function saveStorefrontAction(
         where: { boothId },
         create: {
           boothId,
-          bankName: requiredText(formData, "bankName"),
-          accountName: requiredText(formData, "accountName"),
-          accountNumber: requiredText(formData, "accountNumber"),
+          bankName: payment.bankName,
+          accountName: payment.accountName,
+          accountNumber: payment.accountNumber,
           qrObjectKey,
           transferReferenceTemplate:
-            requiredText(formData, "transferReferenceTemplate") ||
-            "CYF-{ORDER}",
-          instructions: requiredText(formData, "paymentInstructions"),
+            payment.transferReferenceTemplate || "CYF-{ORDER}",
+          instructions: payment.instructions,
           disclaimer:
-            requiredText(formData, "paymentDisclaimer") ||
+            payment.disclaimer ||
             "Bank transfers are reviewed manually. This storefront does not verify payment automatically.",
         },
         update: {
-          bankName: requiredText(formData, "bankName"),
-          accountName: requiredText(formData, "accountName"),
-          accountNumber: requiredText(formData, "accountNumber"),
+          bankName: payment.bankName,
+          accountName: payment.accountName,
+          accountNumber: payment.accountNumber,
           qrObjectKey,
           transferReferenceTemplate:
-            requiredText(formData, "transferReferenceTemplate") ||
-            "CYF-{ORDER}",
-          instructions: requiredText(formData, "paymentInstructions"),
+            payment.transferReferenceTemplate || "CYF-{ORDER}",
+          instructions: payment.instructions,
           disclaimer:
-            requiredText(formData, "paymentDisclaimer") ||
+            payment.disclaimer ||
             "Bank transfers are reviewed manually. This storefront does not verify payment automatically.",
         },
       });
@@ -263,17 +303,50 @@ async function saveProduct(
   const sku = requiredText(formData, "sku").toLocaleUpperCase();
   const rawPrice = requiredText(formData, "priceVnd");
   const priceVnd = Number(rawPrice);
+  const description = requiredText(formData, "description");
+  const eyebrow = requiredText(formData, "eyebrow");
+  const shortDescription = requiredText(formData, "shortDescription");
+  const variantLabel = requiredText(formData, "variantLabel") || "Standard";
+  const fulfillmentNote = requiredText(formData, "fulfillmentNote");
+  const imageAlt = requiredText(formData, "imageAlt");
+  const rawStockQuantity = requiredText(formData, "stockQuantity");
+  const stockQuantity = rawStockQuantity ? Number(rawStockQuantity) : null;
   if (
-    !name ||
+    name.length < 2 ||
+    name.length > 120 ||
     !slug ||
-    !sku ||
+    !/^[A-Z0-9][A-Z0-9._-]{0,79}$/.test(sku) ||
     !rawPrice ||
-    !Number.isFinite(priceVnd) ||
+    !Number.isSafeInteger(priceVnd) ||
     priceVnd < 0 ||
     priceVnd > MAX_PRODUCT_PRICE_VND
   ) {
     return {
-      error: `Name, slug, SKU, and a price between 0 and ${MAX_PRODUCT_PRICE_VND.toLocaleString("en-US")} VND are required.`,
+      error: `Use a 2-120 character name, a SKU made from letters, numbers, dots, underscores, or hyphens, and a whole-number price between 0 and ${MAX_PRODUCT_PRICE_VND.toLocaleString("en-US")} VND.`,
+    };
+  }
+  if (
+    description.length < 1 ||
+    description.length > 5_000 ||
+    eyebrow.length > 80 ||
+    shortDescription.length > 240 ||
+    variantLabel.length > 80 ||
+    fulfillmentNote.length > 500 ||
+    imageAlt.length > 300
+  ) {
+    return {
+      error:
+        "Keep the description under 5,000 characters and the supporting labels within their displayed limits.",
+    };
+  }
+  if (
+    stockQuantity !== null &&
+    (!Number.isSafeInteger(stockQuantity) ||
+      stockQuantity < 0 ||
+      stockQuantity > MAX_STOCK_QUANTITY)
+  ) {
+    return {
+      error: `Stock must be a whole number from 0 to ${MAX_STOCK_QUANTITY.toLocaleString("en-US")}, or blank when untracked.`,
     };
   }
 
@@ -291,8 +364,9 @@ async function saveProduct(
   const variantStatus = variantStatusResult.data;
   const tags = requiredText(formData, "tags")
     .split(",")
-    .map((tag) => tag.trim())
+    .map((tag) => tag.trim().toLocaleLowerCase())
     .filter(Boolean)
+    .filter((tag) => tag.length <= 40)
     .slice(0, 12);
   const imageFile = formData.get("productImage");
   const removeImage = booleanField(formData, "removeImage");
@@ -301,6 +375,7 @@ async function saveProduct(
         where: { id: productId, boothId },
         include: {
           images: { orderBy: { sortOrder: "asc" }, take: 1 },
+          variants: { orderBy: { sortOrder: "asc" }, take: 1 },
         },
       })
     : null;
@@ -350,27 +425,41 @@ async function saveProduct(
             name,
             slug,
             sku,
-            eyebrow: optionalText(formData, "eyebrow"),
-            shortDescription: optionalText(formData, "shortDescription"),
-            description: requiredText(formData, "description"),
+            eyebrow: eyebrow || null,
+            shortDescription: shortDescription || null,
+            description,
             priceCents,
             status,
             featured: booleanField(formData, "featured"),
             tags,
           },
         });
-        if (variantId) {
-          await transaction.productVariant.updateMany({
-            where: { id: variantId, productId },
+        const resolvedVariantId = variantId ?? existing?.variants[0]?.id;
+        if (resolvedVariantId) {
+          const updatedVariant = await transaction.productVariant.updateMany({
+            where: { id: resolvedVariantId, productId },
             data: {
               sku,
-              label: requiredText(formData, "variantLabel") || "Standard",
+              label: variantLabel,
               priceCents,
               status: variantStatus,
-              stockQuantity: optionalText(formData, "stockQuantity")
-                ? Math.max(0, parseInteger(formData.get("stockQuantity"), 0))
-                : null,
-              fulfillmentNote: optionalText(formData, "fulfillmentNote"),
+              stockQuantity,
+              fulfillmentNote: fulfillmentNote || null,
+            },
+          });
+          if (!updatedVariant.count) {
+            throw new Error("Product variant not found in this product.");
+          }
+        } else {
+          await transaction.productVariant.create({
+            data: {
+              productId,
+              sku,
+              label: variantLabel,
+              priceCents,
+              status: variantStatus,
+              stockQuantity,
+              fulfillmentNote: fulfillmentNote || null,
             },
           });
         }
@@ -381,9 +470,9 @@ async function saveProduct(
             name,
             slug,
             sku,
-            eyebrow: optionalText(formData, "eyebrow"),
-            shortDescription: optionalText(formData, "shortDescription"),
-            description: requiredText(formData, "description"),
+            eyebrow: eyebrow || null,
+            shortDescription: shortDescription || null,
+            description,
             priceCents,
             status,
             featured: booleanField(formData, "featured"),
@@ -391,13 +480,11 @@ async function saveProduct(
             variants: {
               create: {
                 sku,
-                label: requiredText(formData, "variantLabel") || "Standard",
+                label: variantLabel,
                 priceCents,
                 status: variantStatus,
-                stockQuantity: optionalText(formData, "stockQuantity")
-                  ? Math.max(0, parseInteger(formData.get("stockQuantity"), 0))
-                  : null,
-                fulfillmentNote: optionalText(formData, "fulfillmentNote"),
+                stockQuantity,
+                fulfillmentNote: fulfillmentNote || null,
               },
             },
           },
@@ -416,17 +503,14 @@ async function saveProduct(
             data: {
               productId: nextProductId,
               objectKey: imageObjectKey,
-              alt:
-                requiredText(formData, "imageAlt") ||
-                existingImage?.alt ||
-                name,
+              alt: imageAlt || existingImage?.alt || name,
             },
           });
         }
-      } else if (existingImage && requiredText(formData, "imageAlt")) {
+      } else if (existingImage && imageAlt) {
         await transaction.productImage.update({
           where: { id: existingImage.id },
-          data: { alt: requiredText(formData, "imageAlt") },
+          data: { alt: imageAlt },
         });
       }
       await transaction.auditLog.create({
@@ -452,7 +536,8 @@ async function saveProduct(
     }
     if (
       error instanceof Error &&
-      error.message === "Product not found in this booth."
+      (error.message === "Product not found in this booth." ||
+        error.message === "Product variant not found in this product.")
     ) {
       return {
         error: "That product is no longer available. Refresh and try again.",
@@ -564,66 +649,123 @@ export async function updateOrderStatusAction(
 
   try {
     const nextStatus = parsedStatus.data;
-    const { session } = await requireBoothRole(boothId, orderRoles);
-    const result = await db.$transaction(async (transaction) => {
-      const order = await transaction.order.findFirst({
-        where: { id: orderId, boothId },
-        select: {
-          code: true,
-          status: true,
-          confirmedAt: true,
-          confirmedById: true,
-        },
-      });
+    const { session, booth } = await requireBoothRole(boothId, orderRoles);
+    const result = await db.$transaction(
+      async (transaction) => {
+        const order = await transaction.order.findFirst({
+          where: { id: orderId, boothId },
+          select: {
+            code: true,
+            status: true,
+            confirmedAt: true,
+            confirmedById: true,
+            items: {
+              select: {
+                id: true,
+                productVariantId: true,
+                quantity: true,
+                inventoryDebited: true,
+              },
+            },
+          },
+        });
 
-      if (!order) return null;
-      if (order.status === nextStatus) {
-        return { code: order.code, changed: false };
-      }
+        if (!order) return { kind: "missing" } as const;
+        if (order.status === nextStatus) {
+          return { kind: "unchanged", code: order.code } as const;
+        }
+        if (
+          !canTransitionOrderStatus(order.status as OrderStatusName, nextStatus)
+        ) {
+          return {
+            kind: "invalid-transition",
+            code: order.code,
+            currentStatus: order.status,
+          } as const;
+        }
 
-      const now = new Date();
-      const keepsConfirmation =
-        nextStatus === "CONFIRMED" || nextStatus === "FULFILLED";
+        const now = new Date();
+        const keepsConfirmation =
+          nextStatus === "CONFIRMED" || nextStatus === "FULFILLED";
+        const updated = await transaction.order.updateMany({
+          where: { id: orderId, boothId, status: order.status },
+          data: {
+            status: nextStatus,
+            confirmedAt: keepsConfirmation ? (order.confirmedAt ?? now) : null,
+            confirmedById: keepsConfirmation
+              ? (order.confirmedById ?? session.user.id)
+              : null,
+            fulfilledAt: nextStatus === "FULFILLED" ? now : null,
+            expiresAt: nextStatus === "EXPIRED" ? now : null,
+          },
+        });
+        if (!updated.count) return { kind: "conflict" } as const;
 
-      const updated = await transaction.order.updateMany({
-        where: { id: orderId, boothId },
-        data: {
-          status: nextStatus,
-          confirmedAt: keepsConfirmation ? (order.confirmedAt ?? now) : null,
-          confirmedById: keepsConfirmation
-            ? (order.confirmedById ?? session.user.id)
-            : null,
-          fulfilledAt: nextStatus === "FULFILLED" ? now : null,
-        },
-      });
-      if (!updated.count) return null;
-      await transaction.auditLog.create({
-        data: {
-          boothId,
-          actorUserId: session.user.id,
-          action: `order.${nextStatus.toLocaleLowerCase()}`,
-          entityType: "Order",
-          entityId: orderId,
-          metadata: { manualReview: true },
-        },
-      });
-      return { code: order.code, changed: true };
-    });
+        let inventoryReleased = false;
+        if (releasesInventory(nextStatus)) {
+          for (const item of order.items) {
+            if (!item.inventoryDebited || !item.productVariantId) continue;
+            await transaction.productVariant.updateMany({
+              where: {
+                id: item.productVariantId,
+                stockQuantity: { not: null },
+              },
+              data: { stockQuantity: { increment: item.quantity } },
+            });
+            inventoryReleased = true;
+          }
+          await transaction.orderItem.updateMany({
+            where: { orderId, inventoryDebited: true },
+            data: { inventoryDebited: false },
+          });
+        }
 
-    if (!result) {
+        await transaction.auditLog.create({
+          data: {
+            boothId,
+            actorUserId: session.user.id,
+            action: `order.${nextStatus.toLocaleLowerCase()}`,
+            entityType: "Order",
+            entityId: orderId,
+            metadata: { manualReview: true, inventoryReleased },
+          },
+        });
+        return { kind: "changed", code: order.code } as const;
+      },
+      { isolationLevel: "Serializable" },
+    );
+
+    if (result.kind === "missing") {
       return {
         status: "error",
         message: "This order was not found in the active booth.",
       };
     }
+    if (result.kind === "conflict") {
+      return {
+        status: "error",
+        message:
+          "This order changed in another session. Refresh and try again.",
+      };
+    }
+    if (result.kind === "invalid-transition") {
+      return {
+        status: "error",
+        message: `${result.code} cannot move from ${result.currentStatus.toLocaleLowerCase()} to ${nextStatus.toLocaleLowerCase()}. Terminal statuses cannot be reopened.`,
+      };
+    }
 
-    if (result.changed) revalidatePath(`/manage/${boothId}/orders`);
+    if (result.kind === "changed") {
+      revalidatePath(`/manage/${boothId}/orders`);
+      revalidatePath(`/s/${booth.slug}`);
+    }
     const label = nextStatus.toLocaleLowerCase().replaceAll("_", " ");
     return {
       status: "success",
-      message: result.changed
-        ? `${result.code} is now ${label}.`
-        : `${result.code} is already ${label}.`,
+      message:
+        result.kind === "changed"
+          ? `${result.code} is now ${label}.`
+          : `${result.code} is already ${label}.`,
     };
   } catch (error) {
     console.error("Order status update failed", error);

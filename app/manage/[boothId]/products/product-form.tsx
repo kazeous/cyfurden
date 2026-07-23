@@ -178,6 +178,8 @@ export function ProductForm({
                 name="name"
                 defaultValue={value.name}
                 required
+                minLength={2}
+                maxLength={120}
                 autoFocus={!value.id}
               />
             </label>
@@ -186,6 +188,7 @@ export function ProductForm({
               <input
                 name="slug"
                 defaultValue={value.slug}
+                maxLength={70}
                 placeholder="generated-from-name"
                 aria-describedby="slug-help"
               />
@@ -195,7 +198,13 @@ export function ProductForm({
             </label>
             <label className={styles.field}>
               SKU
-              <input name="sku" defaultValue={value.sku} required />
+              <input
+                name="sku"
+                defaultValue={value.sku}
+                required
+                maxLength={80}
+                pattern="[A-Za-z0-9][A-Za-z0-9._-]*"
+              />
             </label>
           </div>
         </section>
@@ -242,7 +251,11 @@ export function ProductForm({
             </label>
             <label className={styles.field}>
               Variant label
-              <input name="variantLabel" defaultValue={value.variantLabel} />
+              <input
+                name="variantLabel"
+                defaultValue={value.variantLabel}
+                maxLength={80}
+              />
             </label>
             <label className={styles.field}>
               Stock quantity
@@ -250,6 +263,8 @@ export function ProductForm({
                 name="stockQuantity"
                 type="number"
                 min="0"
+                max="2147483647"
+                step="1"
                 defaultValue={value.stockQuantity ?? ""}
                 placeholder="Untracked"
               />
@@ -260,6 +275,7 @@ export function ProductForm({
               <input
                 name="fulfillmentNote"
                 defaultValue={value.fulfillmentNote}
+                maxLength={500}
               />
             </label>
           </div>
@@ -272,13 +288,14 @@ export function ProductForm({
           <h3 id="details-heading">Details</h3>
           <label className={styles.field}>
             Eyebrow
-            <input name="eyebrow" defaultValue={value.eyebrow} />
+            <input name="eyebrow" defaultValue={value.eyebrow} maxLength={80} />
           </label>
           <label className={styles.field}>
             Short description
             <input
               name="shortDescription"
               defaultValue={value.shortDescription}
+              maxLength={240}
             />
           </label>
           <label className={styles.field}>
@@ -287,11 +304,12 @@ export function ProductForm({
               name="description"
               defaultValue={value.description}
               required
+              maxLength={5000}
             />
           </label>
           <label className={styles.field}>
             Tags
-            <input name="tags" defaultValue={value.tags} />
+            <input name="tags" defaultValue={value.tags} maxLength={500} />
             <small>Comma-separated, up to twelve tags.</small>
           </label>
         </section>
@@ -368,6 +386,7 @@ export function ProductForm({
               name="imageAlt"
               defaultValue={value.imageAlt}
               disabled={!canEdit}
+              maxLength={300}
             />
           </label>
         </section>
