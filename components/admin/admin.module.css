@@ -628,6 +628,88 @@
   outline-offset: 1px;
 }
 
+.dangerZone {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.65fr);
+  gap: 28px;
+  margin-top: 28px;
+  padding: 24px;
+  border: 1px solid var(--color-error-line);
+  border-radius: 12px;
+  background: var(--color-error-soft);
+}
+
+.dangerZone h2 {
+  margin: 4px 0 8px;
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+}
+
+.dangerZone p {
+  max-width: 68ch;
+  margin: 0;
+  color: var(--admin-muted);
+  font-size: 0.82rem;
+  line-height: 1.65;
+}
+
+.dangerEyebrow {
+  color: var(--color-error-ink) !important;
+  font-size: 0.68rem !important;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.dangerForm {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.dangerForm label {
+  display: grid;
+  gap: 7px;
+  color: var(--color-ink);
+  font-size: 0.76rem;
+}
+
+.dangerForm input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--admin-line);
+  border-radius: 8px;
+  background: var(--admin-panel);
+  color: var(--color-ink);
+  padding: 0 12px;
+}
+
+.dangerForm input:focus-visible,
+.dangerForm button:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.dangerForm button {
+  min-height: 44px;
+  border: 1px solid var(--color-error);
+  border-radius: 8px;
+  background: var(--color-error);
+  color: white;
+  font-weight: 800;
+}
+
+.dangerForm button:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
+.dangerError {
+  color: var(--color-error-ink) !important;
+  font-weight: 700;
+}
+
 .field textarea {
   min-height: 104px;
   resize: vertical;
@@ -815,6 +897,10 @@
 }
 
 @media (max-width: 900px) {
+  .dangerZone {
+    grid-template-columns: 1fr;
+  }
+
   .adminApp {
     display: block;
     padding-bottom: 76px;

@@ -72,6 +72,7 @@ test("payment handoff requires a destination and survives JSON round trips", () 
     bankName: "Example Bank",
     accountName: "Studio Owner",
     accountNumber: "123456",
+    paymentLabel: "Bank transfer",
     qrObjectKey: null,
     instructions: "Transfer the exact amount.",
     disclaimer: "Manual review only.",
@@ -84,4 +85,13 @@ test("transfer references always retain the private reservation code", () => {
     "ORDER-CYF-ABC",
   );
   assert.equal(renderTransferReference("BOOTH", "CYF-ABC"), "BOOTH CYF-ABC");
+  assert.equal(
+    renderTransferReference(
+      "{code} {item} {amount}",
+      "CYF-ABC",
+      "Moon pin",
+      "125000",
+    ),
+    "CYF-ABC Moon pin 125000",
+  );
 });

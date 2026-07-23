@@ -89,12 +89,15 @@ export type PaymentInstructionSource = {
   bankName: string;
   accountName: string;
   accountNumber: string;
+  paymentLabel?: string;
   qrObjectKey: string | null;
   instructions: string;
   disclaimer: string;
 };
 
-export type OrderPaymentSnapshot = PaymentInstructionSource;
+export type OrderPaymentSnapshot = PaymentInstructionSource & {
+  paymentLabel: string;
+};
 
 const clean = (value: string) => value.trim();
 
@@ -107,6 +110,8 @@ export function createOrderPaymentSnapshot(
     bankName: clean(source.bankName),
     accountName: clean(source.accountName),
     accountNumber: clean(source.accountNumber),
+    paymentLabel:
+      clean(source.paymentLabel ?? "Bank transfer") || "Bank transfer",
     qrObjectKey: source.qrObjectKey?.trim() || null,
     instructions: clean(source.instructions),
     disclaimer: clean(source.disclaimer),
@@ -132,6 +137,10 @@ export function readOrderPaymentSnapshot(
     typeof candidate.accountName !== "string" ||
     typeof candidate.accountNumber !== "string" ||
     !(
+      candidate.paymentLabel === undefined ||
+      typeof candidate.paymentLabel === "string"
+    ) ||
+    !(
       candidate.qrObjectKey === null ||
       typeof candidate.qrObjectKey === "string"
     ) ||
@@ -145,15 +154,32 @@ export function readOrderPaymentSnapshot(
     bankName: candidate.bankName,
     accountName: candidate.accountName,
     accountNumber: candidate.accountNumber,
+    paymentLabel: candidate.paymentLabel ?? "Bank transfer",
     qrObjectKey: candidate.qrObjectKey,
     instructions: candidate.instructions,
     disclaimer: candidate.disclaimer,
   });
 }
 
-export function renderTransferReference(template: string, orderCode: string) {
+export function renderTransferReference(
+  template: string,
+  orderCode: string,
+  itemSummary = "order",
+  amount = "",
+) {
   const normalizedTemplate = template.trim() || "CYF-{ORDER}";
-  return normalizedTemplate.includes("{ORDER}")
-    ? normalizedTemplate.replaceAll("{ORDER}", orderCode)
-    : `${normalizedTemplate} ${orderCode}`;
+  const replacements: Record<string, string> = {
+    "{ORDER}": orderCode,
+    "{code}": orderCode,
+    "{item}": itemSummary,
+    "{amount}": amount,
+  };
+  const hasCodeToken =
+    normalizedTemplate.includes("{ORDER}") ||
+    normalizedTemplate.includes("{code}");
+  const rendered = Object.entries(replacements).reduce(
+    (value, [token, replacement]) => value.replaceAll(token, replacement),
+    normalizedTemplate,
+  );
+  return hasCodeToken ? rendered : `${rendered} ${orderCode}`;
 }

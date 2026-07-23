@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { requireUser } from "@/lib/authorization";
 import { db } from "@/lib/db";
+import { resolveOracleImageUrl } from "@/lib/oracle-images";
 import { SignOutButton } from "./sign-out-button";
 import styles from "./dashboard.module.css";
 
@@ -10,7 +12,16 @@ export const metadata: Metadata = {
   description: "Choose a Cyfurden booth to manage or create a new one.",
 };
 
-function BoothMark({ name }: { name: string }) {
+function BoothMark({
+  name,
+  logoObjectKey,
+}: {
+  name: string;
+  logoObjectKey: string | null;
+}) {
+  const logoUrl = logoObjectKey
+    ? resolveOracleImageUrl({ objectKey: logoObjectKey })
+    : undefined;
   const initials = name
     .split(/\s+/)
     .filter(Boolean)
@@ -19,7 +30,15 @@ function BoothMark({ name }: { name: string }) {
     .join("")
     .toUpperCase();
 
-  return <span className={styles.boothMark}>{initials || "C"}</span>;
+  return (
+    <span className={styles.boothMark}>
+      {logoUrl ? (
+        <Image src={logoUrl} alt="" width={52} height={52} unoptimized />
+      ) : (
+        initials || "C"
+      )}
+    </span>
+  );
 }
 
 function ArrowIcon() {
@@ -38,7 +57,12 @@ function ExternalIcon() {
   );
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ deleted?: string }>;
+}) {
+  const messages = await searchParams;
   const session = await requireUser();
   const memberships = await db.boothMembership.findMany({
     where: {
@@ -79,6 +103,11 @@ export default async function DashboardPage() {
       </header>
 
       <section className={styles.workspace} aria-labelledby="dashboard-title">
+        {messages.deleted ? (
+          <p className={styles.notice} role="status">
+            Booth deleted successfully.
+          </p>
+        ) : null}
         <div className={styles.pageHeader}>
           <div className={styles.heading}>
             <p className={styles.eyebrow}>Booth workspaces</p>
@@ -100,7 +129,10 @@ export default async function DashboardPage() {
               return (
                 <article className={styles.boothCard} key={booth.id}>
                   <div className={styles.boothCardHead}>
-                    <BoothMark name={booth.name} />
+                    <BoothMark
+                      name={booth.name}
+                      logoObjectKey={booth.logoObjectKey}
+                    />
                     <div className={styles.boothIdentity}>
                       <h2>{booth.name}</h2>
                       <span>cyfurden · /s/{booth.slug}</span>

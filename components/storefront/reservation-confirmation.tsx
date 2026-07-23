@@ -9,6 +9,7 @@ type PaymentDetails = {
   bankName: string;
   accountName: string;
   accountNumber: string;
+  paymentLabel: string;
   instructions: string;
   disclaimer: string;
   qrUrl?: string;
@@ -176,7 +177,9 @@ export function ReservationConfirmation({
             aria-labelledby="payment-heading"
           >
             <div className={styles.sectionHeading}>
-              <p className={styles.eyebrow}>Manual bank transfer</p>
+              <p className={styles.eyebrow}>
+                {payment?.paymentLabel || "Manual bank transfer"}
+              </p>
               <h2 id="payment-heading">
                 {paymentRequired
                   ? "Transfer to finish your reservation"

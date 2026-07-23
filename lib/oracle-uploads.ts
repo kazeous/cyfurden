@@ -13,7 +13,7 @@ import {
   validateProductImageBytes,
 } from "@/lib/payment-qr";
 
-type OracleUploadConfig = {
+export type OracleUploadConfig = {
   accessKeyId: string;
   bucket: string;
   endpoint: string;
@@ -47,7 +47,7 @@ const requiredOracleEnvironment = [
 export const isOracleQrUploadConfigured = () =>
   requiredOracleEnvironment.every((key) => Boolean(process.env[key]?.trim()));
 
-function getOracleUploadConfig(): OracleUploadConfig {
+export function getOracleUploadConfig(): OracleUploadConfig {
   const namespace = process.env.ORACLE_OBJECT_STORAGE_NAMESPACE?.trim();
   const region = process.env.ORACLE_OBJECT_STORAGE_REGION?.trim();
   const bucket = process.env.ORACLE_OBJECT_STORAGE_BUCKET?.trim();
@@ -72,7 +72,7 @@ function getOracleUploadConfig(): OracleUploadConfig {
   };
 }
 
-function createOracleClient(config: OracleUploadConfig) {
+export function createOracleClient(config: OracleUploadConfig) {
   return new S3Client({
     credentials: {
       accessKeyId: config.accessKeyId,

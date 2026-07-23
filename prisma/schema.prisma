@@ -145,6 +145,8 @@ model Booth {
   id                  String                   @id @default(cuid())
   slug                String                   @unique
   name                String
+  logoObjectKey       String?
+  socialLinks         Json?
   status              BoothStatus              @default(DRAFT)
   locale              String                   @default("en")
   currency            String                   @default("VND")
@@ -225,6 +227,7 @@ model BoothPaymentInstruction {
   bankName                  String
   accountName               String
   accountNumber             String
+  paymentLabel              String   @default("Bank transfer")
   qrObjectKey               String?
   transferReferenceTemplate String   @default("CYF-{ORDER}")
   instructions              String   @db.Text

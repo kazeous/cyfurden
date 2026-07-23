@@ -74,6 +74,7 @@ export default async function ReservationPage({
               bankName: payment.bankName,
               accountName: payment.accountName,
               accountNumber: payment.accountNumber,
+              paymentLabel: payment.paymentLabel,
               instructions: payment.instructions,
               disclaimer: payment.disclaimer,
               qrUrl,

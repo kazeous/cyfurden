@@ -212,10 +212,16 @@ export async function createPublicOrderAction(
             BigInt(0),
           );
           const code = `CYF-${randomBytes(10).toString("hex").toUpperCase()}`;
+          const itemSummary =
+            pricedLines.length === 1
+              ? pricedLines[0].titleSnapshot
+              : `${pricedLines[0].titleSnapshot} +${pricedLines.length - 1}`;
           const transferReference = renderTransferReference(
             booth.paymentInstructions?.transferReferenceTemplate ??
               "CYF-{ORDER}",
             code,
+            itemSummary,
+            (totalCents / BigInt(100)).toString(),
           );
           const order = await transaction.order.create({
             data: {

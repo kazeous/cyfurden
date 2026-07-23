@@ -4,6 +4,10 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { requireUser } from "@/lib/authorization";
+import {
+  canOwnAnotherBooth,
+  OWNED_BOOTH_LIMIT_MESSAGE,
+} from "@/lib/booth-limit";
 import { db } from "@/lib/db";
 import { createDefaultStorefrontDocument } from "@/lib/storefront-document";
 
@@ -50,74 +54,103 @@ export async function createBooth(
     };
   }
 
-  let boothId: string;
+  let boothId: string | null = null;
 
   try {
-    boothId = await db.$transaction(async (transaction) => {
-      const initialStorefrontDocument = createDefaultStorefrontDocument(
-        parsed.data.name,
-      );
-      const booth = await transaction.booth.create({
-        data: {
-          name: parsed.data.name,
-          slug: parsed.data.slug,
-          ownerId: session.user.id,
-          status: "DRAFT",
-        },
-        select: { id: true },
-      });
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        boothId = await db.$transaction(
+          async (transaction) => {
+            const ownedBoothCount = await transaction.booth.count({
+              where: { ownerId: session.user.id },
+            });
+            if (!canOwnAnotherBooth(ownedBoothCount)) return null;
 
-      await Promise.all([
-        transaction.boothMembership.create({
-          data: {
-            boothId: booth.id,
-            userId: session.user.id,
-            role: "OWNER",
-            status: "ACTIVE",
-          },
-        }),
-        transaction.storefrontConfig.create({
-          data: {
-            boothId: booth.id,
-            draftDocument: initialStorefrontDocument,
-            updatedById: session.user.id,
-          },
-        }),
-        transaction.boothPaymentInstruction.create({
-          data: {
-            boothId: booth.id,
-            bankName: "",
-            accountName: "",
-            accountNumber: "",
-            instructions:
-              "Add your bank-transfer instructions before accepting orders.",
-            disclaimer:
-              "Bank transfers are reviewed manually and are never verified automatically.",
-          },
-        }),
-        transaction.gachaConfig.create({
-          data: {
-            boothId: booth.id,
-            enabled: false,
-            rates: {
-              COMMON: 80,
-              RARE: 15,
-              EPIC: 4,
-              LEGENDARY: 1,
-            },
-          },
-        }),
-        transaction.quantityPromotion.create({
-          data: {
-            boothId: booth.id,
-            name: "Buy 3, get 1",
-            active: false,
-          },
-        }),
-      ]);
+            const initialStorefrontDocument = createDefaultStorefrontDocument(
+              parsed.data.name,
+            );
+            const booth = await transaction.booth.create({
+              data: {
+                name: parsed.data.name,
+                slug: parsed.data.slug,
+                ownerId: session.user.id,
+                status: "DRAFT",
+              },
+              select: { id: true },
+            });
 
-      return booth.id;
-    });
+            await Promise.all([
+              transaction.boothMembership.create({
+                data: {
+                  boothId: booth.id,
+                  userId: session.user.id,
+                  role: "OWNER",
+                  status: "ACTIVE",
+                },
+              }),
+              transaction.storefrontConfig.create({
+                data: {
+                  boothId: booth.id,
+                  draftDocument: initialStorefrontDocument,
+                  updatedById: session.user.id,
+                },
+              }),
+              transaction.boothPaymentInstruction.create({
+                data: {
+                  boothId: booth.id,
+                  bankName: "",
+                  accountName: "",
+                  accountNumber: "",
+                  paymentLabel: "Bank transfer",
+                  instructions:
+                    "Add your bank-transfer instructions before accepting orders.",
+                  disclaimer:
+                    "Bank transfers are reviewed manually and are never verified automatically.",
+                },
+              }),
+              transaction.gachaConfig.create({
+                data: {
+                  boothId: booth.id,
+                  enabled: false,
+                  rates: {
+                    COMMON: 80,
+                    RARE: 15,
+                    EPIC: 4,
+                    LEGENDARY: 1,
+                  },
+                },
+              }),
+              transaction.quantityPromotion.create({
+                data: {
+                  boothId: booth.id,
+                  name: "Buy 3, get 1",
+                  active: false,
+                },
+              }),
+            ]);
+
+            return booth.id;
+          },
+          {
+            isolationLevel: "Serializable",
+          },
+        );
+
+        break;
+      } catch (error) {
+        const isSerializationConflict =
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === "P2034";
+        if (isSerializationConflict && attempt < 2) continue;
+        throw error;
+      }
+    }
+
+    if (!boothId) {
+      return {
+        message: OWNED_BOOTH_LIMIT_MESSAGE,
+      };
+    }
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&

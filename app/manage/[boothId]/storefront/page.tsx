@@ -1,11 +1,14 @@
 import { StorefrontDesigner } from "@/components/admin/storefront-designer";
+import { BoothDangerZone } from "@/components/admin/booth-danger-zone";
 import {
   PageHeading,
   adminStyles as styles,
 } from "@/components/admin/admin-shell";
 import { requireBoothRole } from "@/lib/authorization";
 import { db } from "@/lib/db";
+import { resolveOracleImageUrl } from "@/lib/oracle-images";
 import { isOracleQrUploadConfigured } from "@/lib/oracle-uploads";
+import { readBoothSocialLinks } from "@/lib/shop-settings";
 import {
   readStorefrontDocument,
   storefrontCornerRadiusPixels,
@@ -75,6 +78,7 @@ export default async function StorefrontPage({
           bankName: payment?.bankName ?? "Demo Bank",
           accountName: payment?.accountName ?? document.creatorName,
           accountNumber: payment?.accountNumber ?? "0000000000",
+          paymentLabel: payment?.paymentLabel ?? "Bank transfer",
           transferReferenceTemplate:
             payment?.transferReferenceTemplate ?? "CYF-{ORDER}",
           qrObjectKey: payment?.qrObjectKey ?? "",
@@ -85,10 +89,22 @@ export default async function StorefrontPage({
             payment?.disclaimer ??
             "Bank transfers are reviewed manually. Cyfurden does not verify or process payment automatically.",
         }}
+        identity={{
+          logoObjectKey: booth.logoObjectKey ?? "",
+          logoUrl: booth.logoObjectKey
+            ? resolveOracleImageUrl({ objectKey: booth.logoObjectKey })
+            : undefined,
+          socialLinks: readBoothSocialLinks(booth.socialLinks),
+        }}
         editVersion={config?.editVersion ?? 1}
         qrUploadConfigured={isOracleQrUploadConfigured()}
         productCount={productCount}
         featuredCount={featuredCount}
+      />
+      <BoothDangerZone
+        boothId={booth.id}
+        boothName={booth.name}
+        boothSlug={booth.slug}
       />
     </>
   );

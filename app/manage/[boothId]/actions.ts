@@ -21,9 +21,19 @@ import {
   uploadProductImage,
 } from "@/lib/oracle-uploads";
 import {
+  OracleLogoVerificationError,
+  verifyBoothLogoUpload,
+} from "@/lib/oracle-presign";
+import {
   storefrontDocumentSchema,
   storefrontSectionIds,
 } from "@/lib/storefront-document";
+import {
+  boothSocialLinksSchema,
+  compactBoothSocialLinks,
+  isBoothLogoObjectKey,
+  socialPlatforms,
+} from "@/lib/shop-settings";
 
 const editorRoles = ["OWNER", "ADMIN"] as const;
 const orderRoles = ["OWNER", "ADMIN", "STAFF"] as const;
@@ -59,6 +69,7 @@ const paymentDraftSchema = z.object({
   bankName: z.string().trim().max(120),
   accountName: z.string().trim().max(120),
   accountNumber: z.string().trim().max(80),
+  paymentLabel: z.string().trim().min(2).max(80),
   transferReferenceTemplate: z.string().trim().max(120),
   instructions: z.string().trim().max(2_000),
   disclaimer: z.string().trim().max(1_000),
@@ -115,6 +126,7 @@ export async function saveStorefrontAction(
     bankName: requiredText(formData, "bankName"),
     accountName: requiredText(formData, "accountName"),
     accountNumber: requiredText(formData, "accountNumber"),
+    paymentLabel: requiredText(formData, "paymentLabel"),
     transferReferenceTemplate: requiredText(
       formData,
       "transferReferenceTemplate",
@@ -130,6 +142,38 @@ export async function saveStorefrontAction(
     };
   }
   const payment = paymentResult.data;
+  const socialResult = boothSocialLinksSchema.safeParse(
+    Object.fromEntries(
+      socialPlatforms.map(({ id }) => [
+        id,
+        requiredText(formData, `social-${id}`),
+      ]),
+    ),
+  );
+  if (!socialResult.success) {
+    return {
+      error:
+        socialResult.error.issues[0]?.message ??
+        "Check the social links and try again.",
+    };
+  }
+  const logoObjectKey = requiredText(formData, "logoObjectKey");
+  if (logoObjectKey && !isBoothLogoObjectKey(boothId, logoObjectKey)) {
+    return {
+      error:
+        "The selected logo does not belong to this booth. Upload it again.",
+    };
+  }
+  if (logoObjectKey && logoObjectKey !== booth.logoObjectKey) {
+    try {
+      await verifyBoothLogoUpload({ boothId, objectKey: logoObjectKey });
+    } catch (error) {
+      if (error instanceof OracleLogoVerificationError) {
+        return { error: error.message };
+      }
+      throw error;
+    }
+  }
 
   const existingPayment = await db.boothPaymentInstruction.findUnique({
     where: { boothId },
@@ -175,6 +219,7 @@ export async function saveStorefrontAction(
           bankName: payment.bankName,
           accountName: payment.accountName,
           accountNumber: payment.accountNumber,
+          paymentLabel: payment.paymentLabel,
           qrObjectKey,
           transferReferenceTemplate:
             payment.transferReferenceTemplate || "CYF-{ORDER}",
@@ -187,6 +232,7 @@ export async function saveStorefrontAction(
           bankName: payment.bankName,
           accountName: payment.accountName,
           accountNumber: payment.accountNumber,
+          paymentLabel: payment.paymentLabel,
           qrObjectKey,
           transferReferenceTemplate:
             payment.transferReferenceTemplate || "CYF-{ORDER}",
@@ -194,6 +240,14 @@ export async function saveStorefrontAction(
           disclaimer:
             payment.disclaimer ||
             "Bank transfers are reviewed manually. This storefront does not verify payment automatically.",
+        },
+      });
+      await transaction.booth.update({
+        where: { id: boothId },
+        data: {
+          name: document.name,
+          logoObjectKey: logoObjectKey || null,
+          socialLinks: compactBoothSocialLinks(socialResult.data),
         },
       });
       await transaction.auditLog.create({
@@ -260,6 +314,48 @@ export async function publishStorefrontAction(formData: FormData) {
   revalidatePath(`/manage/${boothId}/storefront`);
   revalidatePath(`/s/${booth.slug}`);
   redirect(`/manage/${boothId}/storefront?published=1`);
+}
+
+export type DeleteBoothState = { error: string | null };
+
+export async function deleteBoothAction(
+  _previousState: DeleteBoothState,
+  formData: FormData,
+): Promise<DeleteBoothState> {
+  const boothId = requiredText(formData, "boothId");
+  const confirmation = requiredText(formData, "confirmation");
+  const { session, booth } = await requireBoothRole(boothId, ["OWNER"]);
+
+  if (booth.ownerId !== session.user.id) {
+    return { error: "Only the booth owner can delete this booth." };
+  }
+  if (confirmation !== booth.slug) {
+    return { error: `Type ${booth.slug} exactly to confirm deletion.` };
+  }
+
+  const result = await db.$transaction(
+    async (transaction) => {
+      const orderCount = await transaction.order.count({ where: { boothId } });
+      if (orderCount > 0) {
+        return {
+          error:
+            "This booth has order history and cannot be deleted. Archive support belongs to a later lifecycle milestone.",
+        };
+      }
+
+      const deleted = await transaction.booth.deleteMany({
+        where: { id: boothId, ownerId: session.user.id },
+      });
+      return deleted.count
+        ? { error: null }
+        : { error: "The booth no longer exists or is no longer yours." };
+    },
+    { isolationLevel: "Serializable" },
+  );
+
+  if (result.error) return result;
+  revalidatePath("/dashboard");
+  redirect("/dashboard?deleted=1");
 }
 
 const productStatusSchema = z.enum(["DRAFT", "LIVE", "SOLD_OUT", "HIDDEN"]);

@@ -14,8 +14,10 @@ import {
   publishStorefrontAction,
   saveStorefrontAction,
 } from "@/app/manage/[boothId]/actions";
+import { BoothIdentityControls } from "./booth-identity-controls";
 import { resolveOracleImageUrl } from "@/lib/oracle-images";
 import { PAYMENT_QR_MAX_BYTES, paymentQrAccept } from "@/lib/payment-qr";
+import type { BoothSocialLinks } from "@/lib/shop-settings";
 import {
   type StorefrontDocument,
   storefrontCornerRadiusPixels,
@@ -32,6 +34,7 @@ export type StorefrontPaymentDraft = {
   bankName: string;
   accountName: string;
   accountNumber: string;
+  paymentLabel: string;
   transferReferenceTemplate: string;
   qrObjectKey: string;
   instructions: string;
@@ -183,6 +186,7 @@ const paymentFieldNames = [
   "bankName",
   "accountName",
   "accountNumber",
+  "paymentLabel",
   "transferReferenceTemplate",
   "instructions",
   "disclaimer",
@@ -229,6 +233,7 @@ export function StorefrontDesigner({
   boothStatus,
   document: initialDocument,
   payment: initialPayment,
+  identity,
   editVersion,
   qrUploadConfigured,
   productCount,
@@ -238,6 +243,11 @@ export function StorefrontDesigner({
   boothStatus: string;
   document: StorefrontDocument;
   payment: StorefrontPaymentDraft;
+  identity: {
+    logoObjectKey: string;
+    logoUrl?: string;
+    socialLinks: BoothSocialLinks;
+  };
   editVersion: number;
   qrUploadConfigured: boolean;
   productCount: number;
@@ -258,6 +268,7 @@ export function StorefrontDesigner({
   const [qrPreviewUrl, setQrPreviewUrl] = useState<string | null>(null);
   const [qrSelectionError, setQrSelectionError] = useState<string | null>(null);
   const [removeQr, setRemoveQr] = useState(false);
+  const [logoUploadBusy, setLogoUploadBusy] = useState(false);
   const [saveState, saveAction] = useActionState(saveStorefrontAction, {
     error: null,
   });
@@ -874,6 +885,16 @@ export function StorefrontDesigner({
                     </div>
                   </div>
                   <div className={styles.fieldGrid}>
+                    <Field label="Payment label">
+                      <input
+                        value={payment.paymentLabel}
+                        required
+                        maxLength={80}
+                        onChange={(event) =>
+                          updatePayment("paymentLabel", event.target.value)
+                        }
+                      />
+                    </Field>
                     <Field label="Bank name">
                       <input
                         value={payment.bankName}
@@ -901,7 +922,10 @@ export function StorefrontDesigner({
                         }
                       />
                     </Field>
-                    <Field label="Reference template">
+                    <Field
+                      label="Transfer message template"
+                      hint="Supports {code}, {item}, and {amount}. {ORDER} remains available for existing booths."
+                    >
                       <input
                         value={payment.transferReferenceTemplate}
                         onChange={(event) =>
@@ -1046,6 +1070,18 @@ export function StorefrontDesigner({
             </section>
           ) : null}
 
+          <div hidden={tab !== "content" || selectedSection !== "booth-info"}>
+            <BoothIdentityControls
+              boothId={boothId}
+              initialLogoObjectKey={identity.logoObjectKey}
+              initialLogoUrl={identity.logoUrl}
+              initialSocialLinks={identity.socialLinks}
+              uploadConfigured={qrUploadConfigured}
+              onBusyChange={setLogoUploadBusy}
+              onDirty={() => setDirty(true)}
+            />
+          </div>
+
           {tab === "style" ? (
             <section
               id="storefront-style-panel"
@@ -1135,6 +1171,7 @@ export function StorefrontDesigner({
           </span>
           <SubmitButton
             className={styles.saveButton}
+            disabled={logoUploadBusy}
             pendingLabel="Saving draft..."
           >
             Save draft

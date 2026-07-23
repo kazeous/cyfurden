@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import {
   createPublicOrderAction,
@@ -122,11 +123,16 @@ function ProductArt({ product }: { product: ProductDto }) {
 
 export function ManagedStorefront({
   booth,
+  identity,
   document,
   products,
   canAcceptReservations,
 }: {
   booth: { id: string; slug: string };
+  identity: {
+    logoUrl?: string;
+    socialLinks: Array<{ id: string; label: string; url: string }>;
+  };
   document: StorefrontDocument;
   products: ProductDto[];
   canAcceptReservations: boolean;
@@ -314,6 +320,23 @@ export function ManagedStorefront({
             <p className={styles.eyebrow}>Booth guide</p>
             <h2>{document.creatorName}</h2>
             <p>{document.creatorBio}</p>
+            {document.creatorLocation ? (
+              <small>{document.creatorLocation}</small>
+            ) : null}
+            {identity.socialLinks.length ? (
+              <nav className={styles.socialLinks} aria-label="Creator profiles">
+                {identity.socialLinks.map((social) => (
+                  <a
+                    href={social.url}
+                    key={social.id}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {social.label}
+                  </a>
+                ))}
+              </nav>
+            ) : null}
             <small>
               {document.eventVenue} · {document.eventBoothLabel}
             </small>
@@ -472,7 +495,17 @@ export function ManagedStorefront({
       <header className={styles.topbar}>
         <div className={styles.brand}>
           <span className={styles.brandMark} aria-hidden="true">
-            C
+            {identity.logoUrl ? (
+              <Image
+                src={identity.logoUrl}
+                alt=""
+                width={40}
+                height={40}
+                unoptimized
+              />
+            ) : (
+              "C"
+            )}
           </span>
           <span>
             <strong>{document.name}</strong>

@@ -4,6 +4,8 @@ import { notFound, redirect } from "next/navigation";
 import { ManagedStorefront } from "@/components/storefront/managed-storefront";
 import { db } from "@/lib/db";
 import { createOrderPaymentSnapshot } from "@/lib/order-rules";
+import { resolveOracleImageUrl } from "@/lib/oracle-images";
+import { readBoothSocialLinks, socialPlatforms } from "@/lib/shop-settings";
 import { readStorefrontDocument } from "@/lib/storefront-document";
 
 async function getManagedBooth(slug: string) {
@@ -112,9 +114,18 @@ export default async function PublicBoothPage({
       fulfillmentNote: variant.fulfillmentNote,
     })),
   }));
+  const socialLinks = readBoothSocialLinks(managed.socialLinks);
   return (
     <ManagedStorefront
       booth={{ id: managed.id, slug: managed.slug }}
+      identity={{
+        logoUrl: managed.logoObjectKey
+          ? resolveOracleImageUrl({ objectKey: managed.logoObjectKey })
+          : undefined,
+        socialLinks: socialPlatforms.flatMap(({ id, label }) =>
+          socialLinks[id] ? [{ id, label, url: socialLinks[id] }] : [],
+        ),
+      }}
       document={document}
       products={products}
       canAcceptReservations={Boolean(
