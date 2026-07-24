@@ -25,12 +25,28 @@ export default async function StorefrontPage({
   const { boothId } = await params;
   const messages = await searchParams;
   const { booth } = await requireBoothSection(boothId, "storefront");
-  const [config, payment, productCount, featuredCount] = await Promise.all([
+  const [config, payment, storefrontProducts] = await Promise.all([
     db.storefrontConfig.findUnique({ where: { boothId } }),
     db.boothPaymentInstruction.findUnique({ where: { boothId } }),
-    db.product.count({ where: { boothId, status: { not: "HIDDEN" } } }),
-    db.product.count({
-      where: { boothId, featured: true, status: { not: "HIDDEN" } },
+    db.product.findMany({
+      where: { boothId, status: { in: ["LIVE", "SOLD_OUT"] } },
+      select: {
+        id: true,
+        name: true,
+        eyebrow: true,
+        priceCents: true,
+        featured: true,
+        status: true,
+        category: {
+          select: { id: true, name: true, slug: true },
+        },
+        images: {
+          select: { objectKey: true, alt: true },
+          orderBy: { sortOrder: "asc" },
+          take: 1,
+        },
+      },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
     }),
   ]);
   const document = readStorefrontDocument(config?.draftDocument, booth.name);
@@ -99,8 +115,16 @@ export default async function StorefrontPage({
         }}
         editVersion={config?.editVersion ?? 1}
         qrUploadConfigured={isOracleQrUploadConfigured()}
-        productCount={productCount}
-        featuredCount={featuredCount}
+        products={storefrontProducts.map((product) => ({
+          id: product.id,
+          name: product.name,
+          eyebrow: product.eyebrow,
+          priceCents: product.priceCents.toString(),
+          featured: product.featured,
+          status: product.status,
+          category: product.category,
+          image: product.images[0] ?? null,
+        }))}
       />
       <BoothDangerZone
         boothId={booth.id}

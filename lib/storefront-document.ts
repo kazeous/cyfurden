@@ -19,6 +19,8 @@ export const storefrontLocaleDisplayCodes = {
   vi: "VN",
 } as const;
 
+export const storefrontFeaturedProductLimit = 5;
+
 export const storefrontDocumentSchema = z.object({
   name: z.string().trim().min(2).max(80),
   tagline: z.string().trim().min(2).max(140),
@@ -49,6 +51,15 @@ export const storefrontDocumentSchema = z.object({
       "Section order must contain every storefront section exactly once.",
     ),
   visibleSections: z.array(z.enum(storefrontSectionIds)).min(3),
+  featuredProductIds: z
+    .array(z.string().trim().min(1).max(64))
+    .max(storefrontFeaturedProductLimit)
+    .refine(
+      (productIds) => new Set(productIds).size === productIds.length,
+      "Featured products must be unique.",
+    )
+    .nullable()
+    .default(null),
 });
 
 export type StorefrontDocument = z.infer<typeof storefrontDocumentSchema>;
@@ -79,6 +90,7 @@ export function createDefaultStorefrontDocument(
     cornerRadius: "round",
     sectionOrder: [...storefrontSectionIds],
     visibleSections: [...storefrontSectionIds],
+    featuredProductIds: null,
   };
 }
 
@@ -90,4 +102,22 @@ export function readStorefrontDocument(
   return result.success
     ? result.data
     : createDefaultStorefrontDocument(fallbackName);
+}
+
+export function resolveStorefrontFeaturedProductIds(
+  document: StorefrontDocument,
+  products: ReadonlyArray<{ id: string; featured: boolean }>,
+) {
+  const availableProductIds = new Set(products.map((product) => product.id));
+  const requestedProductIds =
+    document.featuredProductIds ??
+    products.filter((product) => product.featured).map((product) => product.id);
+
+  return requestedProductIds
+    .filter(
+      (productId, index) =>
+        availableProductIds.has(productId) &&
+        requestedProductIds.indexOf(productId) === index,
+    )
+    .slice(0, storefrontFeaturedProductLimit);
 }

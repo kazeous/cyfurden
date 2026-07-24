@@ -610,7 +610,8 @@ export function ProductForm({
             <span>
               Feature this item on the storefront
               <small className={styles.helper}>
-                Featured items appear in the public spotlight when available.
+                This is the default spotlight choice. You can pick and order up
+                to five slider products in Storefront designer.
               </small>
             </span>
           </label>

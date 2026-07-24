@@ -1,5 +1,25 @@
 [
   {
+    "date": "2026-07-24",
+    "scope": "app",
+    "macrostructure": "Catalogue + Workbench",
+    "theme": "Cyfurden locked editorial-utilitarian",
+    "enrichment": "Oracle product media with CSS fallback",
+    "brief": "Seller-managed featured product slider with compact category, search, sort, and icon view controls",
+    "critique": {
+      "philosophy": 5,
+      "hierarchy": 5,
+      "execution": 5,
+      "specificity": 5,
+      "restraint": 5,
+      "variety": 5
+    },
+    "slop_test": "pass (1-58)",
+    "verified_viewports": [320, 375, 414, 768, 1440],
+    "navigation": "N4 compact booth command bar",
+    "footer": "Ft1 inline public legal strip"
+  },
+  {
     "date": "2026-07-20",
     "scope": "landing",
     "macrostructure": "Narrative Workflow",

@@ -6,7 +6,10 @@ import { db } from "@/lib/db";
 import { createOrderPaymentSnapshot } from "@/lib/order-rules";
 import { resolveOracleImageUrl } from "@/lib/oracle-images";
 import { readBoothSocialLinks, socialPlatforms } from "@/lib/shop-settings";
-import { readStorefrontDocument } from "@/lib/storefront-document";
+import {
+  readStorefrontDocument,
+  resolveStorefrontFeaturedProductIds,
+} from "@/lib/storefront-document";
 
 async function getManagedBooth(slug: string) {
   try {
@@ -92,6 +95,11 @@ export default async function PublicBoothPage({
     managed.storefront.publishedDocument,
     managed.name,
   );
+  const featuredProductIds = resolveStorefrontFeaturedProductIds(
+    document,
+    managed.products,
+  );
+  const featuredProductIdSet = new Set(featuredProductIds);
   const products = managed.products.map((product) => ({
     id: product.id,
     category: product.category
@@ -106,7 +114,7 @@ export default async function PublicBoothPage({
     shortDescription: product.shortDescription,
     description: product.description,
     priceCents: product.priceCents.toString(),
-    featured: product.featured,
+    featured: featuredProductIdSet.has(product.id),
     tags: product.tags,
     sortOrder: product.sortOrder,
     createdAt: product.createdAt.toISOString(),

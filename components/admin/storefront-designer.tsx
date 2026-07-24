@@ -19,8 +19,10 @@ import { resolveOracleImageUrl } from "@/lib/oracle-images";
 import { PAYMENT_QR_MAX_BYTES, paymentQrAccept } from "@/lib/payment-qr";
 import type { BoothSocialLinks } from "@/lib/shop-settings";
 import {
+  resolveStorefrontFeaturedProductIds,
   type StorefrontDocument,
   storefrontCornerRadiusPixels,
+  storefrontFeaturedProductLimit,
   storefrontSectionIds,
 } from "@/lib/storefront-document";
 import { resolveVietQrBank, vietQrBanks } from "@/lib/vietqr-banks";
@@ -30,6 +32,17 @@ import styles from "./storefront-designer.module.css";
 type SectionId = (typeof storefrontSectionIds)[number];
 type EditorTab = "layout" | "content" | "style";
 type PreviewMode = "desktop" | "phone";
+
+export type StorefrontDesignerProduct = {
+  id: string;
+  name: string;
+  eyebrow: string | null;
+  priceCents: string;
+  featured: boolean;
+  status: string;
+  category: { id: string; name: string; slug: string } | null;
+  image: { objectKey: string; alt: string } | null;
+};
 
 export type StorefrontPaymentDraft = {
   bankName: string;
@@ -55,7 +68,7 @@ const sectionMeta: Record<
 > = {
   featured: {
     label: "Featured spotlight",
-    description: "Announcement, headline, and welcome copy",
+    description: "Product slider, announcement, and welcome copy",
     lane: "wide",
     icon: "F",
     previewRows: 12,
@@ -91,6 +104,13 @@ const sectionMeta: Record<
 };
 
 const editorTabs = ["layout", "content", "style"] as const;
+
+const money = (minorUnits: string) =>
+  new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  }).format(BigInt(minorUnits) / BigInt(100));
 
 function ControlIcon({
   name,
@@ -159,6 +179,37 @@ function ControlIcon({
     <svg viewBox="0 0 18 18" aria-hidden="true">
       <circle cx="9" cy="9" r="6" />
       <circle cx="9" cy="9" r="2" />
+    </svg>
+  );
+}
+
+function BrowsePreviewIcon({ name }: { name: "grid" | "list" | "search" }) {
+  if (name === "search") {
+    return (
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        <circle cx="7" cy="7" r="4" />
+        <path d="m10 10 3 3" />
+      </svg>
+    );
+  }
+
+  if (name === "grid") {
+    return (
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        <rect x="2" y="2" width="5" height="5" rx="1" />
+        <rect x="9" y="2" width="5" height="5" rx="1" />
+        <rect x="2" y="9" width="5" height="5" rx="1" />
+        <rect x="9" y="9" width="5" height="5" rx="1" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M6 4h8M6 8h8M6 12h8" />
+      <circle cx="2.5" cy="4" r=".6" />
+      <circle cx="2.5" cy="8" r=".6" />
+      <circle cx="2.5" cy="12" r=".6" />
     </svg>
   );
 }
@@ -238,8 +289,7 @@ export function StorefrontDesigner({
   identity,
   editVersion,
   qrUploadConfigured,
-  productCount,
-  featuredCount,
+  products,
 }: {
   boothId: string;
   boothStatus: string;
@@ -252,10 +302,15 @@ export function StorefrontDesigner({
   };
   editVersion: number;
   qrUploadConfigured: boolean;
-  productCount: number;
-  featuredCount: number;
+  products: StorefrontDesignerProduct[];
 }) {
-  const [document, setDocument] = useState(initialDocument);
+  const [document, setDocument] = useState<StorefrontDocument>(() => ({
+    ...initialDocument,
+    featuredProductIds: resolveStorefrontFeaturedProductIds(
+      initialDocument,
+      products,
+    ),
+  }));
   const [payment, setPayment] = useState(() => {
     const bank = resolveVietQrBank(
       initialPayment.bankCode,
@@ -309,6 +364,29 @@ export function StorefrontDesigner({
         document.visibleSections.includes(section),
       ),
     [document.sectionOrder, document.visibleSections],
+  );
+  const selectedFeaturedProductIds = useMemo(
+    () => document.featuredProductIds ?? [],
+    [document.featuredProductIds],
+  );
+  const selectedFeaturedProducts = useMemo(
+    () =>
+      selectedFeaturedProductIds.flatMap((productId) => {
+        const product = products.find((item) => item.id === productId);
+        return product ? [product] : [];
+      }),
+    [products, selectedFeaturedProductIds],
+  );
+  const previewCategories = useMemo(
+    () =>
+      products
+        .flatMap((product) => (product.category ? [product.category] : []))
+        .filter(
+          (category, index, all) =>
+            all.findIndex((item) => item.slug === category.slug) === index,
+        )
+        .slice(0, 2),
+    [products],
   );
   const previewStyle = {
     "--designer-accent": document.accentColor,
@@ -444,6 +522,47 @@ export function StorefrontDesigner({
     );
   };
 
+  const toggleFeaturedProduct = (productId: string) => {
+    const selected = selectedFeaturedProductIds.includes(productId);
+    if (
+      !selected &&
+      selectedFeaturedProductIds.length >= storefrontFeaturedProductLimit
+    ) {
+      setAnnouncement(
+        `Choose up to ${storefrontFeaturedProductLimit} products for the featured slider.`,
+      );
+      return;
+    }
+    const nextProductIds = selected
+      ? selectedFeaturedProductIds.filter((item) => item !== productId)
+      : [...selectedFeaturedProductIds, productId];
+    updateDocument("featuredProductIds", nextProductIds);
+    setAnnouncement(
+      selected
+        ? "Product removed from the featured slider."
+        : `Product added as slide ${nextProductIds.length}.`,
+    );
+  };
+
+  const moveFeaturedProduct = (productId: string, delta: -1 | 1) => {
+    const currentIndex = selectedFeaturedProductIds.indexOf(productId);
+    const nextIndex = currentIndex + delta;
+    if (
+      currentIndex < 0 ||
+      nextIndex < 0 ||
+      nextIndex >= selectedFeaturedProductIds.length
+    ) {
+      return;
+    }
+    const nextProductIds = [...selectedFeaturedProductIds];
+    [nextProductIds[currentIndex], nextProductIds[nextIndex]] = [
+      nextProductIds[nextIndex],
+      nextProductIds[currentIndex],
+    ];
+    updateDocument("featuredProductIds", nextProductIds);
+    setAnnouncement(`Featured slide moved to position ${nextIndex + 1}.`);
+  };
+
   const handleDragStart = (
     event: DragEvent<HTMLElement>,
     section: SectionId,
@@ -472,19 +591,49 @@ export function StorefrontDesigner({
   const renderPreviewContent = (section: SectionId) => {
     switch (section) {
       case "featured":
-        return featuredCount ? (
+        return selectedFeaturedProducts[0] ? (
           <div className={styles.featuredPreview}>
-            <p>{document.announcement}</p>
-            <h3>{document.tagline}</h3>
-            <span>
-              {featuredCount} featured release{featuredCount === 1 ? "" : "s"}
-            </span>
+            <div className={styles.featuredPreviewCopy}>
+              <p>{document.announcement}</p>
+              <h3>{selectedFeaturedProducts[0].name}</h3>
+              <span>
+                {money(selectedFeaturedProducts[0].priceCents)} /{" "}
+                {selectedFeaturedProducts[0].status === "SOLD_OUT"
+                  ? "Sold out"
+                  : "Available"}
+              </span>
+              <div className={styles.featuredPreviewDots} aria-hidden="true">
+                {selectedFeaturedProducts.map((product, index) => (
+                  <i data-active={index === 0 || undefined} key={product.id} />
+                ))}
+              </div>
+            </div>
+            <div
+              className={styles.featuredPreviewArt}
+              data-has-image={
+                Boolean(selectedFeaturedProducts[0].image) || undefined
+              }
+              style={
+                selectedFeaturedProducts[0].image
+                  ? {
+                      backgroundImage: `url("${resolveOracleImageUrl(selectedFeaturedProducts[0].image)}")`,
+                    }
+                  : undefined
+              }
+              role="img"
+              aria-label={
+                selectedFeaturedProducts[0].image?.alt ||
+                selectedFeaturedProducts[0].name
+              }
+            >
+              <b>{selectedFeaturedProducts[0].eyebrow ?? "Featured release"}</b>
+            </div>
           </div>
         ) : (
           <EmptyPreview
             icon="F"
             title={document.tagline}
-            copy="Featured products will appear here."
+            copy="Choose products in this block to build the slider."
           />
         );
       case "booth-info":
@@ -501,20 +650,41 @@ export function StorefrontDesigner({
       case "browse":
         return (
           <div className={styles.browsePreview}>
-            <span>All</span>
-            <div>Search items...</div>
-            <div>Sort: Recommended</div>
+            <div className={styles.browsePreviewCategories}>
+              <span data-active>All</span>
+              {previewCategories.map((category) => (
+                <span key={category.id}>{category.name}</span>
+              ))}
+            </div>
+            <div className={styles.browsePreviewTools}>
+              <div className={styles.browsePreviewSearch}>
+                <BrowsePreviewIcon name="search" />
+                Search items...
+              </div>
+              <div className={styles.browsePreviewModes}>
+                <span data-active>
+                  <BrowsePreviewIcon name="grid" />
+                </span>
+                <span>
+                  <BrowsePreviewIcon name="list" />
+                </span>
+              </div>
+              <div>Recommended</div>
+            </div>
           </div>
         );
       case "catalogue":
-        return productCount ? (
+        return products.length ? (
           <div className={styles.cataloguePreview}>
-            {Array.from({ length: Math.min(productCount, 3) }, (_, index) => (
-              <span key={index}>
-                <i aria-hidden="true" />
-                <b>Product {index + 1}</b>
-              </span>
-            ))}
+            {Array.from(
+              { length: Math.min(products.length, 3) },
+              (_, index) => (
+                <span key={index}>
+                  <i aria-hidden="true" />
+                  <b>{products[index].name}</b>
+                </span>
+              ),
+            )}
           </div>
         ) : (
           <EmptyPreview
@@ -551,6 +721,11 @@ export function StorefrontDesigner({
           type="hidden"
           name="sectionOrder"
           value={JSON.stringify(document.sectionOrder)}
+        />
+        <input
+          type="hidden"
+          name="featuredProductIds"
+          value={JSON.stringify(document.featuredProductIds ?? [])}
         />
         {document.visibleSections.map((section) => (
           <input
@@ -722,6 +897,168 @@ export function StorefrontDesigner({
 
               {selectedSection === "featured" ? (
                 <div className={styles.controlStack}>
+                  <section
+                    className={styles.featuredPicker}
+                    aria-labelledby="featured-products-heading"
+                  >
+                    <div className={styles.featuredPickerHeading}>
+                      <div>
+                        <strong id="featured-products-heading">
+                          Slider products
+                        </strong>
+                        <small>
+                          Choose and order up to{" "}
+                          {storefrontFeaturedProductLimit} public products.
+                        </small>
+                      </div>
+                      <span>
+                        {selectedFeaturedProducts.length}/
+                        {storefrontFeaturedProductLimit}
+                      </span>
+                    </div>
+
+                    {products.length ? (
+                      <>
+                        {selectedFeaturedProducts.length ? (
+                          <ol className={styles.featuredOrder}>
+                            {selectedFeaturedProducts.map((product, index) => (
+                              <li key={product.id}>
+                                <span className={styles.featuredOrderNumber}>
+                                  {index + 1}
+                                </span>
+                                <span
+                                  className={styles.featuredProductThumb}
+                                  data-has-image={
+                                    Boolean(product.image) || undefined
+                                  }
+                                  style={
+                                    product.image
+                                      ? {
+                                          backgroundImage: `url("${resolveOracleImageUrl(product.image)}")`,
+                                        }
+                                      : undefined
+                                  }
+                                  aria-hidden="true"
+                                />
+                                <span className={styles.featuredProductCopy}>
+                                  <strong>{product.name}</strong>
+                                  <small>
+                                    {money(product.priceCents)} /{" "}
+                                    {product.status === "SOLD_OUT"
+                                      ? "Sold out"
+                                      : "Live"}
+                                  </small>
+                                </span>
+                                <span className={styles.featuredProductActions}>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      moveFeaturedProduct(product.id, -1)
+                                    }
+                                    disabled={index === 0}
+                                    aria-label={`Move ${product.name} earlier`}
+                                  >
+                                    <ControlIcon name="up" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      moveFeaturedProduct(product.id, 1)
+                                    }
+                                    disabled={
+                                      index ===
+                                      selectedFeaturedProducts.length - 1
+                                    }
+                                    aria-label={`Move ${product.name} later`}
+                                  >
+                                    <ControlIcon name="down" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      toggleFeaturedProduct(product.id)
+                                    }
+                                    aria-label={`Remove ${product.name} from the slider`}
+                                  >
+                                    Remove
+                                  </button>
+                                </span>
+                              </li>
+                            ))}
+                          </ol>
+                        ) : (
+                          <p className={styles.featuredPickerEmpty}>
+                            No slider products selected. Add one below or hide
+                            the Featured block from Layout.
+                          </p>
+                        )}
+
+                        {products.some(
+                          (product) =>
+                            !selectedFeaturedProductIds.includes(product.id),
+                        ) ? (
+                          <div className={styles.featuredChoices}>
+                            {products
+                              .filter(
+                                (product) =>
+                                  !selectedFeaturedProductIds.includes(
+                                    product.id,
+                                  ),
+                              )
+                              .map((product) => (
+                                <div key={product.id}>
+                                  <span
+                                    className={styles.featuredProductThumb}
+                                    data-has-image={
+                                      Boolean(product.image) || undefined
+                                    }
+                                    style={
+                                      product.image
+                                        ? {
+                                            backgroundImage: `url("${resolveOracleImageUrl(product.image)}")`,
+                                          }
+                                        : undefined
+                                    }
+                                    aria-hidden="true"
+                                  />
+                                  <span className={styles.featuredProductCopy}>
+                                    <strong>{product.name}</strong>
+                                    <small>
+                                      {money(product.priceCents)} /{" "}
+                                      {product.status === "SOLD_OUT"
+                                        ? "Sold out"
+                                        : "Live"}
+                                    </small>
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      toggleFeaturedProduct(product.id)
+                                    }
+                                    disabled={
+                                      selectedFeaturedProductIds.length >=
+                                      storefrontFeaturedProductLimit
+                                    }
+                                  >
+                                    Add product
+                                  </button>
+                                </div>
+                              ))}
+                          </div>
+                        ) : null}
+                      </>
+                    ) : (
+                      <div className={styles.featuredPickerEmpty}>
+                        <strong>No public products yet</strong>
+                        <span>
+                          Make a product Live before adding it to the slider.
+                        </span>
+                        <a href={`/manage/${boothId}/products`}>
+                          Open Products
+                        </a>
+                      </div>
+                    )}
+                  </section>
                   <Field label="Announcement">
                     <input
                       value={document.announcement}
@@ -751,7 +1088,8 @@ export function StorefrontDesigner({
                     />
                   </Field>
                   <p className={styles.panelNote}>
-                    Featured product cards are chosen in the Products workspace.
+                    Saving updates the draft selection. Visitors see the new
+                    slider only after you publish the saved draft.
                   </p>
                 </div>
               ) : null}
@@ -868,7 +1206,7 @@ export function StorefrontDesigner({
                   <div className={styles.informationCard}>
                     <span aria-hidden="true">P</span>
                     <div>
-                      <strong>{productCount} public catalogue items</strong>
+                      <strong>{products.length} public catalogue items</strong>
                       <p>
                         Product content, stock, pricing, and featured status are
                         managed in the Products workspace.

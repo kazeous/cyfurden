@@ -1,9 +1,15 @@
 {
-  "date": "2026-07-19",
+  "date": "2026-07-24",
   "framework": "Next.js 16 App Router",
-  "font_stack": "Georgia display with established Inter-led UI body",
-  "palette": "Warm Cyfurden paper, navy ink, forest action, coral selection",
+  "font_stack": "Bundled Manrope Variable display with IBM Plex Sans Variable body/UI",
+  "palette": "Locked warm paper and navy ink with coral selection and forest action tokens",
   "motion": "Motion-cut; no animation library installed",
-  "spacing": "Existing mixed scale, normalised to a 4-point token scale",
-  "preserve": ["brand palette", "font pairing", "routes", "application logic"]
+  "spacing": "Locked 4-point named scale from tokens.css",
+  "preserve": [
+    "design.md system",
+    "brand palette",
+    "font pairing",
+    "routes",
+    "application logic"
+  ]
 }

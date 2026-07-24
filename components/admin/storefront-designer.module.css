@@ -1,6 +1,6 @@
-/* Hallmark · genre: editorial · macrostructure: Workbench · design-system: design.md · designed-as-app */
-/* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5 */
-/* Hallmark · contrast: pass (40–41) · slop: pass (1–58) · mobile: pass (34, 49–57) */
+/* Hallmark: genre=editorial; tone=warm editorial-utilitarian; palette=warm paper + navy ink + coral selection + forest action; macrostructure=Workbench; design-system=design.md; designed-as-app */
+/* Hallmark pre-emit critique: P5 H5 E5 S5 R5 V5 */
+/* Hallmark: contrast=pass (40-41); slop=pass (1-58); mobile=pass (34, 49-57) */
 
 .designer {
   display: grid;
@@ -204,6 +204,214 @@
 .controlStack {
   display: grid;
   gap: 12px;
+}
+
+.featuredPicker {
+  display: grid;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  border: var(--rule-hairline);
+  border-radius: var(--radius-card);
+  background: var(--color-paper-2);
+}
+
+.featuredPickerHeading {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.featuredPickerHeading > div {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2xs);
+}
+
+.featuredPickerHeading strong {
+  color: var(--color-ink);
+  font-size: var(--text-xs);
+}
+
+.featuredPickerHeading small,
+.featuredPickerEmpty {
+  color: var(--color-muted);
+  font-size: 0.625rem;
+  line-height: 1.5;
+}
+
+.featuredPickerHeading > span {
+  flex: 0 0 auto;
+  padding: var(--space-2xs) var(--space-xs);
+  border-radius: var(--radius-pill);
+  color: var(--color-ink-2);
+  background: var(--color-paper-3);
+  font-size: 0.625rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.featuredOrder,
+.featuredChoices {
+  display: grid;
+  gap: var(--space-xs);
+  padding: 0;
+  margin: 0;
+}
+
+.featuredOrder {
+  list-style: none;
+}
+
+.featuredOrder > li,
+.featuredChoices > div {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  gap: var(--space-xs);
+  align-items: center;
+  padding: var(--space-xs);
+  border: var(--rule-hairline);
+  border-radius: var(--radius-input);
+  background: var(--color-panel);
+}
+
+.featuredOrderNumber {
+  display: grid;
+  width: 1.5rem;
+  height: 1.5rem;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  color: var(--color-accent-ink);
+  background: var(--designer-accent);
+  font-size: 0.625rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.featuredProductThumb {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--radius-input);
+  background: linear-gradient(
+    145deg,
+    var(--color-art-warm),
+    var(--color-art-cool)
+  );
+  background-position: center;
+  background-size: cover;
+}
+
+.featuredProductCopy {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2xs);
+}
+
+.featuredProductCopy strong,
+.featuredProductCopy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.featuredProductCopy strong {
+  color: var(--color-ink);
+  font-size: 0.6875rem;
+}
+
+.featuredProductCopy small {
+  color: var(--color-muted);
+  font-size: 0.5625rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.featuredProductActions {
+  display: flex;
+  grid-column: 2 / -1;
+  gap: var(--space-2xs);
+  justify-content: flex-end;
+}
+
+.featuredProductActions button,
+.featuredChoices button {
+  display: inline-grid;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  place-items: center;
+  padding: 0 var(--space-xs);
+  border: var(--rule-hairline);
+  border-radius: var(--radius-button);
+  color: var(--color-ink-2);
+  background: var(--color-panel);
+  font: inherit;
+  font-size: 0.625rem;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.featuredProductActions button:hover,
+.featuredProductActions button:focus-visible,
+.featuredChoices button:hover,
+.featuredChoices button:focus-visible,
+.featuredPickerEmpty a:hover,
+.featuredPickerEmpty a:focus-visible {
+  border-color: var(--designer-accent);
+}
+
+.featuredProductActions button:active:not(:disabled),
+.featuredChoices button:active:not(:disabled),
+.featuredPickerEmpty a:active {
+  background: var(--color-paper-2);
+}
+
+.featuredProductActions button:disabled,
+.featuredChoices button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.featuredProductActions svg {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.6;
+}
+
+.featuredChoices > div {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.featuredPickerEmpty {
+  display: grid;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+  margin: 0;
+  border: 1px dashed var(--color-rule-strong);
+  border-radius: var(--radius-input);
+}
+
+.featuredPickerEmpty strong {
+  color: var(--color-ink);
+  font-size: var(--text-xs);
+}
+
+.featuredPickerEmpty a {
+  display: inline-flex;
+  width: max-content;
+  min-height: 2.75rem;
+  align-items: center;
+  padding: 0 var(--space-sm);
+  border: var(--rule-hairline);
+  border-radius: var(--radius-button);
+  color: var(--color-ink);
+  background: var(--color-panel);
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
 }
 
 .sectionRow {
@@ -1145,12 +1353,23 @@
 }
 
 .featuredPreview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(7rem, 0.8fr);
   min-height: 172px;
+  overflow: hidden;
+  padding: 0;
   background: linear-gradient(
     135deg,
     color-mix(in srgb, var(--designer-accent) 12%, var(--color-panel)),
     var(--color-transparent)
   );
+}
+
+.featuredPreviewCopy {
+  display: grid;
+  min-width: 0;
+  align-content: center;
+  padding: var(--space-lg) var(--space-sm) var(--space-md) var(--space-md);
 }
 
 .featuredPreview p,
@@ -1164,10 +1383,10 @@
 }
 
 .featuredPreview h3 {
-  max-width: 80%;
-  margin: 20px 0 8px;
+  max-width: 14ch;
+  margin: var(--space-sm) 0 var(--space-xs);
   font-family: var(--font-display);
-  font-size: clamp(18px, 2.2vw, 29px);
+  font-size: clamp(16px, 1.8vw, 25px);
   line-height: 1.05;
 }
 
@@ -1177,6 +1396,58 @@
   display: block;
   color: var(--color-muted);
   font-size: 9px;
+}
+
+.featuredPreviewDots {
+  display: flex;
+  gap: var(--space-2xs);
+  align-items: center;
+  margin-top: var(--space-sm);
+}
+
+.featuredPreviewDots i {
+  width: 5px;
+  height: 5px;
+  border-radius: var(--radius-pill);
+  background: var(--color-rule-strong);
+}
+
+.featuredPreviewDots i[data-active="true"] {
+  width: 16px;
+  background: var(--designer-accent);
+}
+
+.featuredPreviewArt {
+  position: relative;
+  min-width: 0;
+  min-height: 140px;
+  margin: var(--space-lg) var(--space-sm) var(--space-sm) 0;
+  border: var(--rule-hairline);
+  border-radius: var(--radius-card);
+  background: linear-gradient(
+    145deg,
+    var(--color-art-warm),
+    var(--color-art-cool)
+  );
+  background-position: center;
+  background-size: cover;
+  box-shadow: var(--shadow-panel);
+  transform: rotate(2deg);
+}
+
+.featuredPreviewArt b {
+  position: absolute;
+  right: var(--space-xs);
+  bottom: var(--space-xs);
+  left: var(--space-xs);
+  overflow: hidden;
+  padding: var(--space-2xs) var(--space-xs);
+  border-radius: var(--radius-input);
+  color: var(--color-ink);
+  background: var(--color-panel-glass-soft);
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .boothPreview {
@@ -1197,27 +1468,47 @@
 }
 
 .browsePreview {
-  display: flex;
-  gap: 8px;
+  display: grid;
+  gap: var(--space-xs);
   align-items: center;
+  grid-template-columns: minmax(0, 1fr) auto;
   min-height: 58px;
-  padding: 12px;
+  padding: var(--space-sm);
 }
 
-.browsePreview span,
-.browsePreview div {
+.browsePreviewCategories,
+.browsePreviewTools {
+  display: flex;
+  min-width: 0;
+  gap: var(--space-2xs);
+  align-items: center;
+  overflow: hidden;
+}
+
+.browsePreviewTools {
+  justify-content: flex-end;
+}
+
+.browsePreviewCategories > span,
+.browsePreviewTools > div {
+  display: inline-flex;
   min-height: 30px;
-  padding: 8px 12px;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xs) var(--space-sm);
   border: 1px solid var(--color-rule);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   color: var(--color-muted);
   background: var(--color-panel);
   font-size: 8px;
   white-space: nowrap;
 }
 
-.browsePreview span {
+.browsePreviewCategories > span {
   min-width: 58px;
+}
+
+.browsePreviewCategories > span[data-active] {
   color: var(--color-ink);
   background: color-mix(
     in oklch,
@@ -1227,8 +1518,44 @@
   text-align: center;
 }
 
-.browsePreview div:nth-child(2) {
-  flex: 1;
+.browsePreviewTools > .browsePreviewSearch {
+  min-width: 120px;
+  justify-content: flex-start;
+}
+
+.browsePreviewSearch svg,
+.browsePreviewModes svg {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.4;
+}
+
+.browsePreviewSearch svg {
+  margin-right: var(--space-xs);
+}
+
+.browsePreviewTools > .browsePreviewModes {
+  gap: var(--space-2xs);
+  padding: var(--space-2xs);
+  border-radius: var(--radius-input);
+}
+
+.browsePreviewModes > span {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 8px;
+}
+
+.browsePreviewModes > span[data-active] {
+  color: var(--color-ink);
+  background: var(--color-paper-2);
 }
 
 .cataloguePreview {
@@ -1326,6 +1653,28 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.phonePreview .featuredPreview {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.phonePreview .featuredPreviewArt {
+  min-height: 150px;
+  margin: 0 var(--space-md) var(--space-md);
+  transform: none;
+}
+
+.phonePreview .browsePreview {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.phonePreview .browsePreviewTools {
+  justify-content: flex-start;
+}
+
+.phonePreview .browsePreviewSearch {
+  flex: 1;
+}
+
 .srOnly {
   position: absolute;
   width: 1px;
@@ -1408,6 +1757,15 @@
 
   .fieldGrid {
     grid-template-columns: 1fr;
+  }
+
+  .featuredChoices > div {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .featuredChoices button {
+    grid-column: 2;
+    justify-self: start;
   }
 
   .identitySectionHeading {

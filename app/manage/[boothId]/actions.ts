@@ -143,6 +143,18 @@ export async function saveStorefrontAction(
   } catch {
     sectionOrder = storefrontSectionIds;
   }
+  let featuredProductIds: unknown = null;
+  const featuredProductIdsValue = requiredText(formData, "featuredProductIds");
+  if (featuredProductIdsValue) {
+    try {
+      featuredProductIds = JSON.parse(featuredProductIdsValue);
+    } catch {
+      return {
+        error:
+          "The featured product selection could not be read. Refresh and try again.",
+      };
+    }
+  }
   const documentResult = storefrontDocumentSchema.safeParse({
     name: requiredText(formData, "name"),
     tagline: requiredText(formData, "tagline"),
@@ -164,6 +176,7 @@ export async function saveStorefrontAction(
     cornerRadius: requiredText(formData, "cornerRadius"),
     sectionOrder,
     visibleSections,
+    featuredProductIds,
   });
   if (!documentResult.success) {
     return {
@@ -173,6 +186,21 @@ export async function saveStorefrontAction(
     };
   }
   const document = documentResult.data;
+  if (document.featuredProductIds?.length) {
+    const featuredProductCount = await db.product.count({
+      where: {
+        boothId,
+        id: { in: document.featuredProductIds },
+        status: { in: ["LIVE", "SOLD_OUT"] },
+      },
+    });
+    if (featuredProductCount !== document.featuredProductIds.length) {
+      return {
+        error:
+          "A featured product is no longer public. Refresh, update the slider selection, and save again.",
+      };
+    }
+  }
   const selectedBank = findVietQrBank(requiredText(formData, "bankCode"));
   if (!selectedBank) {
     return {

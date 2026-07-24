@@ -14,6 +14,7 @@ import {
 import { filterAndSortCatalogue, type CatalogueSort } from "@/lib/catalogue";
 import { createSocialQrDataUrl } from "@/lib/social-qr";
 import {
+  resolveStorefrontFeaturedProductIds,
   storefrontCornerRadiusPixels,
   type StorefrontDocument,
 } from "@/lib/storefront-document";
@@ -126,6 +127,51 @@ function ProductArt({ product }: { product: ProductDto }) {
   );
 }
 
+function CarouselArrow({ direction }: { direction: "previous" | "next" }) {
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true">
+      <path
+        d={
+          direction === "previous"
+            ? "m12.5 4.5-5.5 5.5 5.5 5.5"
+            : "m7.5 4.5 5.5 5.5-5.5 5.5"
+        }
+      />
+    </svg>
+  );
+}
+
+function CatalogueIcon({ name }: { name: "grid" | "list" | "search" }) {
+  if (name === "search") {
+    return (
+      <svg viewBox="0 0 20 20" aria-hidden="true">
+        <circle cx="8.75" cy="8.75" r="5.25" />
+        <path d="m12.75 12.75 3.75 3.75" />
+      </svg>
+    );
+  }
+
+  if (name === "grid") {
+    return (
+      <svg viewBox="0 0 20 20" aria-hidden="true">
+        <rect x="3" y="3" width="5.5" height="5.5" rx="1" />
+        <rect x="11.5" y="3" width="5.5" height="5.5" rx="1" />
+        <rect x="3" y="11.5" width="5.5" height="5.5" rx="1" />
+        <rect x="11.5" y="11.5" width="5.5" height="5.5" rx="1" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true">
+      <path d="M7 5h10M7 10h10M7 15h10" />
+      <circle cx="3.5" cy="5" r=".75" />
+      <circle cx="3.5" cy="10" r=".75" />
+      <circle cx="3.5" cy="15" r=".75" />
+    </svg>
+  );
+}
+
 function availabilityLabel(product: ProductDto) {
   const available = product.variants.find((variant) =>
     isPurchasableVariant(variant.status, variant.stockQuantity),
@@ -189,6 +235,7 @@ export function ManagedStorefront({
   const [query, setQuery] = useState("");
   const [categorySlug, setCategorySlug] = useState("all");
   const [sort, setSort] = useState<CatalogueSort>("featured");
+  const [featuredIndex, setFeaturedIndex] = useState(0);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
@@ -287,6 +334,17 @@ export function ManagedStorefront({
       ),
     [categorySlug, products, query, sort],
   );
+  const featuredProducts = useMemo(() => {
+    const featuredProductIds = resolveStorefrontFeaturedProductIds(
+      document,
+      products,
+    );
+    return featuredProductIds.flatMap((productId) => {
+      const product = products.find((item) => item.id === productId);
+      return product ? [product] : [];
+    });
+  }, [document, products]);
+
   const selectedDetailVariant = detailProduct?.variants.find(
     (variant) => variant.id === detailVariantId,
   );
@@ -462,24 +520,230 @@ export function ManagedStorefront({
     }
   };
 
-  const visibleSectionOrder = document.sectionOrder.filter((section) =>
-    document.visibleSections.includes(section),
+  const visibleSectionOrder = useMemo(
+    () =>
+      document.sectionOrder.filter((section) =>
+        document.visibleSections.includes(section),
+      ),
+    [document.sectionOrder, document.visibleSections],
   );
+  const sectionGridRows = useMemo(() => {
+    const rows = {} as Record<
+      StorefrontDocument["sectionOrder"][number],
+      number
+    >;
+    let wideRow = 0;
+    let sideRow = 0;
+
+    for (const section of visibleSectionOrder) {
+      if (section === "booth-info" || section === "cart") {
+        sideRow = Math.max(sideRow + 1, Math.max(1, wideRow));
+        rows[section] = sideRow;
+      } else {
+        wideRow += 1;
+        rows[section] = wideRow;
+      }
+    }
+
+    return rows;
+  }, [visibleSectionOrder]);
 
   const renderSection = (section: (typeof document.sectionOrder)[number]) => {
     switch (section) {
-      case "featured":
+      case "featured": {
+        const featuredProduct = featuredProducts[featuredIndex];
+        if (!featuredProduct) {
+          return (
+            <section
+              className={`${styles.storeSection} ${styles.featured} ${styles.featuredEmpty}`}
+            >
+              <p className={styles.featuredAnnouncement}>
+                {document.announcement}
+              </p>
+              <h1>{document.tagline}</h1>
+              <p>{document.introduction}</p>
+              <div className={styles.heroMeta}>
+                <span>{document.eventStatusLabel}</span>
+                <span>{document.eventHours}</span>
+              </div>
+            </section>
+          );
+        }
+
+        const available = featuredProduct.variants.some((variant) =>
+          isPurchasableVariant(variant.status, variant.stockQuantity),
+        );
+        const firstAvailableVariant = featuredProduct.variants.find((variant) =>
+          isPurchasableVariant(variant.status, variant.stockQuantity),
+        );
+        const price =
+          firstAvailableVariant?.priceCents ?? featuredProduct.priceCents;
+        const cartLine = firstAvailableVariant
+          ? cart.find((line) => line.variantId === firstAvailableVariant.id)
+          : undefined;
+        const atStockLimit = Boolean(
+          firstAvailableVariant &&
+            cartLine &&
+            cartLine.quantity >=
+              maximumPurchasableQuantity(firstAvailableVariant.stockQuantity),
+        );
+        const stackedProducts = [
+          ...featuredProducts.slice(featuredIndex + 1),
+          ...featuredProducts.slice(0, featuredIndex),
+        ].slice(0, 2);
+
         return (
-          <section className={`${styles.storeSection} ${styles.featured}`}>
-            <p className={styles.eyebrow}>{document.announcement}</p>
-            <h1>{document.tagline}</h1>
-            <p>{document.introduction}</p>
-            <div className={styles.heroMeta}>
-              <span>{document.eventStatusLabel}</span>
-              <span>{document.eventHours}</span>
+          <section
+            className={`${styles.storeSection} ${styles.featured}`}
+            aria-label="Featured products"
+            aria-roledescription="carousel"
+            onKeyDown={(event) => {
+              if (featuredProducts.length < 2) return;
+              if (event.key === "ArrowLeft") {
+                event.preventDefault();
+                setFeaturedIndex(
+                  (current) =>
+                    (current - 1 + featuredProducts.length) %
+                    featuredProducts.length,
+                );
+              } else if (event.key === "ArrowRight") {
+                event.preventDefault();
+                setFeaturedIndex(
+                  (current) => (current + 1) % featuredProducts.length,
+                );
+              }
+            }}
+          >
+            <div
+              className={styles.featuredSlide}
+              role="group"
+              aria-roledescription="slide"
+              aria-label={`${featuredIndex + 1} of ${featuredProducts.length}`}
+            >
+              <div className={styles.featuredCopy}>
+                <p className={styles.featuredAnnouncement}>
+                  {document.announcement}
+                </p>
+                <strong className={styles.featuredTagline}>
+                  {document.tagline}
+                </strong>
+                <p className={styles.featuredProductLabel}>
+                  {featuredProduct.eyebrow ?? "Featured release"}
+                </p>
+                <h1>{featuredProduct.name}</h1>
+                <p className={styles.featuredDescription}>
+                  {featuredProduct.shortDescription ??
+                    featuredProduct.description}
+                </p>
+                <p className={styles.featuredWelcome}>
+                  {document.introduction}
+                </p>
+                <div className={styles.featuredFacts}>
+                  <strong>{money(price)}</strong>
+                  <span>{availabilityLabel(featuredProduct)}</span>
+                </div>
+                <div className={styles.featuredActions}>
+                  <button
+                    type="button"
+                    className={styles.addButton}
+                    onClick={() => add(featuredProduct)}
+                    disabled={
+                      !available || !canAcceptReservations || atStockLimit
+                    }
+                  >
+                    {!canAcceptReservations
+                      ? "Reservations paused"
+                      : atStockLimit
+                        ? "Stock limit reached"
+                        : available
+                          ? "Add to bag"
+                          : "Sold out"}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.detailsButton}
+                    onClick={() => openDetails(featuredProduct)}
+                  >
+                    View item
+                  </button>
+                </div>
+                <div className={styles.featuredNavigation}>
+                  <button
+                    type="button"
+                    className={styles.featuredArrow}
+                    onClick={() =>
+                      setFeaturedIndex(
+                        (current) =>
+                          (current - 1 + featuredProducts.length) %
+                          featuredProducts.length,
+                      )
+                    }
+                    disabled={featuredProducts.length < 2}
+                    aria-label="Show previous featured product"
+                  >
+                    <CarouselArrow direction="previous" />
+                  </button>
+                  <div
+                    className={styles.featuredDots}
+                    role="group"
+                    aria-label="Choose a featured product"
+                  >
+                    {featuredProducts.map((product, index) => (
+                      <button
+                        type="button"
+                        key={product.id}
+                        aria-label={`Show ${product.name}`}
+                        aria-current={
+                          index === featuredIndex ? "true" : undefined
+                        }
+                        onClick={() => setFeaturedIndex(index)}
+                      />
+                    ))}
+                  </div>
+                  <span className={styles.featuredCount} aria-live="polite">
+                    {String(featuredIndex + 1).padStart(2, "0")} /{" "}
+                    {String(featuredProducts.length).padStart(2, "0")}
+                  </span>
+                  <button
+                    type="button"
+                    className={styles.featuredArrow}
+                    onClick={() =>
+                      setFeaturedIndex(
+                        (current) => (current + 1) % featuredProducts.length,
+                      )
+                    }
+                    disabled={featuredProducts.length < 2}
+                    aria-label="Show next featured product"
+                  >
+                    <CarouselArrow direction="next" />
+                  </button>
+                </div>
+              </div>
+              <div className={styles.featuredVisual}>
+                {stackedProducts.map((product, index) => (
+                  <div
+                    className={styles.featuredGhost}
+                    data-stack={index + 1}
+                    key={product.id}
+                    aria-hidden="true"
+                  >
+                    <ProductArt product={product} />
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  className={styles.featuredArtButton}
+                  onClick={() => openDetails(featuredProduct)}
+                  aria-label={`View details for ${featuredProduct.name}`}
+                >
+                  <ProductArt product={featuredProduct} />
+                  <span>{availabilityLabel(featuredProduct)}</span>
+                </button>
+              </div>
             </div>
           </section>
         );
+      }
       case "booth-info":
         return (
           <aside className={`${styles.storeSection} ${styles.boothInfo}`}>
@@ -521,21 +785,46 @@ export function ManagedStorefront({
             className={`${styles.storeSection} ${styles.browseControls}`}
             aria-label="Browse products"
           >
-            <div>
-              <p className={styles.eyebrow}>Browse the booth</p>
-              <strong>
-                {visibleProducts.length} of {products.length} pieces shown
-              </strong>
+            <div
+              className={styles.categoryRail}
+              role="group"
+              aria-label="Filter products by category"
+            >
+              <button
+                type="button"
+                className={styles.categoryButton}
+                aria-pressed={categorySlug === "all"}
+                onClick={() => setCategorySlug("all")}
+              >
+                All
+              </button>
+              {categories.map((category) => (
+                <button
+                  type="button"
+                  className={styles.categoryButton}
+                  aria-pressed={categorySlug === category.slug}
+                  onClick={() => setCategorySlug(category.slug)}
+                  key={category.id}
+                >
+                  {category.name}
+                </button>
+              ))}
+              <span className={styles.resultsCount} aria-live="polite">
+                {visibleProducts.length} / {products.length}
+              </span>
             </div>
             <div className={styles.catalogueControls}>
-              <input
-                className={styles.search}
-                type="search"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search items"
-                aria-label="Search products"
-              />
+              <label className={styles.searchField}>
+                <CatalogueIcon name="search" />
+                <input
+                  className={styles.search}
+                  type="search"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search items..."
+                  aria-label="Search products"
+                />
+              </label>
               <select
                 className={styles.select}
                 value={sort}
@@ -544,41 +833,34 @@ export function ManagedStorefront({
                 }
                 aria-label="Sort products"
               >
-                <option value="featured">Featured first</option>
+                <option value="featured">Recommended</option>
                 <option value="newest">Newest</option>
                 <option value="price-asc">Price: low to high</option>
                 <option value="price-desc">Price: high to low</option>
                 <option value="name">Name: A to Z</option>
               </select>
-              <select
-                className={styles.select}
-                value={categorySlug}
-                onChange={(event) => setCategorySlug(event.target.value)}
-                aria-label="Filter products by category"
+              <div
+                className={styles.viewToggle}
+                role="group"
+                aria-label="Catalogue view"
               >
-                <option value="all">All categories</option>
-                {categories.map((category) => (
-                  <option value={category.slug} key={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-              <div className={styles.viewToggle} aria-label="Catalogue view">
                 <button
                   type="button"
                   className={styles.viewButton}
+                  aria-label="Show product grid"
                   aria-pressed={viewMode === "grid"}
                   onClick={() => setViewMode("grid")}
                 >
-                  Grid
+                  <CatalogueIcon name="grid" />
                 </button>
                 <button
                   type="button"
                   className={styles.viewButton}
+                  aria-label="Show product list"
                   aria-pressed={viewMode === "list"}
                   onClick={() => setViewMode("list")}
                 >
-                  List
+                  <CatalogueIcon name="list" />
                 </button>
               </div>
             </div>
@@ -802,7 +1084,9 @@ export function ManagedStorefront({
                   ? styles.sideSection
                   : styles.wideSection
               }
+              data-section={section}
               key={section}
+              style={{ gridRow: sectionGridRows[section] }}
             >
               {renderSection(section)}
             </div>
