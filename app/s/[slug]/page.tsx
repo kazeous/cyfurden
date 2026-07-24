@@ -20,6 +20,7 @@ async function getManagedBooth(slug: string) {
           include: {
             images: { orderBy: { sortOrder: "asc" } },
             variants: { orderBy: { sortOrder: "asc" } },
+            category: true,
           },
           orderBy: { sortOrder: "asc" },
         },
@@ -93,6 +94,13 @@ export default async function PublicBoothPage({
   );
   const products = managed.products.map((product) => ({
     id: product.id,
+    category: product.category
+      ? {
+          id: product.category.id,
+          name: product.category.name,
+          slug: product.category.slug,
+        }
+      : null,
     name: product.name,
     eyebrow: product.eyebrow,
     shortDescription: product.shortDescription,
@@ -100,6 +108,8 @@ export default async function PublicBoothPage({
     priceCents: product.priceCents.toString(),
     featured: product.featured,
     tags: product.tags,
+    sortOrder: product.sortOrder,
+    createdAt: product.createdAt.toISOString(),
     images: product.images.map((image) => ({
       objectKey: image.objectKey,
       alt: image.alt,

@@ -11,6 +11,8 @@ import {
   isPurchasableVariant,
   maximumPurchasableQuantity,
 } from "@/lib/order-rules";
+import { filterAndSortCatalogue, type CatalogueSort } from "@/lib/catalogue";
+import { createSocialQrDataUrl } from "@/lib/social-qr";
 import {
   storefrontCornerRadiusPixels,
   type StorefrontDocument,
@@ -19,6 +21,7 @@ import styles from "./managed-storefront.module.css";
 
 type ProductDto = {
   id: string;
+  category: { id: string; name: string; slug: string } | null;
   name: string;
   eyebrow: string | null;
   shortDescription: string | null;
@@ -26,6 +29,8 @@ type ProductDto = {
   priceCents: string;
   featured: boolean;
   tags: string[];
+  sortOrder: number;
+  createdAt: string;
   images: { objectKey: string; alt: string }[];
   variants: {
     id: string;
@@ -121,6 +126,50 @@ function ProductArt({ product }: { product: ProductDto }) {
   );
 }
 
+function availabilityLabel(product: ProductDto) {
+  const available = product.variants.find((variant) =>
+    isPurchasableVariant(variant.status, variant.stockQuantity),
+  );
+  if (!available) return "Sold out";
+  if (available.stockQuantity !== null) {
+    return `${available.stockQuantity} left`;
+  }
+  return available.status === "PREORDER" ? "Pre-order" : "Available";
+}
+
+function ProductQr({ label, url }: { label: string; url: string }) {
+  const [qrUrl, setQrUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    createSocialQrDataUrl(url)
+      .then((value) => {
+        if (active) setQrUrl(value);
+      })
+      .catch(() => {
+        if (active) setQrUrl(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [url]);
+
+  return qrUrl ? (
+    <Image
+      className={styles.infoQr}
+      src={qrUrl}
+      alt={`${label} profile QR code`}
+      width={62}
+      height={62}
+      unoptimized
+    />
+  ) : (
+    <span className={styles.infoQrFallback} aria-hidden="true">
+      QR
+    </span>
+  );
+}
+
 export function ManagedStorefront({
   booth,
   identity,
@@ -138,8 +187,16 @@ export function ManagedStorefront({
   canAcceptReservations: boolean;
 }) {
   const [query, setQuery] = useState("");
+  const [categorySlug, setCategorySlug] = useState("all");
+  const [sort, setSort] = useState<CatalogueSort>("featured");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
+  const [detailProduct, setDetailProduct] = useState<ProductDto | null>(null);
+  const [detailVariantId, setDetailVariantId] = useState<string | null>(null);
+  const [detailImageIndex, setDetailImageIndex] = useState(0);
+  const [detailQuantity, setDetailQuantity] = useState(1);
+  const [infoOpen, setInfoOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [idempotencyKey, setIdempotencyKey] = useState("");
   const [orderState, orderAction, orderPending] = useActionState(
@@ -147,7 +204,11 @@ export function ManagedStorefront({
     initialOrderState,
   );
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const detailCloseButtonRef = useRef<HTMLButtonElement>(null);
+  const infoCloseButtonRef = useRef<HTMLButtonElement>(null);
   const cartPanelRef = useRef<HTMLDivElement>(null);
+  const detailPanelRef = useRef<HTMLDivElement>(null);
+  const infoPanelRef = useRef<HTMLDivElement>(null);
   const orderErrorRef = useRef<HTMLParagraphElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const storageKey = `cyfurden:cart:${booth.slug}`;
@@ -183,37 +244,53 @@ export function ManagedStorefront({
   }, [cart, hydrated, idempotencyKey, storageKey]);
 
   useEffect(() => {
-    if (!cartOpen) return;
+    if (!cartOpen && !detailProduct && !infoOpen) return;
     previousFocusRef.current = globalThis.document
       .activeElement as HTMLElement | null;
-    closeButtonRef.current?.focus();
+    if (cartOpen) closeButtonRef.current?.focus();
+    else if (detailProduct) detailCloseButtonRef.current?.focus();
+    else infoCloseButtonRef.current?.focus();
     const previousOverflow = globalThis.document.body.style.overflow;
     globalThis.document.body.style.overflow = "hidden";
     return () => {
       globalThis.document.body.style.overflow = previousOverflow;
       previousFocusRef.current?.focus();
     };
-  }, [cartOpen]);
+  }, [cartOpen, detailProduct, infoOpen]);
 
   useEffect(() => {
     if (orderState.status === "error") orderErrorRef.current?.focus();
   }, [orderState]);
-  const visibleProducts = useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase();
-    return products.filter((product) => {
-      if (!normalized) return true;
-      return [
-        product.name,
-        product.eyebrow,
-        product.shortDescription,
-        ...product.tags,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLocaleLowerCase()
-        .includes(normalized);
-    });
-  }, [products, query]);
+  const categories = useMemo(
+    () =>
+      products
+        .flatMap((product) => (product.category ? [product.category] : []))
+        .filter(
+          (category, index, all) =>
+            all.findIndex((item) => item.slug === category.slug) === index,
+        )
+        .sort((left, right) => left.name.localeCompare(right.name)),
+    [products],
+  );
+  const visibleProducts = useMemo(
+    () =>
+      filterAndSortCatalogue(
+        products.map((product) => ({
+          ...product,
+          categorySlug: product.category?.slug ?? null,
+        })),
+        {
+          query,
+          categorySlug,
+          sort,
+        },
+      ),
+    [categorySlug, products, query, sort],
+  );
+  const selectedDetailVariant = detailProduct?.variants.find(
+    (variant) => variant.id === detailVariantId,
+  );
+  const detailImage = detailProduct?.images[detailImageIndex];
   const cartDetails = cart.flatMap((line) => {
     const product = products.find((item) => item.id === line.productId);
     const variant = product?.variants.find(
@@ -258,6 +335,51 @@ export function ManagedStorefront({
     setCartOpen(true);
   };
 
+  const openDetails = (product: ProductDto) => {
+    const firstVariant =
+      product.variants.find((variant) =>
+        isPurchasableVariant(variant.status, variant.stockQuantity),
+      ) ?? product.variants[0];
+    setDetailProduct(product);
+    setDetailVariantId(firstVariant?.id ?? null);
+    setDetailImageIndex(0);
+    setDetailQuantity(1);
+  };
+
+  const addDetailToCart = () => {
+    if (!detailProduct || !selectedDetailVariant || !canAcceptReservations) {
+      return;
+    }
+    const maximum = maximumPurchasableQuantity(
+      selectedDetailVariant.stockQuantity,
+    );
+    const quantity = Math.min(Math.max(1, detailQuantity), maximum);
+    updateCart((current) => {
+      const existing = current.find(
+        (line) => line.variantId === selectedDetailVariant.id,
+      );
+      return existing
+        ? current.map((line) =>
+            line.variantId === selectedDetailVariant.id
+              ? {
+                  ...line,
+                  quantity: Math.min(maximum, line.quantity + quantity),
+                }
+              : line,
+          )
+        : [
+            ...current,
+            {
+              productId: detailProduct.id,
+              variantId: selectedDetailVariant.id,
+              quantity,
+            },
+          ];
+    });
+    setDetailProduct(null);
+    setCartOpen(true);
+  };
+
   const adjust = (variantId: string, delta: number) => {
     updateCart((current) =>
       current.flatMap((line) => {
@@ -283,6 +405,50 @@ export function ManagedStorefront({
     if (event.key !== "Tab") return;
     const focusable = cartPanelRef.current?.querySelectorAll<HTMLElement>(
       "button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), a[href]",
+    );
+    if (!focusable?.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && globalThis.document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && globalThis.document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
+  const handleDetailKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setDetailProduct(null);
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const focusable = detailPanelRef.current?.querySelectorAll<HTMLElement>(
+      "button:not(:disabled), input:not(:disabled), select:not(:disabled), a[href]",
+    );
+    if (!focusable?.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && globalThis.document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && globalThis.document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
+  const handleInfoKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setInfoOpen(false);
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const focusable = infoPanelRef.current?.querySelectorAll<HTMLElement>(
+      "button:not(:disabled), a[href]",
     );
     if (!focusable?.length) return;
     const first = focusable[0];
@@ -340,6 +506,13 @@ export function ManagedStorefront({
             <small>
               {document.eventVenue} · {document.eventBoothLabel}
             </small>
+            <button
+              type="button"
+              className={styles.infoButton}
+              onClick={() => setInfoOpen(true)}
+            >
+              Open booth info
+            </button>
           </aside>
         );
       case "browse":
@@ -354,14 +527,61 @@ export function ManagedStorefront({
                 {visibleProducts.length} of {products.length} pieces shown
               </strong>
             </div>
-            <input
-              className={styles.search}
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search items"
-              aria-label="Search products"
-            />
+            <div className={styles.catalogueControls}>
+              <input
+                className={styles.search}
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search items"
+                aria-label="Search products"
+              />
+              <select
+                className={styles.select}
+                value={sort}
+                onChange={(event) =>
+                  setSort(event.target.value as CatalogueSort)
+                }
+                aria-label="Sort products"
+              >
+                <option value="featured">Featured first</option>
+                <option value="newest">Newest</option>
+                <option value="price-asc">Price: low to high</option>
+                <option value="price-desc">Price: high to low</option>
+                <option value="name">Name: A to Z</option>
+              </select>
+              <select
+                className={styles.select}
+                value={categorySlug}
+                onChange={(event) => setCategorySlug(event.target.value)}
+                aria-label="Filter products by category"
+              >
+                <option value="all">All categories</option>
+                {categories.map((category) => (
+                  <option value={category.slug} key={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+              <div className={styles.viewToggle} aria-label="Catalogue view">
+                <button
+                  type="button"
+                  className={styles.viewButton}
+                  aria-pressed={viewMode === "grid"}
+                  onClick={() => setViewMode("grid")}
+                >
+                  Grid
+                </button>
+                <button
+                  type="button"
+                  className={styles.viewButton}
+                  aria-pressed={viewMode === "list"}
+                  onClick={() => setViewMode("list")}
+                >
+                  List
+                </button>
+              </div>
+            </div>
           </section>
         );
       case "catalogue":
@@ -377,7 +597,9 @@ export function ManagedStorefront({
               </div>
             </div>
             {visibleProducts.length ? (
-              <div className={styles.grid}>
+              <div
+                className={`${styles.grid} ${viewMode === "list" ? styles.list : ""}`}
+              >
                 {visibleProducts.map((product) => {
                   const available = product.variants.some((variant) =>
                     isPurchasableVariant(variant.status, variant.stockQuantity),
@@ -406,33 +628,72 @@ export function ManagedStorefront({
                   );
                   return (
                     <article className={styles.card} key={product.id}>
-                      <ProductArt product={product} />
+                      <button
+                        type="button"
+                        className={styles.artButton}
+                        onClick={() => openDetails(product)}
+                        aria-label={`View details for ${product.name}`}
+                      >
+                        <ProductArt product={product} />
+                      </button>
                       <div className={styles.cardCopy}>
-                        <p className={styles.cardEyebrow}>
-                          {product.eyebrow ?? "New release"}
-                        </p>
-                        <h3>{product.name}</h3>
+                        <div className={styles.cardHeading}>
+                          <p className={styles.cardEyebrow}>
+                            {product.eyebrow ?? "New release"}
+                          </p>
+                          <div className={styles.badges}>
+                            {product.featured ? (
+                              <span className={styles.badge}>Featured</span>
+                            ) : null}
+                            <span className={styles.badge}>
+                              {availabilityLabel(product)}
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className={styles.productTitle}
+                          onClick={() => openDetails(product)}
+                        >
+                          {product.name}
+                        </button>
                         <p>{product.shortDescription ?? product.description}</p>
+                        {product.tags.length ? (
+                          <div className={styles.tagList} aria-label="Tags">
+                            {product.tags.slice(0, 3).map((tag) => (
+                              <span key={tag}>#{tag}</span>
+                            ))}
+                          </div>
+                        ) : null}
                         <div className={styles.cardFooter}>
                           <strong>{money(price)}</strong>
-                          <button
-                            type="button"
-                            className={styles.addButton}
-                            onClick={() => add(product)}
-                            disabled={
-                              !available ||
-                              !canAcceptReservations ||
-                              atStockLimit
-                            }
-                          >
-                            {!canAcceptReservations
-                              ? "Reservations paused"
-                              : atStockLimit
-                                ? "Stock limit reached"
-                                : available
-                                  ? "Add to bag"
-                                  : "Sold out"}
-                          </button>
+                          <div className={styles.cardActions}>
+                            <button
+                              type="button"
+                              className={styles.detailsButton}
+                              onClick={() => openDetails(product)}
+                            >
+                              Details
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.addButton}
+                              onClick={() => add(product)}
+                              disabled={
+                                !available ||
+                                !canAcceptReservations ||
+                                atStockLimit
+                              }
+                            >
+                              {!canAcceptReservations
+                                ? "Reservations paused"
+                                : atStockLimit
+                                  ? "Stock limit reached"
+                                  : available
+                                    ? "Add to bag"
+                                    : "Sold out"}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </article>
@@ -514,13 +775,22 @@ export function ManagedStorefront({
             </small>
           </span>
         </div>
-        <button
-          className={styles.bagButton}
-          type="button"
-          onClick={() => setCartOpen(true)}
-        >
-          Bag <span>{cartCount}</span>
-        </button>
+        <div className={styles.topbarActions}>
+          <button
+            className={styles.infoButton}
+            type="button"
+            onClick={() => setInfoOpen(true)}
+          >
+            Booth info
+          </button>
+          <button
+            className={styles.bagButton}
+            type="button"
+            onClick={() => setCartOpen(true)}
+          >
+            Bag <span>{cartCount}</span>
+          </button>
+        </div>
       </header>
 
       <div className={styles.content}>
@@ -544,6 +814,275 @@ export function ManagedStorefront({
           <span>Manual bank-transfer handoff · no automatic verification</span>
         </footer>
       </div>
+
+      {detailProduct ? (
+        <div
+          className={styles.overlay}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="product-detail-heading"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setDetailProduct(null);
+          }}
+        >
+          <div
+            className={styles.detailPanel}
+            ref={detailPanelRef}
+            onKeyDown={handleDetailKeyDown}
+          >
+            <div className={styles.cartHeader}>
+              <div>
+                <p className={styles.eyebrow}>Product detail</p>
+                <h2 id="product-detail-heading">{detailProduct.name}</h2>
+              </div>
+              <button
+                ref={detailCloseButtonRef}
+                type="button"
+                className={styles.close}
+                onClick={() => setDetailProduct(null)}
+                aria-label="Close product details"
+              >
+                Ã—
+              </button>
+            </div>
+            <div className={styles.detailLayout}>
+              <div className={styles.detailGallery}>
+                {detailImage ? (
+                  <div
+                    className={styles.detailArt}
+                    role="img"
+                    aria-label={detailImage.alt || detailProduct.name}
+                    style={{
+                      backgroundImage: `url("${resolveOracleImageUrl(detailImage)}")`,
+                    }}
+                  />
+                ) : (
+                  <ProductArt product={detailProduct} />
+                )}
+                {detailProduct.images.length > 1 ? (
+                  <div
+                    className={styles.thumbnailRow}
+                    aria-label="Product images"
+                  >
+                    {detailProduct.images.map((image, index) => (
+                      <button
+                        key={`${image.objectKey}-${index}`}
+                        type="button"
+                        className={`${styles.thumbnail} ${index === detailImageIndex ? styles.thumbnailActive : ""}`}
+                        onClick={() => setDetailImageIndex(index)}
+                        aria-label={`Show image ${index + 1}`}
+                        aria-pressed={index === detailImageIndex}
+                        style={{
+                          backgroundImage: `url("${resolveOracleImageUrl(image)}")`,
+                        }}
+                      />
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+              <div className={styles.detailCopy}>
+                <p className={styles.cardEyebrow}>
+                  {detailProduct.eyebrow ?? "New release"}
+                </p>
+                <p className={styles.detailDescription}>
+                  {detailProduct.description}
+                </p>
+                {detailProduct.tags.length ? (
+                  <div className={styles.tagList} aria-label="Tags">
+                    {detailProduct.tags.map((tag) => (
+                      <span key={tag}>#{tag}</span>
+                    ))}
+                  </div>
+                ) : null}
+                {detailProduct.variants.length > 1 ? (
+                  <label className={styles.detailField}>
+                    Choose an option
+                    <select
+                      className={styles.select}
+                      value={detailVariantId ?? ""}
+                      onChange={(event) => {
+                        setDetailVariantId(event.target.value);
+                        setDetailQuantity(1);
+                      }}
+                    >
+                      {detailProduct.variants.map((variant) => (
+                        <option value={variant.id} key={variant.id}>
+                          {variant.label}
+                          {isPurchasableVariant(
+                            variant.status,
+                            variant.stockQuantity,
+                          )
+                            ? ""
+                            : " — unavailable"}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : selectedDetailVariant ? (
+                  <p className={styles.detailOption}>
+                    Option: <strong>{selectedDetailVariant.label}</strong>
+                  </p>
+                ) : null}
+                <div className={styles.detailPriceRow}>
+                  <strong>
+                    {money(
+                      selectedDetailVariant?.priceCents ??
+                        detailProduct.priceCents,
+                    )}
+                  </strong>
+                  <span>{availabilityLabel(detailProduct)}</span>
+                </div>
+                {selectedDetailVariant?.fulfillmentNote ? (
+                  <p className={styles.detailNote}>
+                    {selectedDetailVariant.fulfillmentNote}
+                  </p>
+                ) : null}
+                <div className={styles.detailActions}>
+                  <div className={styles.quantity}>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDetailQuantity((current) => Math.max(1, current - 1))
+                      }
+                      aria-label="Remove one"
+                    >
+                      âˆ’
+                    </button>
+                    <span aria-live="polite">{detailQuantity}</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDetailQuantity((current) =>
+                          Math.min(
+                            maximumPurchasableQuantity(
+                              selectedDetailVariant?.stockQuantity ?? null,
+                            ),
+                            current + 1,
+                          ),
+                        )
+                      }
+                      aria-label="Add one"
+                      disabled={
+                        !selectedDetailVariant ||
+                        detailQuantity >=
+                          maximumPurchasableQuantity(
+                            selectedDetailVariant.stockQuantity,
+                          )
+                      }
+                    >
+                      +
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.addButton}
+                    onClick={addDetailToCart}
+                    disabled={
+                      !selectedDetailVariant ||
+                      !isPurchasableVariant(
+                        selectedDetailVariant.status,
+                        selectedDetailVariant.stockQuantity,
+                      ) ||
+                      !canAcceptReservations
+                    }
+                  >
+                    {!canAcceptReservations
+                      ? "Reservations paused"
+                      : selectedDetailVariant &&
+                          isPurchasableVariant(
+                            selectedDetailVariant.status,
+                            selectedDetailVariant.stockQuantity,
+                          )
+                        ? "Add to bag"
+                        : "Sold out"}
+                  </button>
+                </div>
+                <p className={styles.disclaimer}>
+                  Reserve without an account. Payment instructions appear only
+                  after submitting the reservation.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {infoOpen ? (
+        <div
+          className={styles.overlay}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="booth-info-heading"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setInfoOpen(false);
+          }}
+        >
+          <div
+            className={styles.infoPanel}
+            ref={infoPanelRef}
+            onKeyDown={handleInfoKeyDown}
+          >
+            <div className={styles.cartHeader}>
+              <div>
+                <p className={styles.eyebrow}>Booth guide</p>
+                <h2 id="booth-info-heading">{document.name}</h2>
+              </div>
+              <button
+                ref={infoCloseButtonRef}
+                type="button"
+                className={styles.close}
+                onClick={() => setInfoOpen(false)}
+                aria-label="Close booth info"
+              >
+                Ã—
+              </button>
+            </div>
+            <div className={styles.infoGrid}>
+              <div>
+                <h3>{document.creatorName}</h3>
+                <p>{document.creatorBio}</p>
+                {document.creatorLocation ? (
+                  <p className={styles.detailNote}>
+                    {document.creatorLocation}
+                  </p>
+                ) : null}
+              </div>
+              <div className={styles.eventDetails}>
+                <strong>{document.eventName}</strong>
+                <span>{document.eventVenue}</span>
+                <span>{document.eventBoothLabel}</span>
+                <span>{document.eventHours}</span>
+                <span>{document.eventStatusLabel}</span>
+              </div>
+            </div>
+            {identity.socialLinks.length ? (
+              <div className={styles.infoSocials}>
+                <h3>Find the creator online</h3>
+                <div className={styles.infoSocialGrid}>
+                  {identity.socialLinks.map((social) => (
+                    <a
+                      className={styles.infoSocial}
+                      href={social.url}
+                      key={social.id}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <ProductQr label={social.label} url={social.url} />
+                      <span>
+                        <strong>{social.label}</strong>
+                        <small>Open profile</small>
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            <p className={styles.infoFulfillment}>
+              {document.eventFulfillment}
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       {cartOpen ? (
         <div
