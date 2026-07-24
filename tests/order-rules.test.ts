@@ -62,6 +62,7 @@ test("payment handoff requires a destination and survives JSON round trips", () 
 
   const snapshot = createOrderPaymentSnapshot({
     bankName: " Example Bank ",
+    bankCode: "970415",
     accountName: " Studio Owner ",
     accountNumber: " 123456 ",
     qrObjectKey: null,
@@ -70,6 +71,7 @@ test("payment handoff requires a destination and survives JSON round trips", () 
   });
   assert.deepEqual(readOrderPaymentSnapshot(snapshot), {
     bankName: "Example Bank",
+    bankCode: "970415",
     accountName: "Studio Owner",
     accountNumber: "123456",
     paymentLabel: "Bank transfer",

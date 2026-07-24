@@ -99,6 +99,7 @@ export async function createBooth(
                 data: {
                   boothId: booth.id,
                   bankName: "",
+                  bankCode: null,
                   accountName: "",
                   accountNumber: "",
                   paymentLabel: "Bank transfer",

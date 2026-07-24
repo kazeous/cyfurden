@@ -24,7 +24,7 @@
     "db:migrate:status": "prisma migrate status",
     "db:studio": "prisma studio",
     "sentry:test": "node scripts/test-sentry.mjs",
-    "test": "npm run build && node --test tests/rendered-html.test.mjs tests/sentry-config.test.mjs tests/order-integrity-source.test.mjs && tsx --test tests/payment-qr.test.ts tests/storefront-document.test.ts tests/order-rules.test.ts tests/oracle-presign.test.ts tests/booth-limit.test.ts tests/shop-settings.test.ts tests/social-qr.test.ts",
+    "test": "npm run build && node --test tests/rendered-html.test.mjs tests/sentry-config.test.mjs tests/order-integrity-source.test.mjs && tsx --test tests/payment-qr.test.ts tests/storefront-document.test.ts tests/order-rules.test.ts tests/oracle-presign.test.ts tests/booth-limit.test.ts tests/shop-settings.test.ts tests/social-qr.test.ts tests/vietqr.test.ts tests/booth-sections.test.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",

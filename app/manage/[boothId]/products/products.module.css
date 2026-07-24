@@ -479,7 +479,24 @@
   gap: 12px;
 }
 
+.imageGallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
+
+.imageCard {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--color-rule);
+  border-radius: 10px;
+  background: var(--color-panel);
+}
+
 .imagePreview {
+  position: relative;
   display: flex;
   min-height: 150px;
   align-items: center;
@@ -488,6 +505,20 @@
   border: 1px dashed var(--color-rule);
   border-radius: 9px;
   background: var(--color-paper-3);
+}
+
+.imagePosition {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  min-width: 28px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  color: var(--color-action-ink);
+  background: var(--color-action);
+  font-size: 10px;
+  font-weight: 900;
+  text-align: center;
 }
 
 .imagePreview img {
@@ -512,6 +543,23 @@
   flex-wrap: wrap;
 }
 
+.imageActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.imageActions .removeButton {
+  min-height: 36px;
+}
+
+.uploadStatus {
+  margin: 0;
+  color: var(--color-success-ink);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+}
+
 .uploadButton,
 .removeButton {
   display: inline-flex;
@@ -533,6 +581,17 @@
 .removeButton:hover {
   border-color: var(--color-accent);
   background: var(--color-panel);
+}
+
+.uploadButton:focus-visible,
+.removeButton:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.removeButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
 }
 
 .saveBar {

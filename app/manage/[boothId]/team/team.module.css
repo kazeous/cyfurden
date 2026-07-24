@@ -37,7 +37,9 @@
 .memberIdentity,
 .memberBadges,
 .inlineForm,
-.memberEditForm {
+.memberEditForm,
+.memberActions,
+.removeForm {
   display: flex;
   align-items: center;
 }
@@ -340,6 +342,48 @@
   grid-template-columns: minmax(92px, auto) minmax(105px, auto) auto;
   justify-content: end;
   align-items: start;
+}
+
+.memberActions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.removeForm {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.removeForm .inlineError,
+.removeForm .inlineSuccess {
+  flex-basis: 100%;
+  text-align: right;
+}
+
+.dangerButton {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--color-error-line);
+  border-radius: 10px;
+  color: var(--color-error-ink);
+  background: var(--color-error-soft);
+  font: inherit;
+  font-size: var(--text-xs);
+  font-weight: 850;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dangerButton:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+.dangerButton:disabled {
+  cursor: wait;
+  opacity: 0.55;
 }
 
 .memberEditForm .inlineError,

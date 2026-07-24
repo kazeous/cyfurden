@@ -3,13 +3,18 @@
 
 import * as Sentry from "@sentry/nextjs";
 import Link from "next/link";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import {
+  discardProductImageUploadAction,
   hideProductAction,
   saveProductAction,
   type ProductSaveState,
 } from "../actions";
-import { PRODUCT_IMAGE_MAX_BYTES, productImageAccept } from "@/lib/payment-qr";
+import {
+  PRODUCT_IMAGE_MAX_BYTES,
+  PRODUCT_IMAGE_MAX_COUNT,
+  productImageAccept,
+} from "@/lib/payment-qr";
 import styles from "./products.module.css";
 
 type ProductStatus = "DRAFT" | "LIVE" | "SOLD_OUT" | "HIDDEN";
@@ -37,9 +42,33 @@ export type ProductEditorValue = {
   variantLabel: string;
   stockQuantity: number | null;
   fulfillmentNote: string;
-  imageUrl: string | null;
-  imageAlt: string;
-  imageExists: boolean;
+  images: Array<{
+    id: string;
+    url: string | null;
+    alt: string;
+  }>;
+};
+
+type EditableProductImage =
+  | {
+      clientId: string;
+      source: "existing";
+      id: string;
+      url: string | null;
+      alt: string;
+    }
+  | {
+      clientId: string;
+      source: "uploaded";
+      objectKey: string;
+      url: string;
+      alt: string;
+    };
+
+type PresignResponse = {
+  error?: string;
+  objectKey?: string;
+  uploadUrl?: string;
 };
 
 const initialState: ProductSaveState = { error: null };
@@ -75,6 +104,35 @@ async function saveProductWithClientFallback(
   }
 }
 
+async function uploadProductImageDirect(file: File, boothId: string) {
+  const response = await fetch("/api/uploads/presign", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      boothId,
+      purpose: "product",
+      contentType: file.type,
+      contentLength: file.size,
+    }),
+  });
+  const presign = (await response.json()) as PresignResponse;
+  if (!response.ok || !presign.uploadUrl || !presign.objectKey) {
+    throw new Error(
+      presign.error || "The product image upload could not start.",
+    );
+  }
+
+  const upload = await fetch(presign.uploadUrl, {
+    method: "PUT",
+    headers: { "content-type": file.type },
+    body: file,
+  });
+  if (!upload.ok) {
+    throw new Error("Oracle Object Storage rejected the product image.");
+  }
+  return presign.objectKey;
+}
+
 export function ProductForm({
   boothId,
   value,
@@ -86,57 +144,165 @@ export function ProductForm({
   canEdit: boolean;
   cancelHref: string;
 }) {
+  const [images, setImages] = useState<EditableProductImage[]>(() =>
+    value.images.map((image) => ({
+      clientId: `existing-${image.id}`,
+      source: "existing",
+      ...image,
+    })),
+  );
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [uploadMessage, setUploadMessage] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [inputKey, setInputKey] = useState(0);
+  const imagesRef = useRef(images);
+  const saveProductWithImageCleanup = async (
+    previousState: ProductSaveState,
+    formData: FormData,
+  ) => {
+    const result = await saveProductWithClientFallback(previousState, formData);
+    const discarded = result.discardedImageObjectKeys;
+    if (discarded?.length) {
+      const discardedSet = new Set(discarded);
+      setImages((current) =>
+        current.filter((image) => {
+          if (
+            image.source === "uploaded" &&
+            discardedSet.has(image.objectKey)
+          ) {
+            URL.revokeObjectURL(image.url);
+            return false;
+          }
+          return true;
+        }),
+      );
+      setUploadMessage("The rejected uploads were removed. Choose them again.");
+    }
+    return result;
+  };
   const [state, formAction, pending] = useActionState(
-    saveProductWithClientFallback,
+    saveProductWithImageCleanup,
     initialState,
   );
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
-  const [imageError, setImageError] = useState<string | null>(null);
-  const [removeImage, setRemoveImage] = useState(false);
-  const [inputKey, setInputKey] = useState(0);
 
-  useEffect(
-    () => () => {
-      if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
-    },
-    [imagePreviewUrl],
+  useEffect(() => {
+    imagesRef.current = images;
+  }, [images]);
+
+  useEffect(() => {
+    return () => {
+      for (const image of imagesRef.current) {
+        if (image.source === "uploaded") URL.revokeObjectURL(image.url);
+      }
+    };
+  }, []);
+
+  const chooseImages = async (files: FileList | null) => {
+    setImageError(null);
+    setUploadMessage(null);
+    const selected = Array.from(files ?? []);
+    if (!selected.length) return;
+    if (images.length + selected.length > PRODUCT_IMAGE_MAX_COUNT) {
+      setImageError(
+        `A product can have up to ${PRODUCT_IMAGE_MAX_COUNT} images.`,
+      );
+      setInputKey((current) => current + 1);
+      return;
+    }
+    for (const file of selected) {
+      if (file.size > PRODUCT_IMAGE_MAX_BYTES) {
+        setImageError("Each product image must be 5 MB or smaller.");
+        setInputKey((current) => current + 1);
+        return;
+      }
+      if (!productImageAccept.split(",").includes(file.type)) {
+        setImageError("Choose PNG, JPEG, or WebP product images.");
+        setInputKey((current) => current + 1);
+        return;
+      }
+    }
+
+    setUploading(true);
+    try {
+      for (const [index, file] of selected.entries()) {
+        setUploadMessage(
+          `Uploading image ${index + 1} of ${selected.length} directly to Oracle Object Storage...`,
+        );
+        const objectKey = await uploadProductImageDirect(file, boothId);
+        const uploaded: EditableProductImage = {
+          clientId: `uploaded-${objectKey}`,
+          source: "uploaded",
+          objectKey,
+          url: URL.createObjectURL(file),
+          alt: "",
+        };
+        setImages((current) => [...current, uploaded]);
+      }
+      setUploadMessage(
+        "Upload complete. Save the product to verify and attach the images.",
+      );
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: {
+          "cyfurden.operation": "product.image_presign_upload",
+          "cyfurden.failure_surface": "direct_oci_upload",
+        },
+      });
+      setImageError(
+        error instanceof Error
+          ? error.message
+          : "The product images could not be uploaded.",
+      );
+    } finally {
+      setUploading(false);
+      setInputKey((current) => current + 1);
+    }
+  };
+
+  const removeImage = (clientId: string) => {
+    const removed = images.find((image) => image.clientId === clientId);
+    if (removed?.source === "uploaded") {
+      URL.revokeObjectURL(removed.url);
+      void discardProductImageUploadAction(boothId, removed.objectKey).catch(
+        (error) => {
+          Sentry.captureException(error, {
+            tags: {
+              "cyfurden.operation": "product.image_presign_discard",
+            },
+          });
+        },
+      );
+    }
+    setImages((current) =>
+      current.filter((image) => image.clientId !== clientId),
+    );
+  };
+
+  const updateImageAlt = (clientId: string, alt: string) => {
+    setImages((current) =>
+      current.map((image) =>
+        image.clientId === clientId ? { ...image, alt } : image,
+      ),
+    );
+  };
+
+  const moveImage = (index: number, offset: -1 | 1) => {
+    setImages((current) => {
+      const target = index + offset;
+      if (target < 0 || target >= current.length) return current;
+      const next = [...current];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  };
+
+  const imageManifest = JSON.stringify(
+    images.map((image) =>
+      image.source === "existing"
+        ? { existingId: image.id, alt: image.alt }
+        : { objectKey: image.objectKey, alt: image.alt },
+    ),
   );
-
-  const chooseImage = (file: File | undefined) => {
-    setImageError(null);
-    if (!file) return;
-    if (file.size > PRODUCT_IMAGE_MAX_BYTES) {
-      setImageError("Product images must be 5 MB or smaller.");
-      setInputKey((current) => current + 1);
-      return;
-    }
-    if (file.type && !productImageAccept.split(",").includes(file.type)) {
-      setImageError("Choose a PNG, JPEG, or WebP image.");
-      setInputKey((current) => current + 1);
-      return;
-    }
-    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
-    setImageFile(file);
-    setImagePreviewUrl(URL.createObjectURL(file));
-    setRemoveImage(false);
-  };
-
-  const discardSelection = () => {
-    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
-    setImageFile(null);
-    setImagePreviewUrl(null);
-    setImageError(null);
-    setInputKey((current) => current + 1);
-  };
-
-  const visibleImage =
-    imagePreviewUrl || (!removeImage ? value.imageUrl : null);
-  const imageLabel = imageFile
-    ? "New image selected"
-    : value.imageExists && !removeImage
-      ? "Current image"
-      : "No image";
   const editorError = imageError ?? state.error ?? "";
 
   return (
@@ -145,7 +311,7 @@ export function ProductForm({
         <input type="hidden" name="boothId" value={boothId} />
         <input type="hidden" name="productId" value={value.id ?? ""} />
         <input type="hidden" name="variantId" value={value.variantId ?? ""} />
-        <input type="hidden" name="removeImage" value={String(removeImage)} />
+        <input type="hidden" name="imageManifest" value={imageManifest} />
 
         <div className={styles.editorHeader}>
           <div>
@@ -317,78 +483,111 @@ export function ProductForm({
         <section className={styles.formSection} aria-labelledby="media-heading">
           <h3 id="media-heading">Media</h3>
           <div className={styles.upload}>
-            <div className={styles.imagePreview}>
-              {visibleImage ? (
-                <img src={visibleImage} alt={value.imageAlt || value.name} />
-              ) : (
+            {images.length ? (
+              <div className={styles.imageGallery}>
+                {images.map((image, index) => (
+                  <article className={styles.imageCard} key={image.clientId}>
+                    <div className={styles.imagePreview}>
+                      {image.url ? (
+                        <img
+                          src={image.url}
+                          alt={image.alt || value.name || "Product preview"}
+                        />
+                      ) : (
+                        <p className={styles.imagePlaceholder}>
+                          Image preview unavailable
+                        </p>
+                      )}
+                      <span className={styles.imagePosition}>
+                        {index === 0 ? "Cover" : index + 1}
+                      </span>
+                    </div>
+                    <label className={styles.field}>
+                      Alt text
+                      <input
+                        value={image.alt}
+                        disabled={!canEdit || pending || uploading}
+                        maxLength={300}
+                        placeholder={value.name || "Describe this image"}
+                        onChange={(event) =>
+                          updateImageAlt(image.clientId, event.target.value)
+                        }
+                      />
+                    </label>
+                    <div className={styles.imageActions}>
+                      <button
+                        className={styles.removeButton}
+                        type="button"
+                        disabled={index === 0 || pending || uploading}
+                        onClick={() => moveImage(index, -1)}
+                      >
+                        Move up
+                      </button>
+                      <button
+                        className={styles.removeButton}
+                        type="button"
+                        disabled={
+                          index === images.length - 1 || pending || uploading
+                        }
+                        onClick={() => moveImage(index, 1)}
+                      >
+                        Move down
+                      </button>
+                      <button
+                        className={styles.removeButton}
+                        type="button"
+                        disabled={pending || uploading}
+                        onClick={() => removeImage(image.clientId)}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className={styles.imagePreview}>
                 <p className={styles.imagePlaceholder}>
-                  Add a product image to make this listing easier to scan.
+                  Add up to {PRODUCT_IMAGE_MAX_COUNT} product images. The first
+                  image is used as the catalogue cover.
                 </p>
-              )}
-            </div>
-            <strong className={styles.helper}>{imageLabel}</strong>
+              </div>
+            )}
+            <strong className={styles.helper}>
+              {images.length} of {PRODUCT_IMAGE_MAX_COUNT} images
+            </strong>
             <input
               key={inputKey}
-              id="product-image"
+              id="product-images"
               className={styles.srOnly}
-              name="productImage"
               type="file"
+              multiple
               accept={productImageAccept}
-              disabled={!canEdit || pending}
-              onChange={(event) => chooseImage(event.target.files?.[0])}
+              disabled={
+                !canEdit ||
+                pending ||
+                uploading ||
+                images.length >= PRODUCT_IMAGE_MAX_COUNT
+              }
+              onChange={(event) => void chooseImages(event.target.files)}
             />
             <div className={styles.uploadActions}>
-              {canEdit ? (
-                <>
-                  <label
-                    className={styles.uploadButton}
-                    htmlFor="product-image"
-                  >
-                    {value.imageExists || imageFile
-                      ? "Replace image"
-                      : "Choose image"}
-                  </label>
-                  {imageFile ? (
-                    <button
-                      className={styles.removeButton}
-                      type="button"
-                      onClick={discardSelection}
-                    >
-                      Discard selection
-                    </button>
-                  ) : value.imageExists && !removeImage ? (
-                    <button
-                      className={styles.removeButton}
-                      type="button"
-                      onClick={() => setRemoveImage(true)}
-                    >
-                      Remove image
-                    </button>
-                  ) : value.imageExists ? (
-                    <button
-                      className={styles.removeButton}
-                      type="button"
-                      onClick={() => setRemoveImage(false)}
-                    >
-                      Undo remove
-                    </button>
-                  ) : null}
-                </>
+              {canEdit && images.length < PRODUCT_IMAGE_MAX_COUNT ? (
+                <label className={styles.uploadButton} htmlFor="product-images">
+                  {uploading ? "Uploading..." : "Choose images"}
+                </label>
               ) : null}
             </div>
+            {uploadMessage ? (
+              <p className={styles.uploadStatus} role="status">
+                {uploadMessage}
+              </p>
+            ) : null}
             <p className={styles.helper}>
-              PNG, JPEG, or WebP up to 5 MB. The storage key stays internal.
+              PNG, JPEG, or WebP, up to 5 MB each. Images upload directly to
+              Oracle and are verified by Cyfurden when you save.
             </p>
           </div>
-          <label className={styles.field}>
-            Image alt text
-            <input
-              name="imageAlt"
-              defaultValue={value.imageAlt}
-              disabled={!canEdit}
-              maxLength={300}
-            />
-          </label>
         </section>
 
         <section
@@ -421,13 +620,15 @@ export function ProductForm({
               <button
                 className={styles.saveButton}
                 type="submit"
-                disabled={pending}
+                disabled={pending || uploading}
               >
-                {pending
-                  ? "Saving…"
-                  : value.id
-                    ? "Save changes"
-                    : "Create product"}
+                {uploading
+                  ? "Uploading images…"
+                  : pending
+                    ? "Saving…"
+                    : value.id
+                      ? "Save changes"
+                      : "Create product"}
               </button>
             </div>
           </div>

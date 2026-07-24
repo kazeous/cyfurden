@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { PageHeading } from "@/components/admin/admin-shell";
-import { requireBoothMember } from "@/lib/authorization";
+import { requireBoothSection } from "@/lib/authorization";
 import { resolveOracleImageUrl } from "@/lib/oracle-images";
 import { db } from "@/lib/db";
 import { ProductForm, type ProductEditorValue } from "./product-form";
@@ -61,11 +61,10 @@ function normalizeEditorValue(
       stockQuantity: number | null;
       fulfillmentNote: string | null;
     }>;
-    images: Array<{ objectKey: string; alt: string }>;
+    images: Array<{ id: string; objectKey: string; alt: string }>;
   } | null,
 ): ProductEditorValue {
   const variant = product?.variants[0] ?? null;
-  const image = product?.images[0] ?? null;
   return {
     id: product?.id ?? null,
     name: product?.name ?? "",
@@ -83,9 +82,12 @@ function normalizeEditorValue(
     variantLabel: variant?.label ?? "Standard",
     stockQuantity: variant?.stockQuantity ?? null,
     fulfillmentNote: variant?.fulfillmentNote ?? "",
-    imageUrl: image ? (resolveOracleImageUrl(image) ?? null) : null,
-    imageAlt: image?.alt ?? product?.name ?? "",
-    imageExists: Boolean(image),
+    images:
+      product?.images.map((image) => ({
+        id: image.id,
+        url: resolveOracleImageUrl(image) ?? null,
+        alt: image.alt,
+      })) ?? [],
   };
 }
 
@@ -130,8 +132,8 @@ export default async function ProductsPage({
 }) {
   const { boothId } = await params;
   const filters = await searchParams;
-  const { membership } = await requireBoothMember(boothId);
-  const canEdit = membership.role === "OWNER" || membership.role === "ADMIN";
+  await requireBoothSection(boothId, "products");
+  const canEdit = true;
   const status = productStatuses.includes(filters.status as ProductStatus)
     ? (filters.status as ProductStatus)
     : undefined;
@@ -446,6 +448,7 @@ export default async function ProductsPage({
 
       {isCreating || selected ? (
         <ProductForm
+          key={selected?.id ?? "new"}
           boothId={boothId}
           value={normalizeEditorValue(selected)}
           canEdit={canEdit}

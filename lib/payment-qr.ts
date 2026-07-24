@@ -2,6 +2,7 @@ export const PAYMENT_QR_MAX_BYTES = 5 * 1024 * 1024;
 
 export const paymentQrAccept = "image/png,image/jpeg,image/webp";
 export const PRODUCT_IMAGE_MAX_BYTES = PAYMENT_QR_MAX_BYTES;
+export const PRODUCT_IMAGE_MAX_COUNT = 8;
 export const productImageAccept = paymentQrAccept;
 
 export type PaymentQrImage = {

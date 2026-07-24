@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireBoothMember } from "@/lib/authorization";
+import { requireBoothSection } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { expireStaleOrders } from "@/lib/order-inventory";
 import { OrderStatusForm } from "./order-status-form";
@@ -100,7 +100,7 @@ export default async function OrdersPage({
 }) {
   const { boothId } = await params;
   const query = await searchParams;
-  await requireBoothMember(boothId);
+  await requireBoothSection(boothId, "orders");
   await expireStaleOrders(boothId);
 
   const selectedStatus = parseStatus(firstValue(query.status));
@@ -322,6 +322,7 @@ export default async function OrdersPage({
                       <OrderItems
                         items={order.items}
                         note={order.customerNote}
+                        transferReference={order.customerTransferReference}
                       />
                     </td>
                     <td className={styles.numericCell}>
@@ -376,7 +377,11 @@ export default async function OrdersPage({
                     <dd>{formatMoney(order.totalCents, order.currency)}</dd>
                   </div>
                 </dl>
-                <OrderItems items={order.items} note={order.customerNote} />
+                <OrderItems
+                  items={order.items}
+                  note={order.customerNote}
+                  transferReference={order.customerTransferReference}
+                />
                 <a
                   className={styles.emailLink}
                   href={`mailto:${order.customerEmail}`}
@@ -463,6 +468,7 @@ export default async function OrdersPage({
 function OrderItems({
   items,
   note,
+  transferReference,
 }: {
   items: Array<{
     id: string;
@@ -471,6 +477,7 @@ function OrderItems({
     quantity: number;
   }>;
   note: string | null;
+  transferReference: string | null;
 }) {
   const visibleItems = items.slice(0, 2);
   return (
@@ -493,6 +500,11 @@ function OrderItems({
           <summary>Customer note</summary>
           <p>{note}</p>
         </details>
+      ) : null}
+      {transferReference ? (
+        <small className={styles.transferReference}>
+          Customer reference: {transferReference}
+        </small>
       ) : null}
     </div>
   );

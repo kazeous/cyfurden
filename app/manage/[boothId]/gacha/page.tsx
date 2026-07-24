@@ -4,7 +4,7 @@ import {
   adminStyles as admin,
 } from "@/components/admin/admin-shell";
 import { SubmitButton } from "@/components/admin/form-controls";
-import { requireBoothRole } from "@/lib/authorization";
+import { requireBoothSection } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import {
   saveGachaAction,
@@ -27,7 +27,7 @@ export default async function GachaPage({
 }) {
   const { boothId } = await params;
   const filters = await searchParams;
-  await requireBoothRole(boothId, ["OWNER", "ADMIN"]);
+  await requireBoothSection(boothId, "gacha");
   const [config, banners, products] = await Promise.all([
     db.gachaConfig.findUnique({ where: { boothId } }),
     db.gachaBanner.findMany({

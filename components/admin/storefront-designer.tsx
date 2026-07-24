@@ -32,6 +32,7 @@ type PreviewMode = "desktop" | "phone";
 
 export type StorefrontPaymentDraft = {
   bankName: string;
+  bankCode: string;
   accountName: string;
   accountNumber: string;
   paymentLabel: string;
@@ -184,6 +185,7 @@ const documentFieldNames = [
 
 const paymentFieldNames = [
   "bankName",
+  "bankCode",
   "accountName",
   "accountNumber",
   "paymentLabel",
@@ -901,6 +903,20 @@ export function StorefrontDesigner({
                         required
                         onChange={(event) =>
                           updatePayment("bankName", event.target.value)
+                        }
+                      />
+                    </Field>
+                    <Field
+                      label="Bank BIN/code"
+                      hint="Six-digit bank identifier used to generate a VietQR. Leave blank to use only the uploaded QR or typed account details."
+                    >
+                      <input
+                        value={payment.bankCode}
+                        inputMode="numeric"
+                        pattern="[0-9]{6}"
+                        maxLength={6}
+                        onChange={(event) =>
+                          updatePayment("bankCode", event.target.value)
                         }
                       />
                     </Field>

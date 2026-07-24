@@ -3,11 +3,12 @@ import {
   PageHeading,
   adminStyles as admin,
 } from "@/components/admin/admin-shell";
-import { requireBoothMember } from "@/lib/authorization";
+import { requireBoothSection } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import {
   InviteMemberForm,
   MemberAccessForm,
+  RemoveMemberForm,
   RevokeInvitationForm,
 } from "./team-controls";
 import styles from "./team.module.css";
@@ -23,7 +24,10 @@ export default async function TeamPage({
   params: Promise<{ boothId: string }>;
 }) {
   const { boothId } = await params;
-  const { membership: viewerMembership } = await requireBoothMember(boothId);
+  const { membership: viewerMembership } = await requireBoothSection(
+    boothId,
+    "team",
+  );
   const isOwner = viewerMembership.role === "OWNER";
   const [members, invitations] = await Promise.all([
     db.boothMembership.findMany({
@@ -157,13 +161,20 @@ export default async function TeamPage({
                       <span className={styles.statusBadge}>Always active</span>
                     </div>
                   ) : isOwner ? (
-                    <MemberAccessForm
-                      boothId={boothId}
-                      membershipId={member.id}
-                      role={member.role}
-                      status={member.status}
-                      memberName={memberName}
-                    />
+                    <div className={styles.memberActions}>
+                      <MemberAccessForm
+                        boothId={boothId}
+                        membershipId={member.id}
+                        role={member.role}
+                        status={member.status}
+                        memberName={memberName}
+                      />
+                      <RemoveMemberForm
+                        boothId={boothId}
+                        membershipId={member.id}
+                        memberName={memberName}
+                      />
+                    </div>
                   ) : (
                     <div className={styles.memberBadges}>
                       <span className={styles.statusBadge}>

@@ -4,7 +4,7 @@ import {
   PageHeading,
   adminStyles as styles,
 } from "@/components/admin/admin-shell";
-import { requireBoothRole } from "@/lib/authorization";
+import { requireBoothSection } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { resolveOracleImageUrl } from "@/lib/oracle-images";
 import { isOracleQrUploadConfigured } from "@/lib/oracle-uploads";
@@ -24,7 +24,7 @@ export default async function StorefrontPage({
 }) {
   const { boothId } = await params;
   const messages = await searchParams;
-  const { booth } = await requireBoothRole(boothId, ["OWNER", "ADMIN"]);
+  const { booth } = await requireBoothSection(boothId, "storefront");
   const [config, payment, productCount, featuredCount] = await Promise.all([
     db.storefrontConfig.findUnique({ where: { boothId } }),
     db.boothPaymentInstruction.findUnique({ where: { boothId } }),
@@ -76,6 +76,7 @@ export default async function StorefrontPage({
         document={document}
         payment={{
           bankName: payment?.bankName ?? "Demo Bank",
+          bankCode: payment?.bankCode ?? "",
           accountName: payment?.accountName ?? document.creatorName,
           accountNumber: payment?.accountNumber ?? "0000000000",
           paymentLabel: payment?.paymentLabel ?? "Bank transfer",

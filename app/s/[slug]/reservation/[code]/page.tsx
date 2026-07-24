@@ -8,6 +8,7 @@ import {
 } from "@/lib/order-rules";
 import { resolveOracleImageUrl } from "@/lib/oracle-images";
 import { readStorefrontDocument } from "@/lib/storefront-document";
+import { generateVietQrDataUrl } from "@/lib/vietqr";
 
 export const metadata: Metadata = {
   title: "Reservation received · Cyfurden",
@@ -48,6 +49,20 @@ export default async function ReservationPage({
   const qrUrl = payment?.qrObjectKey
     ? resolveOracleImageUrl({ objectKey: payment.qrObjectKey })
     : undefined;
+  let generatedQrUrl: string | undefined;
+  if (payment?.bankCode) {
+    try {
+      generatedQrUrl = await generateVietQrDataUrl({
+        bankCode: payment.bankCode,
+        accountNumber: payment.accountNumber,
+        accountName: payment.accountName,
+        amountMinorUnits: order.totalCents,
+        transferReference: order.transferReference,
+      });
+    } catch {
+      generatedQrUrl = undefined;
+    }
+  }
 
   return (
     <ReservationConfirmation
@@ -59,6 +74,7 @@ export default async function ReservationPage({
         currency: order.currency,
         totalMinorUnits: order.totalCents.toString(),
         transferReference: order.transferReference,
+        customerTransferReference: order.customerTransferReference,
         idempotencyKey: order.idempotencyKey,
         items: order.items.map((item) => ({
           id: item.id,
@@ -77,7 +93,12 @@ export default async function ReservationPage({
               paymentLabel: payment.paymentLabel,
               instructions: payment.instructions,
               disclaimer: payment.disclaimer,
-              qrUrl,
+              qrUrl: generatedQrUrl ?? qrUrl,
+              qrSource: generatedQrUrl
+                ? "Generated for this reservation"
+                : qrUrl
+                  ? "Booth-provided QR"
+                  : undefined,
             }
           : null
       }

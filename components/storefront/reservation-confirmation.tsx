@@ -2,6 +2,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useActionState } from "react";
+import {
+  submitCustomerTransferReferenceAction,
+  type CustomerTransferReferenceState,
+} from "@/app/s/[slug]/reservation/[code]/actions";
 import type { StorefrontDocument } from "@/lib/storefront-document";
 import styles from "./reservation-confirmation.module.css";
 
@@ -13,6 +18,7 @@ type PaymentDetails = {
   instructions: string;
   disclaimer: string;
   qrUrl?: string;
+  qrSource?: string;
 };
 
 type ReservationDetails = {
@@ -21,6 +27,7 @@ type ReservationDetails = {
   currency: string;
   totalMinorUnits: string;
   transferReference: string;
+  customerTransferReference: string | null;
   idempotencyKey: string;
   items: Array<{
     id: string;
@@ -75,6 +82,11 @@ const reservationStatusCopy: Record<
   },
 };
 
+const initialReferenceState: CustomerTransferReferenceState = {
+  status: "idle",
+  message: "",
+};
+
 function formatMoney(minorUnits: string, currency: string) {
   return new Intl.NumberFormat("vi-VN", {
     style: "currency",
@@ -96,6 +108,10 @@ export function ReservationConfirmation({
 }) {
   const [copied, setCopied] = useState<CopyTarget | null>(null);
   const [copyError, setCopyError] = useState(false);
+  const [referenceState, referenceAction, referencePending] = useActionState(
+    submitCustomerTransferReferenceAction,
+    initialReferenceState,
+  );
   const total = formatMoney(reservation.totalMinorUnits, reservation.currency);
   const statusCopy = reservationStatusCopy[reservation.status];
   const paymentRequired = reservation.status === "PENDING";
@@ -212,10 +228,15 @@ export function ReservationConfirmation({
                 <div className={styles.paymentGrid}>
                   <div className={styles.qrPanel}>
                     {payment.qrUrl ? (
-                      <img
-                        src={payment.qrUrl}
-                        alt={`Bank transfer QR code for ${payment.accountName}`}
-                      />
+                      <>
+                        <img
+                          src={payment.qrUrl}
+                          alt={`Bank transfer QR code for ${payment.accountName}`}
+                        />
+                        {payment.qrSource ? (
+                          <small>{payment.qrSource}</small>
+                        ) : null}
+                      </>
                     ) : (
                       <div className={styles.qrFallback}>
                         <strong>QR code unavailable</strong>
@@ -278,6 +299,40 @@ export function ReservationConfirmation({
                   <strong>Booth instructions</strong>
                   <p>{payment.instructions}</p>
                 </div>
+                <form action={referenceAction} className={styles.referenceForm}>
+                  <strong>Submit your bank transaction reference</strong>
+                  <p>
+                    After transferring, enter the reference from your bank
+                    receipt so the booth owner can match it manually.
+                  </p>
+                  <input type="hidden" name="slug" value={boothSlug} />
+                  <input type="hidden" name="code" value={reservation.code} />
+                  <label>
+                    Bank transaction reference
+                    <input
+                      name="customerTransferReference"
+                      defaultValue={reservation.customerTransferReference ?? ""}
+                      maxLength={120}
+                      required
+                      disabled={referencePending}
+                    />
+                  </label>
+                  <button type="submit" disabled={referencePending}>
+                    {referencePending ? "Submitting..." : "Submit reference"}
+                  </button>
+                  <p
+                    className={
+                      referenceState.status === "error"
+                        ? styles.referenceError
+                        : styles.referenceStatus
+                    }
+                    role={
+                      referenceState.status === "error" ? "alert" : "status"
+                    }
+                  >
+                    {referenceState.message}
+                  </p>
+                </form>
                 <p className={styles.disclaimer}>{payment.disclaimer}</p>
               </>
             ) : paymentRequired ? (

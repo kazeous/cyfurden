@@ -87,6 +87,7 @@ export function aggregateSubmittedOrderLines(lines: SubmittedOrderLine[]) {
 
 export type PaymentInstructionSource = {
   bankName: string;
+  bankCode?: string | null;
   accountName: string;
   accountNumber: string;
   paymentLabel?: string;
@@ -96,6 +97,7 @@ export type PaymentInstructionSource = {
 };
 
 export type OrderPaymentSnapshot = PaymentInstructionSource & {
+  bankCode: string | null;
   paymentLabel: string;
 };
 
@@ -108,6 +110,7 @@ export function createOrderPaymentSnapshot(
 
   const snapshot = {
     bankName: clean(source.bankName),
+    bankCode: clean(source.bankCode ?? "") || null,
     accountName: clean(source.accountName),
     accountNumber: clean(source.accountNumber),
     paymentLabel:
@@ -137,6 +140,11 @@ export function readOrderPaymentSnapshot(
     typeof candidate.accountName !== "string" ||
     typeof candidate.accountNumber !== "string" ||
     !(
+      candidate.bankCode === undefined ||
+      candidate.bankCode === null ||
+      typeof candidate.bankCode === "string"
+    ) ||
+    !(
       candidate.paymentLabel === undefined ||
       typeof candidate.paymentLabel === "string"
     ) ||
@@ -152,6 +160,10 @@ export function readOrderPaymentSnapshot(
 
   return createOrderPaymentSnapshot({
     bankName: candidate.bankName,
+    bankCode:
+      candidate.bankCode === null || candidate.bankCode === undefined
+        ? null
+        : candidate.bankCode,
     accountName: candidate.accountName,
     accountNumber: candidate.accountNumber,
     paymentLabel: candidate.paymentLabel ?? "Bank transfer",

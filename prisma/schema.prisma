@@ -225,6 +225,7 @@ model BoothPaymentInstruction {
   id                        String   @id @default(cuid())
   boothId                   String   @unique
   bankName                  String
+  bankCode                  String?
   accountName               String
   accountNumber             String
   paymentLabel              String   @default("Bank transfer")
@@ -347,29 +348,30 @@ model PromotionProduct {
 }
 
 model Order {
-  id                String      @id @default(cuid())
-  boothId           String
-  code              String
-  status            OrderStatus @default(PENDING)
-  customerName      String
-  customerEmail     String
-  customerPhone     String?
-  customerNote      String?     @db.Text
-  subtotalCents     BigInt
-  totalCents        BigInt
-  currency          String      @default("VND")
-  transferReference String
-  idempotencyKey    String
-  paymentSnapshot   Json?
-  placedAt          DateTime    @default(now())
-  expiresAt         DateTime?
-  confirmedAt       DateTime?
-  confirmedById     String?
-  fulfilledAt       DateTime?
-  updatedAt         DateTime    @updatedAt
-  booth             Booth       @relation(fields: [boothId], references: [id], onDelete: Restrict)
-  confirmedBy       User?       @relation("OrderConfirmer", fields: [confirmedById], references: [id], onDelete: SetNull)
-  items             OrderItem[]
+  id                        String      @id @default(cuid())
+  boothId                   String
+  code                      String
+  status                    OrderStatus @default(PENDING)
+  customerName              String
+  customerEmail             String
+  customerPhone             String?
+  customerNote              String?     @db.Text
+  customerTransferReference String?
+  subtotalCents             BigInt
+  totalCents                BigInt
+  currency                  String      @default("VND")
+  transferReference         String
+  idempotencyKey            String
+  paymentSnapshot           Json?
+  placedAt                  DateTime    @default(now())
+  expiresAt                 DateTime?
+  confirmedAt               DateTime?
+  confirmedById             String?
+  fulfilledAt               DateTime?
+  updatedAt                 DateTime    @updatedAt
+  booth                     Booth       @relation(fields: [boothId], references: [id], onDelete: Restrict)
+  confirmedBy               User?       @relation("OrderConfirmer", fields: [confirmedById], references: [id], onDelete: SetNull)
+  items                     OrderItem[]
 
   @@unique([boothId, code])
   @@unique([boothId, idempotencyKey])

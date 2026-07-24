@@ -3,6 +3,10 @@ import "server-only";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import {
+  canAccessBoothSection,
+  type BoothSectionId,
+} from "@/lib/booth-sections";
 import { db } from "@/lib/db";
 
 export type BoothRoleName = "OWNER" | "ADMIN" | "STAFF";
@@ -48,6 +52,17 @@ export async function requireBoothRole(
   const context = await requireBoothMember(boothId);
   if (!allowedRoles.includes(context.membership.role)) {
     throw new Error("You do not have permission to perform this action.");
+  }
+  return context;
+}
+
+export async function requireBoothSection(
+  boothId: string,
+  section: BoothSectionId,
+) {
+  const context = await requireBoothMember(boothId);
+  if (!canAccessBoothSection(context.membership.role, section)) {
+    redirect(`/manage/${boothId}/orders`);
   }
   return context;
 }

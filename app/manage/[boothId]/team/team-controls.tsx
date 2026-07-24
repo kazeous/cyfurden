@@ -3,6 +3,7 @@
 import { useActionState, useState, useSyncExternalStore } from "react";
 import {
   inviteTeamMemberAction,
+  removeTeamMemberAction,
   revokeTeamInvitationAction,
   updateTeamMemberAction,
   type TeamInviteState,
@@ -181,6 +182,48 @@ export function MemberAccessForm({
       </label>
       <button className={styles.ghostButton} type="submit" disabled={pending}>
         {pending ? "Saving..." : "Save"}
+      </button>
+      {state.error ? (
+        <span className={styles.inlineError} role="alert">
+          {state.error}
+        </span>
+      ) : state.success ? (
+        <span className={styles.inlineSuccess} role="status">
+          {state.success}
+        </span>
+      ) : null}
+    </form>
+  );
+}
+
+export function RemoveMemberForm({
+  boothId,
+  membershipId,
+  memberName,
+}: {
+  boothId: string;
+  membershipId: string;
+  memberName: string;
+}) {
+  const [state, formAction, pending] = useActionState(
+    removeTeamMemberAction,
+    emptyMutationState,
+  );
+
+  return (
+    <form
+      action={formAction}
+      className={styles.removeForm}
+      onSubmit={(event) => {
+        if (!window.confirm(`Remove ${memberName} from this booth?`)) {
+          event.preventDefault();
+        }
+      }}
+    >
+      <input type="hidden" name="boothId" value={boothId} />
+      <input type="hidden" name="membershipId" value={membershipId} />
+      <button className={styles.dangerButton} type="submit" disabled={pending}>
+        {pending ? "Removing..." : "Remove"}
       </button>
       {state.error ? (
         <span className={styles.inlineError} role="alert">

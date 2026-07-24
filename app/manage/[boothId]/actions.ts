@@ -16,14 +16,16 @@ import {
   discardUploadedPaymentQr,
   discardUploadedProductImage,
   OracleQrUploadError,
-  OracleProductImageUploadError,
   uploadPaymentQr,
-  uploadProductImage,
 } from "@/lib/oracle-uploads";
 import {
   OracleLogoVerificationError,
+  OracleProductImageVerificationError,
   verifyBoothLogoUpload,
+  verifyBoothProductImageUpload,
 } from "@/lib/oracle-presign";
+import { isBoothProductImageObjectKey } from "@/lib/oracle-presign-contract";
+import { PRODUCT_IMAGE_MAX_COUNT } from "@/lib/payment-qr";
 import {
   storefrontDocumentSchema,
   storefrontSectionIds,
@@ -67,6 +69,10 @@ const slugify = (value: string) =>
 
 const paymentDraftSchema = z.object({
   bankName: z.string().trim().max(120),
+  bankCode: z
+    .string()
+    .trim()
+    .regex(/^$|^\d{6}$/, "Use the six-digit bank BIN/code for VietQR."),
   accountName: z.string().trim().max(120),
   accountNumber: z.string().trim().max(80),
   paymentLabel: z.string().trim().min(2).max(80),
@@ -74,6 +80,25 @@ const paymentDraftSchema = z.object({
   instructions: z.string().trim().max(2_000),
   disclaimer: z.string().trim().max(1_000),
 });
+
+const productImageManifestSchema = z
+  .array(
+    z.union([
+      z
+        .object({
+          existingId: z.string().trim().min(1).max(64),
+          alt: z.string().trim().max(300),
+        })
+        .strict(),
+      z
+        .object({
+          objectKey: z.string().trim().min(1).max(300),
+          alt: z.string().trim().max(300),
+        })
+        .strict(),
+    ]),
+  )
+  .max(PRODUCT_IMAGE_MAX_COUNT);
 
 export type StorefrontSaveState = { error: string | null };
 
@@ -124,6 +149,7 @@ export async function saveStorefrontAction(
   const document = documentResult.data;
   const paymentResult = paymentDraftSchema.safeParse({
     bankName: requiredText(formData, "bankName"),
+    bankCode: requiredText(formData, "bankCode"),
     accountName: requiredText(formData, "accountName"),
     accountNumber: requiredText(formData, "accountNumber"),
     paymentLabel: requiredText(formData, "paymentLabel"),
@@ -217,6 +243,7 @@ export async function saveStorefrontAction(
         create: {
           boothId,
           bankName: payment.bankName,
+          bankCode: payment.bankCode || null,
           accountName: payment.accountName,
           accountNumber: payment.accountNumber,
           paymentLabel: payment.paymentLabel,
@@ -230,6 +257,7 @@ export async function saveStorefrontAction(
         },
         update: {
           bankName: payment.bankName,
+          bankCode: payment.bankCode || null,
           accountName: payment.accountName,
           accountNumber: payment.accountNumber,
           paymentLabel: payment.paymentLabel,
@@ -367,7 +395,10 @@ const variantStatusSchema = z.enum([
   "HIDDEN",
 ]);
 
-export type ProductSaveState = { error: string | null };
+export type ProductSaveState = {
+  error: string | null;
+  discardedImageObjectKeys?: string[];
+};
 
 const hasCode = (error: unknown, code: string) =>
   typeof error === "object" &&
@@ -384,6 +415,19 @@ export async function saveProductAction(
     { recordResponse: false },
     () => saveProduct(previousState, formData),
   );
+}
+
+export async function discardProductImageUploadAction(
+  boothId: string,
+  objectKey: string,
+) {
+  await requireBoothRole(boothId, editorRoles);
+  if (!isBoothProductImageObjectKey(boothId, objectKey)) return;
+  const attached = await db.productImage.findFirst({
+    where: { objectKey, product: { boothId } },
+    select: { id: true },
+  });
+  if (!attached) await discardUploadedProductImage(objectKey);
 }
 
 async function saveProduct(
@@ -404,7 +448,6 @@ async function saveProduct(
   const shortDescription = requiredText(formData, "shortDescription");
   const variantLabel = requiredText(formData, "variantLabel") || "Standard";
   const fulfillmentNote = requiredText(formData, "fulfillmentNote");
-  const imageAlt = requiredText(formData, "imageAlt");
   const rawStockQuantity = requiredText(formData, "stockQuantity");
   const stockQuantity = rawStockQuantity ? Number(rawStockQuantity) : null;
   if (
@@ -427,8 +470,7 @@ async function saveProduct(
     eyebrow.length > 80 ||
     shortDescription.length > 240 ||
     variantLabel.length > 80 ||
-    fulfillmentNote.length > 500 ||
-    imageAlt.length > 300
+    fulfillmentNote.length > 500
   ) {
     return {
       error:
@@ -444,6 +486,31 @@ async function saveProduct(
     return {
       error: `Stock must be a whole number from 0 to ${MAX_STOCK_QUANTITY.toLocaleString("en-US")}, or blank when untracked.`,
     };
+  }
+
+  let rawImageManifest: unknown;
+  try {
+    rawImageManifest = JSON.parse(requiredText(formData, "imageManifest"));
+  } catch {
+    return {
+      error: "The product image list is invalid. Refresh and try again.",
+    };
+  }
+  const imageManifestResult =
+    productImageManifestSchema.safeParse(rawImageManifest);
+  if (!imageManifestResult.success) {
+    return {
+      error: `Use no more than ${PRODUCT_IMAGE_MAX_COUNT} product images and keep alt text under 300 characters.`,
+    };
+  }
+  const imageManifest = imageManifestResult.data;
+  const manifestIdentifiers = imageManifest.map((image) =>
+    "existingId" in image
+      ? `existing:${image.existingId}`
+      : `new:${image.objectKey}`,
+  );
+  if (new Set(manifestIdentifiers).size !== manifestIdentifiers.length) {
+    return { error: "The product image list contains duplicates." };
   }
 
   const priceCents = BigInt(Math.round(priceVnd * 100));
@@ -464,13 +531,11 @@ async function saveProduct(
     .filter(Boolean)
     .filter((tag) => tag.length <= 40)
     .slice(0, 12);
-  const imageFile = formData.get("productImage");
-  const removeImage = booleanField(formData, "removeImage");
   const existing = productId
     ? await db.product.findFirst({
         where: { id: productId, boothId },
         include: {
-          images: { orderBy: { sortOrder: "asc" }, take: 1 },
+          images: { orderBy: { sortOrder: "asc" } },
           variants: { orderBy: { sortOrder: "asc" }, take: 1 },
         },
       })
@@ -481,27 +546,78 @@ async function saveProduct(
     };
   }
 
-  let uploadedImageObjectKey: string | null = null;
-  if (imageFile instanceof File && imageFile.size > 0) {
-    try {
-      uploadedImageObjectKey = await uploadProductImage({
-        boothId,
-        file: imageFile,
-      });
-    } catch (error) {
-      if (error instanceof OracleProductImageUploadError) {
-        return { error: error.message };
-      }
-      throw error;
+  const existingImagesById = new Map(
+    (existing?.images ?? []).map((image) => [image.id, image]),
+  );
+  const retainedExistingIds = imageManifest
+    .filter(
+      (image): image is { existingId: string; alt: string } =>
+        "existingId" in image,
+    )
+    .map((image) => image.existingId);
+  if (retainedExistingIds.some((imageId) => !existingImagesById.has(imageId))) {
+    return {
+      error:
+        "One of the existing product images is no longer available. Refresh and try again.",
+    };
+  }
+  const uploadedImageObjectKeys = imageManifest
+    .filter(
+      (image): image is { objectKey: string; alt: string } =>
+        "objectKey" in image,
+    )
+    .map((image) => image.objectKey);
+  if (
+    uploadedImageObjectKeys.some(
+      (objectKey) => !isBoothProductImageObjectKey(boothId, objectKey),
+    )
+  ) {
+    return {
+      error: "An uploaded product image does not belong to this booth.",
+    };
+  }
+  if (uploadedImageObjectKeys.length) {
+    const attachedUpload = await db.productImage.findFirst({
+      where: { objectKey: { in: uploadedImageObjectKeys } },
+      select: { id: true },
+    });
+    if (attachedUpload) {
+      return {
+        error:
+          "An uploaded product image is already attached. Refresh and try again.",
+      };
     }
   }
+  try {
+    for (const objectKey of uploadedImageObjectKeys) {
+      await verifyBoothProductImageUpload({ boothId, objectKey });
+    }
+  } catch (error) {
+    await Promise.all(uploadedImageObjectKeys.map(discardUploadedProductImage));
+    if (error instanceof OracleProductImageVerificationError) {
+      return {
+        error: error.message,
+        discardedImageObjectKeys: uploadedImageObjectKeys,
+      };
+    }
+    throw error;
+  }
 
-  const existingImage = existing?.images[0] ?? null;
-  const imageObjectKey = uploadedImageObjectKey
-    ? uploadedImageObjectKey
-    : removeImage
-      ? null
-      : (existingImage?.objectKey ?? null);
+  const removedExistingObjectKeys = (existing?.images ?? [])
+    .filter((image) => !retainedExistingIds.includes(image.id))
+    .map((image) => image.objectKey);
+  const resolvedImages = imageManifest.map((image, sortOrder) => {
+    const existingImage =
+      "existingId" in image
+        ? existingImagesById.get(image.existingId)
+        : undefined;
+    return {
+      objectKey:
+        "objectKey" in image ? image.objectKey : existingImage!.objectKey,
+      alt: image.alt || existingImage?.alt || name,
+      sortOrder,
+    };
+  });
   let savedProductId: string;
 
   try {
@@ -590,23 +706,12 @@ async function saveProduct(
       }
 
       if (!nextProductId) throw new Error("Product could not be saved.");
-      if (uploadedImageObjectKey || removeImage || !productId) {
-        await transaction.productImage.deleteMany({
-          where: { productId: nextProductId },
-        });
-        if (imageObjectKey) {
-          await transaction.productImage.create({
-            data: {
-              productId: nextProductId,
-              objectKey: imageObjectKey,
-              alt: imageAlt || existingImage?.alt || name,
-            },
-          });
-        }
-      } else if (existingImage && imageAlt) {
-        await transaction.productImage.update({
-          where: { id: existingImage.id },
-          data: { alt: imageAlt },
+      await transaction.productImage.deleteMany({
+        where: { productId: nextProductId },
+      });
+      for (const image of resolvedImages) {
+        await transaction.productImage.create({
+          data: { productId: nextProductId, ...image },
         });
       }
       await transaction.auditLog.create({
@@ -621,9 +726,6 @@ async function saveProduct(
       return nextProductId;
     });
   } catch (error) {
-    if (uploadedImageObjectKey) {
-      await discardUploadedProductImage(uploadedImageObjectKey);
-    }
     if (hasCode(error, "P2002")) {
       return {
         error:
@@ -643,16 +745,15 @@ async function saveProduct(
       tags: {
         "cyfurden.operation": "product.save",
         "cyfurden.product.mode": productId ? "edit" : "create",
-        "cyfurden.product.image_upload": uploadedImageObjectKey
-          ? "completed"
-          : imageFile instanceof File && imageFile.size > 0
-            ? "requested"
-            : "none",
+        "cyfurden.product.image_upload": uploadedImageObjectKeys.length
+          ? "presigned_verified"
+          : "none",
       },
       contexts: {
         productSave: {
           hasExistingProduct: Boolean(productId),
-          removeImage,
+          retainedImageCount: retainedExistingIds.length,
+          uploadedImageCount: uploadedImageObjectKeys.length,
         },
       },
     });
@@ -667,6 +768,16 @@ async function saveProduct(
       error: "We could not save this product. Check the fields and try again.",
     };
   }
+
+  await Promise.all(
+    removedExistingObjectKeys.map(async (objectKey) => {
+      const stillReferenced = await db.productImage.findFirst({
+        where: { objectKey },
+        select: { id: true },
+      });
+      if (!stillReferenced) await discardUploadedProductImage(objectKey);
+    }),
+  );
 
   revalidatePath(`/manage/${boothId}/products`);
   revalidatePath(`/s/${booth.slug}`);
@@ -1237,6 +1348,47 @@ export async function updateTeamMemberAction(
   } catch (error) {
     console.error("Failed to update team member", error);
     return { error: "Member access could not be updated. Try again." };
+  }
+
+  if (result.success) revalidatePath(`/manage/${boothId}/team`);
+  return result;
+}
+
+export async function removeTeamMemberAction(
+  _previousState: TeamMutationState,
+  formData: FormData,
+): Promise<TeamMutationState> {
+  const boothId = requiredText(formData, "boothId");
+  const membershipId = requiredText(formData, "membershipId");
+  const { session } = await requireBoothRole(boothId, ["OWNER"]);
+
+  let result: TeamMutationState;
+  try {
+    result = await db.$transaction(async (transaction) => {
+      const membership = await transaction.boothMembership.findFirst({
+        where: { id: membershipId, boothId },
+      });
+      if (!membership) return { error: "This member could not be found." };
+      if (membership.role === "OWNER") {
+        return { error: "The booth owner cannot be removed." };
+      }
+
+      await transaction.boothMembership.delete({ where: { id: membershipId } });
+      await transaction.auditLog.create({
+        data: {
+          boothId,
+          actorUserId: session.user.id,
+          action: "team.member_removed",
+          entityType: "BoothMembership",
+          entityId: membershipId,
+          metadata: { userId: membership.userId, role: membership.role },
+        },
+      });
+      return { success: "Member removed from this booth." };
+    });
+  } catch (error) {
+    console.error("Failed to remove team member", error);
+    return { error: "Member could not be removed. Try again." };
   }
 
   if (result.success) revalidatePath(`/manage/${boothId}/team`);
