@@ -81,10 +81,7 @@ export default async function InvitationPage({
         {invitation.role === "ADMIN" ? "booth admin" : "staff member"}. Your
         account email matches this invitation.
       </p>
-      <InvitationAcceptanceForm
-        token={token}
-        boothName={invitation.booth.name}
-      />
+      <InvitationAcceptanceForm token={token} />
     </InvitationShell>
   );
 }

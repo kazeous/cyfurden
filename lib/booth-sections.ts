@@ -17,3 +17,9 @@ export function canAccessBoothSection(role: string, section: BoothSectionId) {
     (normalizedRole === "STAFF" && section === "orders")
   );
 }
+
+export function getDefaultBoothSection(role: string, boothStatus: string) {
+  return role.toUpperCase() === "STAFF" || boothStatus === "PUBLISHED"
+    ? ("orders" as const)
+    : ("storefront" as const);
+}

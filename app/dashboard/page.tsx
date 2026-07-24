@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { requireUser } from "@/lib/authorization";
+import { getDefaultBoothSection } from "@/lib/booth-sections";
 import { db } from "@/lib/db";
 import { resolveOracleImageUrl } from "@/lib/oracle-images";
 import { SignOutButton } from "./sign-out-button";
@@ -126,6 +127,11 @@ export default async function DashboardPage({
           <div className={styles.boothGrid}>
             {memberships.map(({ booth, role }) => {
               const isPublished = booth.status === "PUBLISHED";
+              const isStaff = role === "STAFF";
+              const workspaceSection = getDefaultBoothSection(
+                role,
+                booth.status,
+              );
               return (
                 <article className={styles.boothCard} key={booth.id}>
                   <div className={styles.boothCardHead}>
@@ -157,17 +163,23 @@ export default async function DashboardPage({
                   </div>
 
                   <p className={styles.boothSummary}>
-                    {isPublished
-                      ? "Live for visitors. Keep the catalogue and order queue current."
-                      : "Private until you publish. Finish the storefront and payment details first."}
+                    {isStaff
+                      ? "Orders-only access. Review reservations and keep fulfilment moving."
+                      : isPublished
+                        ? "Live for visitors. Keep the catalogue and order queue current."
+                        : "Private until you publish. Finish the storefront and payment details first."}
                   </p>
 
                   <div className={styles.boothActions}>
                     <Link
                       className={styles.primaryAction}
-                      href={`/manage/${booth.id}/${isPublished ? "orders" : "storefront"}`}
+                      href={`/manage/${booth.id}/${workspaceSection}`}
                     >
-                      {isPublished ? "Manage booth" : "Continue setup"}
+                      {isStaff
+                        ? "Open Orders"
+                        : isPublished
+                          ? "Manage booth"
+                          : "Continue setup"}
                       <ArrowIcon />
                     </Link>
                     {isPublished ? (

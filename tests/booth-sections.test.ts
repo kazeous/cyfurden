@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { boothSectionIds, canAccessBoothSection } from "../lib/booth-sections";
+import {
+  boothSectionIds,
+  canAccessBoothSection,
+  getDefaultBoothSection,
+} from "../lib/booth-sections";
 
 test("staff can access Orders and no other booth-management section", () => {
   const staffSections = boothSectionIds.filter((section) =>
@@ -16,4 +20,12 @@ test("owners and admins retain every booth-management section", () => {
       [...boothSectionIds],
     );
   }
+});
+
+test("dashboard entry never sends staff through a restricted setup section", () => {
+  assert.equal(getDefaultBoothSection("STAFF", "DRAFT"), "orders");
+  assert.equal(getDefaultBoothSection("STAFF", "PUBLISHED"), "orders");
+  assert.equal(getDefaultBoothSection("OWNER", "DRAFT"), "storefront");
+  assert.equal(getDefaultBoothSection("ADMIN", "DRAFT"), "storefront");
+  assert.equal(getDefaultBoothSection("OWNER", "PUBLISHED"), "orders");
 });

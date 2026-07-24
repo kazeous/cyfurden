@@ -168,14 +168,19 @@ export function MemberAccessForm({
       <input type="hidden" name="membershipId" value={membershipId} />
       <label>
         <span className={styles.srOnly}>Role for {memberName}</span>
-        <select name="role" defaultValue={role} disabled={pending}>
+        <select key={role} name="role" defaultValue={role} disabled={pending}>
           <option value="STAFF">Staff</option>
           <option value="ADMIN">Admin</option>
         </select>
       </label>
       <label>
         <span className={styles.srOnly}>Status for {memberName}</span>
-        <select name="status" defaultValue={status} disabled={pending}>
+        <select
+          key={status}
+          name="status"
+          defaultValue={status}
+          disabled={pending}
+        >
           <option value="ACTIVE">Active</option>
           <option value="DISABLED">Disabled</option>
         </select>

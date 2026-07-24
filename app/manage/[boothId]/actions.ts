@@ -1,6 +1,5 @@
 "use server";
 
-import { createHash, randomBytes } from "node:crypto";
 import * as Sentry from "@sentry/nextjs";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -23,6 +22,13 @@ import {
 import { isBoothProductImageObjectKey } from "@/lib/oracle-presign-contract";
 import { PRODUCT_IMAGE_MAX_COUNT } from "@/lib/payment-qr";
 import { synchronizeProductInventoryStatus } from "@/lib/product-inventory";
+import {
+  acceptTeamInvitation,
+  createTeamInvitation,
+  removeTeamMember,
+  revokeTeamInvitation,
+  updateTeamMemberAccess,
+} from "@/lib/team-access";
 import {
   storefrontDocumentSchema,
   storefrontSectionIds,
@@ -1074,20 +1080,7 @@ export type TeamMutationState = {
   success?: string;
 };
 
-export type InvitationAcceptanceState = TeamMutationState & {
-  boothName?: string;
-  workspacePath?: string;
-};
-
-const expireStaleInvitations = async (
-  transaction: Parameters<Parameters<typeof db.$transaction>[0]>[0],
-  boothId: string,
-  now: Date,
-) =>
-  transaction.teamInvitation.updateMany({
-    where: { boothId, status: "PENDING", expiresAt: { lte: now } },
-    data: { status: "EXPIRED" },
-  });
+export type InvitationAcceptanceState = TeamMutationState;
 
 export async function inviteTeamMemberAction(
   _previousState: TeamInviteState,
@@ -1105,82 +1098,14 @@ export async function inviteTeamMemberAction(
     };
   }
 
-  const token = randomBytes(32).toString("hex");
-  const tokenHash = createHash("sha256").update(token).digest("hex");
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-
+  let result: Awaited<ReturnType<typeof createTeamInvitation>>;
   try {
-    const result = await db.$transaction(
-      async (transaction) => {
-        const now = new Date();
-        await expireStaleInvitations(transaction, boothId, now);
-        const [existingMember, pendingInvite, activeMembers, pendingInvites] =
-          await Promise.all([
-            transaction.boothMembership.findFirst({
-              where: {
-                boothId,
-                user: {
-                  email: { equals: parsed.data.email, mode: "insensitive" },
-                },
-              },
-            }),
-            transaction.teamInvitation.findFirst({
-              where: {
-                boothId,
-                email: parsed.data.email,
-                status: "PENDING",
-                expiresAt: { gt: now },
-              },
-            }),
-            transaction.boothMembership.count({
-              where: { boothId, status: "ACTIVE" },
-            }),
-            transaction.teamInvitation.count({
-              where: { boothId, status: "PENDING", expiresAt: { gt: now } },
-            }),
-          ]);
-
-        if (existingMember) {
-          return { error: "This person already belongs to the booth." };
-        }
-        if (pendingInvite) {
-          return {
-            error: "An active invitation already exists for this email.",
-          };
-        }
-        if (activeMembers + pendingInvites >= 10) {
-          return {
-            error:
-              "This booth has filled all 10 active-member and pending-invitation places.",
-          };
-        }
-
-        const invitation = await transaction.teamInvitation.create({
-          data: {
-            boothId,
-            email: parsed.data.email,
-            role: parsed.data.role,
-            tokenHash,
-            invitedById: session.user.id,
-            expiresAt,
-          },
-        });
-        await transaction.auditLog.create({
-          data: {
-            boothId,
-            actorUserId: session.user.id,
-            action: "team.invited",
-            entityType: "TeamInvitation",
-            entityId: invitation.id,
-            metadata: { email: parsed.data.email, role: parsed.data.role },
-          },
-        });
-        return { invitation };
-      },
-      { isolationLevel: "Serializable" },
-    );
-
-    if ("error" in result) return { error: result.error };
+    result = await createTeamInvitation({
+      boothId,
+      email: parsed.data.email,
+      role: parsed.data.role,
+      actorUserId: session.user.id,
+    });
   } catch (error) {
     console.error("Failed to create team invitation", error);
     return {
@@ -1188,10 +1113,23 @@ export async function inviteTeamMemberAction(
     };
   }
 
+  if (result.kind === "already-member") {
+    return { error: "This person already belongs to the booth." };
+  }
+  if (result.kind === "already-invited") {
+    return { error: "An active invitation already exists for this email." };
+  }
+  if (result.kind === "capacity") {
+    return {
+      error:
+        "This booth has filled all 10 active-member and pending-invitation places.",
+    };
+  }
+
   revalidatePath(`/manage/${boothId}/team`);
   return {
-    invitationPath: `/invitations/${token}`,
-    invitedEmail: parsed.data.email,
+    invitationPath: `/invitations/${result.token}`,
+    invitedEmail: result.email,
   };
 }
 
@@ -1202,30 +1140,18 @@ export async function revokeTeamInvitationAction(
   const boothId = requiredText(formData, "boothId");
   const invitationId = requiredText(formData, "invitationId");
   const { session } = await requireBoothRole(boothId, ["OWNER"]);
-  let result: boolean;
+  let revoked: boolean;
   try {
-    result = await db.$transaction(async (transaction) => {
-      const revoked = await transaction.teamInvitation.updateMany({
-        where: { id: invitationId, boothId, status: "PENDING" },
-        data: { status: "REVOKED" },
-      });
-      if (!revoked.count) return false;
-      await transaction.auditLog.create({
-        data: {
-          boothId,
-          actorUserId: session.user.id,
-          action: "team.invitation_revoked",
-          entityType: "TeamInvitation",
-          entityId: invitationId,
-        },
-      });
-      return true;
+    revoked = await revokeTeamInvitation({
+      boothId,
+      invitationId,
+      actorUserId: session.user.id,
     });
   } catch (error) {
     console.error("Failed to revoke team invitation", error);
     return { error: "The invitation could not be revoked. Try again." };
   }
-  if (!result) return { error: "This invitation is no longer active." };
+  if (!revoked) return { error: "This invitation is no longer active." };
   revalidatePath(`/manage/${boothId}/team`);
   return { success: "Invitation revoked." };
 }
@@ -1244,60 +1170,31 @@ export async function updateTeamMemberAction(
   if (!parsed.success)
     return { error: "Choose a valid role and access state." };
 
-  let result: TeamMutationState;
+  let result: Awaited<ReturnType<typeof updateTeamMemberAccess>>;
   try {
-    result = await db.$transaction(
-      async (transaction) => {
-        const now = new Date();
-        await expireStaleInvitations(transaction, boothId, now);
-        const membership = await transaction.boothMembership.findFirst({
-          where: { id: membershipId, boothId },
-        });
-        if (!membership) return { error: "This member could not be found." };
-        if (membership.role === "OWNER") {
-          return { error: "The booth owner cannot be changed here." };
-        }
-        if (membership.status !== "ACTIVE" && parsed.data.status === "ACTIVE") {
-          const [activeMembers, pendingInvites] = await Promise.all([
-            transaction.boothMembership.count({
-              where: { boothId, status: "ACTIVE" },
-            }),
-            transaction.teamInvitation.count({
-              where: { boothId, status: "PENDING", expiresAt: { gt: now } },
-            }),
-          ]);
-          if (activeMembers + pendingInvites >= 10) {
-            return {
-              error: "Revoke an invitation before enabling this member.",
-            };
-          }
-        }
-
-        await transaction.boothMembership.update({
-          where: { id: membershipId },
-          data: parsed.data,
-        });
-        await transaction.auditLog.create({
-          data: {
-            boothId,
-            actorUserId: session.user.id,
-            action: "team.member_updated",
-            entityType: "BoothMembership",
-            entityId: membershipId,
-            metadata: parsed.data,
-          },
-        });
-        return { success: "Member access updated." };
-      },
-      { isolationLevel: "Serializable" },
-    );
+    result = await updateTeamMemberAccess({
+      boothId,
+      membershipId,
+      actorUserId: session.user.id,
+      role: parsed.data.role,
+      status: parsed.data.status,
+    });
   } catch (error) {
     console.error("Failed to update team member", error);
     return { error: "Member access could not be updated. Try again." };
   }
 
-  if (result.success) revalidatePath(`/manage/${boothId}/team`);
-  return result;
+  if (result.kind === "missing") {
+    return { error: "This member could not be found." };
+  }
+  if (result.kind === "owner-protected") {
+    return { error: "The booth owner cannot be changed here." };
+  }
+  if (result.kind === "capacity") {
+    return { error: "Revoke an invitation before enabling this member." };
+  }
+  revalidatePath(`/manage/${boothId}/team`);
+  return { success: "Member access updated." };
 }
 
 export async function removeTeamMemberAction(
@@ -1308,37 +1205,26 @@ export async function removeTeamMemberAction(
   const membershipId = requiredText(formData, "membershipId");
   const { session } = await requireBoothRole(boothId, ["OWNER"]);
 
-  let result: TeamMutationState;
+  let result: Awaited<ReturnType<typeof removeTeamMember>>;
   try {
-    result = await db.$transaction(async (transaction) => {
-      const membership = await transaction.boothMembership.findFirst({
-        where: { id: membershipId, boothId },
-      });
-      if (!membership) return { error: "This member could not be found." };
-      if (membership.role === "OWNER") {
-        return { error: "The booth owner cannot be removed." };
-      }
-
-      await transaction.boothMembership.delete({ where: { id: membershipId } });
-      await transaction.auditLog.create({
-        data: {
-          boothId,
-          actorUserId: session.user.id,
-          action: "team.member_removed",
-          entityType: "BoothMembership",
-          entityId: membershipId,
-          metadata: { userId: membership.userId, role: membership.role },
-        },
-      });
-      return { success: "Member removed from this booth." };
+    result = await removeTeamMember({
+      boothId,
+      membershipId,
+      actorUserId: session.user.id,
     });
   } catch (error) {
     console.error("Failed to remove team member", error);
     return { error: "Member could not be removed. Try again." };
   }
 
-  if (result.success) revalidatePath(`/manage/${boothId}/team`);
-  return result;
+  if (result.kind === "missing") {
+    return { error: "This member could not be found." };
+  }
+  if (result.kind === "owner-protected") {
+    return { error: "The booth owner cannot be removed." };
+  }
+  revalidatePath(`/manage/${boothId}/team`);
+  return { success: "Member removed from this booth." };
 }
 
 export async function acceptTeamInvitationAction(
@@ -1350,103 +1236,40 @@ export async function acceptTeamInvitationAction(
     return { error: "This invitation link is invalid." };
   }
   const session = await requireUser(`/invitations/${token}`);
-  const tokenHash = createHash("sha256").update(token).digest("hex");
-  const sessionEmail = session.user.email.trim().toLocaleLowerCase();
-
-  let result: InvitationAcceptanceState;
+  let result: Awaited<ReturnType<typeof acceptTeamInvitation>>;
   try {
-    result = await db.$transaction(
-      async (transaction) => {
-        const invitation = await transaction.teamInvitation.findUnique({
-          where: { tokenHash },
-          include: { booth: true },
-        });
-        if (!invitation) return { error: "This invitation link is invalid." };
-        if (invitation.status !== "PENDING") {
-          return { error: "This invitation is no longer active." };
-        }
-        if (invitation.expiresAt <= new Date()) {
-          await transaction.teamInvitation.update({
-            where: { id: invitation.id },
-            data: { status: "EXPIRED" },
-          });
-          return { error: "This invitation has expired." };
-        }
-        if (invitation.email.toLocaleLowerCase() !== sessionEmail) {
-          return {
-            error: `Sign in as ${invitation.email} to accept this invitation.`,
-          };
-        }
-
-        const existingMembership = await transaction.boothMembership.findUnique(
-          {
-            where: {
-              boothId_userId: {
-                boothId: invitation.boothId,
-                userId: session.user.id,
-              },
-            },
-          },
-        );
-        if (existingMembership?.role === "OWNER") {
-          return { error: "The booth owner does not need an invitation." };
-        }
-        if (existingMembership) {
-          await transaction.boothMembership.update({
-            where: { id: existingMembership.id },
-            data: { role: invitation.role, status: "ACTIVE" },
-          });
-        } else {
-          await transaction.boothMembership.create({
-            data: {
-              boothId: invitation.boothId,
-              userId: session.user.id,
-              role: invitation.role,
-              status: "ACTIVE",
-            },
-          });
-        }
-        const accepted = await transaction.teamInvitation.updateMany({
-          where: { id: invitation.id, status: "PENDING" },
-          data: {
-            status: "ACCEPTED",
-            acceptedAt: new Date(),
-            acceptedById: session.user.id,
-          },
-        });
-        if (!accepted.count) {
-          return { error: "This invitation was already used." };
-        }
-        await transaction.auditLog.create({
-          data: {
-            boothId: invitation.boothId,
-            actorUserId: session.user.id,
-            action: "team.invitation_accepted",
-            entityType: "TeamInvitation",
-            entityId: invitation.id,
-            metadata: { role: invitation.role },
-          },
-        });
-        return {
-          boothName: invitation.booth.name,
-          workspacePath: `/manage/${invitation.boothId}/orders`,
-        };
-      },
-      { isolationLevel: "Serializable" },
-    );
+    result = await acceptTeamInvitation({
+      token,
+      userId: session.user.id,
+      userEmail: session.user.email,
+    });
   } catch (error) {
     console.error("Failed to accept team invitation", error);
     return { error: "The invitation could not be accepted. Try again." };
   }
 
-  if (result.workspacePath) {
-    revalidatePath("/dashboard");
-    revalidatePath(`/manage/${result.workspacePath.split("/")[2]}/team`);
+  if (result.kind === "invalid") {
+    return { error: "This invitation link is invalid." };
+  }
+  if (result.kind === "inactive") {
+    return { error: "This invitation is no longer active." };
+  }
+  if (result.kind === "expired") {
+    return { error: "This invitation has expired." };
+  }
+  if (result.kind === "email-mismatch") {
     return {
-      success: "Invitation accepted.",
-      boothName: result.boothName,
-      workspacePath: result.workspacePath,
+      error: `Sign in as ${result.invitedEmail} to accept this invitation.`,
     };
   }
-  return result;
+  if (result.kind === "owner-protected") {
+    return { error: "The booth owner does not need an invitation." };
+  }
+  if (result.kind === "accepted") {
+    const workspacePath = `/manage/${result.boothId}/orders`;
+    revalidatePath("/dashboard");
+    revalidatePath(`/manage/${result.boothId}/team`);
+    redirect(workspacePath);
+  }
+  return { error: "The invitation could not be accepted. Try again." };
 }

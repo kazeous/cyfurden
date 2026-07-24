@@ -5,13 +5,7 @@ import { useActionState } from "react";
 import { acceptTeamInvitationAction } from "@/app/manage/[boothId]/actions";
 import styles from "./invitation.module.css";
 
-export function InvitationAcceptanceForm({
-  token,
-  boothName,
-}: {
-  token: string;
-  boothName: string;
-}) {
+export function InvitationAcceptanceForm({ token }: { token: string }) {
   const [state, formAction, pending] = useActionState(
     acceptTeamInvitationAction,
     {},
@@ -25,25 +19,9 @@ export function InvitationAcceptanceForm({
           {state.error}
         </p>
       ) : null}
-      {state.workspacePath ? (
-        <div className={styles.success} role="status">
-          <strong>You are in.</strong>
-          <span>
-            Your {boothName} workspace is ready. Open it whenever you are ready.
-          </span>
-          <Link className={styles.primaryButton} href={state.workspacePath}>
-            Open booth workspace
-          </Link>
-        </div>
-      ) : (
-        <button
-          className={styles.primaryButton}
-          type="submit"
-          disabled={pending}
-        >
-          {pending ? "Joining booth..." : "Accept invitation"}
-        </button>
-      )}
+      <button className={styles.primaryButton} type="submit" disabled={pending}>
+        {pending ? "Joining booth..." : "Accept invitation"}
+      </button>
       <Link className={styles.dashboardLink} href="/dashboard">
         Return to dashboard
       </Link>
