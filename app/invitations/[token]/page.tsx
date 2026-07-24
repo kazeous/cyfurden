@@ -24,7 +24,10 @@ export default async function InvitationPage({
       })
     : null;
 
-  if (!invitation) {
+  if (
+    !invitation ||
+    (invitation.role !== "ADMIN" && invitation.role !== "STAFF")
+  ) {
     return (
       <InvitationShell>
         <p className={styles.eyebrow}>Invitation unavailable</p>

@@ -9,6 +9,9 @@ export const TEAM_INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 export type TeamInviteRole = "ADMIN" | "STAFF";
 export type TeamMemberStatus = "ACTIVE" | "DISABLED";
 
+const isTeamInviteRole = (role: string): role is TeamInviteRole =>
+  role === "ADMIN" || role === "STAFF";
+
 type CreateInvitationResult =
   | {
       kind: "created";
@@ -205,9 +208,15 @@ export async function updateTeamMemberAccess(input: {
     await expireStaleInvitations(transaction, input.boothId, now);
     const membership = await transaction.boothMembership.findFirst({
       where: { id: input.membershipId, boothId: input.boothId },
+      include: { booth: { select: { ownerId: true } } },
     });
     if (!membership) return { kind: "missing" };
-    if (membership.role === "OWNER") return { kind: "owner-protected" };
+    if (
+      membership.role === "OWNER" ||
+      membership.userId === membership.booth.ownerId
+    ) {
+      return { kind: "owner-protected" };
+    }
 
     if (membership.status !== "ACTIVE" && input.status === "ACTIVE") {
       const [activeMembers, pendingInvites] = await Promise.all([
@@ -253,9 +262,15 @@ export async function removeTeamMember(input: {
   return db.$transaction(async (transaction) => {
     const membership = await transaction.boothMembership.findFirst({
       where: { id: input.membershipId, boothId: input.boothId },
+      include: { booth: { select: { ownerId: true } } },
     });
     if (!membership) return { kind: "missing" };
-    if (membership.role === "OWNER") return { kind: "owner-protected" };
+    if (
+      membership.role === "OWNER" ||
+      membership.userId === membership.booth.ownerId
+    ) {
+      return { kind: "owner-protected" };
+    }
 
     await transaction.boothMembership.delete({
       where: { id: input.membershipId },
@@ -292,6 +307,7 @@ export async function acceptTeamInvitation(input: {
       include: { booth: { select: { ownerId: true } } },
     });
     if (!invitation) return { kind: "invalid" };
+    if (!isTeamInviteRole(invitation.role)) return { kind: "invalid" };
     if (invitation.status !== "PENDING") return { kind: "inactive" };
     if (invitation.expiresAt <= now) {
       await transaction.teamInvitation.update({

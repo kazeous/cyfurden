@@ -65,6 +65,29 @@ test(
       const ownerMembership = booth.memberships[0];
       assert.ok(ownerMembership);
 
+      await assert.rejects(() =>
+        db.teamInvitation.create({
+          data: {
+            boothId: booth.id,
+            email: `phase6-owner-role-${suffix}@example.com`,
+            role: "OWNER",
+            tokenHash: `phase6-owner-role-${suffix}`,
+            invitedById: ownerId,
+            expiresAt: new Date(Date.now() + TEAM_INVITATION_TTL_MS),
+          },
+        }),
+      );
+      await assert.rejects(() =>
+        db.boothMembership.create({
+          data: {
+            boothId: booth.id,
+            userId: staffId,
+            role: "OWNER",
+            status: "ACTIVE",
+          },
+        }),
+      );
+
       const invitedAt = new Date();
       const staffInvite = await createTeamInvitation({
         boothId,
@@ -165,6 +188,10 @@ test(
         "ADMIN",
       );
 
+      await db.boothMembership.update({
+        where: { id: ownerMembership.id },
+        data: { role: "STAFF", status: "DISABLED" },
+      });
       assert.equal(
         (
           await updateTeamMemberAccess({
@@ -187,6 +214,17 @@ test(
         ).kind,
         "owner-protected",
       );
+      assert.deepEqual(
+        await db.boothMembership.findUniqueOrThrow({
+          where: { id: ownerMembership.id },
+          select: { role: true, status: true },
+        }),
+        { role: "STAFF", status: "DISABLED" },
+      );
+      await db.boothMembership.update({
+        where: { id: ownerMembership.id },
+        data: { role: "OWNER", status: "ACTIVE" },
+      });
 
       assert.equal(
         (
@@ -228,6 +266,14 @@ test(
         ).kind,
         "removed",
       );
+      const disabledStaffMembership = await db.boothMembership.create({
+        data: {
+          boothId,
+          userId: staffId,
+          role: "STAFF",
+          status: "DISABLED",
+        },
+      });
 
       const revokedInvite = await createTeamInvitation({
         boothId,
@@ -330,6 +376,26 @@ test(
       assert.equal(
         activeMemberCount + pendingInvitationCount,
         TEAM_ACCESS_LIMIT,
+      );
+      assert.equal(
+        (
+          await updateTeamMemberAccess({
+            boothId,
+            membershipId: disabledStaffMembership.id,
+            actorUserId: ownerId,
+            role: "STAFF",
+            status: "ACTIVE",
+          })
+        ).kind,
+        "capacity",
+      );
+      assert.equal(
+        (
+          await db.boothMembership.findUniqueOrThrow({
+            where: { id: disabledStaffMembership.id },
+          })
+        ).status,
+        "DISABLED",
       );
 
       const actions = (
