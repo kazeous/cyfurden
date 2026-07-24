@@ -234,7 +234,7 @@
 
 .metrics {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
   padding: 0;
   margin: 16px 0;
@@ -385,25 +385,133 @@
   letter-spacing: 0.04em;
 }
 
-.customerNote {
-  max-width: 18rem;
-  margin-top: var(--space-xs);
-  color: var(--color-ink-2);
-  font-size: var(--text-xs);
+.orderDetail {
+  width: min(34rem, 70vw);
+  margin-top: 10px;
+  border-top: 1px solid var(--color-rule);
 }
 
-.customerNote summary {
+.orderDetail > summary {
+  display: inline-flex;
   min-height: 2.75rem;
+  align-items: center;
   cursor: pointer;
   font-weight: 800;
-  line-height: 2.75rem;
   white-space: nowrap;
 }
 
-.customerNote p {
-  margin: 0 0 var(--space-xs);
+.orderDetailBody {
+  display: grid;
+  gap: 16px;
+  padding: 12px 0 4px;
+}
+
+.orderDetailMeta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.orderDetailMeta > div,
+.orderNote {
+  min-width: 0;
+  padding: 12px;
+  border-radius: 9px;
+  background: var(--orders-subtle);
+}
+
+.orderDetailMeta dt,
+.orderTotals dt {
+  color: var(--orders-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.orderDetailMeta dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.referenceValue {
+  color: var(--color-accent-ink);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0.03em;
+}
+
+.orderLines h3,
+.orderNote h3 {
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+}
+
+.orderLines ul {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.orderLines li {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.orderLines li:first-child {
+  padding-top: 0;
+}
+
+.orderLines li:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.orderLines li > div {
+  min-width: 0;
+}
+
+.orderLines li span {
+  margin-top: 2px;
+  color: var(--orders-muted);
+  font-size: 0.74rem;
+}
+
+.orderLines li > strong {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.orderNote p {
+  margin: 0;
   overflow-wrap: anywhere;
   white-space: normal;
+}
+
+.orderTotals {
+  display: grid;
+  gap: 6px;
+  padding-top: 12px;
+  margin: 0;
+  border-top: 1px solid var(--color-rule);
+}
+
+.orderTotals > div {
+  display: flex;
+  gap: 16px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.orderTotals dd {
+  margin: 0;
+  font-weight: 800;
 }
 
 .numericCell {
@@ -450,9 +558,9 @@
 
 .statusControls {
   gap: 8px;
+  flex-wrap: wrap;
 }
 
-.statusControls select,
 .statusControls button {
   min-height: 44px;
   border: 1px solid var(--color-rule);
@@ -463,12 +571,8 @@
   font-size: 0.78rem;
 }
 
-.statusControls select {
-  min-width: 128px;
-  padding: 0 28px 0 8px;
-}
-
 .statusControls button {
+  flex: 1 1 9rem;
   padding: 0 12px;
   color: var(--color-panel);
   border-color: var(--color-ink);
@@ -477,10 +581,36 @@
   cursor: pointer;
 }
 
-.statusControls button:disabled,
-.statusControls select:disabled {
+.statusControls button[data-transition="CONFIRMED"] {
+  border-color: var(--color-success-ink);
+  color: var(--color-success-ink);
+  background: var(--color-success-soft);
+}
+
+.statusControls button[data-transition="CANCELLED"],
+.statusControls button[data-transition="EXPIRED"] {
+  border-color: var(--color-error-line);
+  color: var(--color-error-ink);
+  background: var(--color-error-soft);
+}
+
+.statusControls button[data-transition="PENDING"] {
+  border-color: var(--color-rule);
+  color: var(--color-ink);
+  background: var(--color-panel);
+}
+
+.statusControls button:disabled {
   cursor: wait;
   opacity: 0.6;
+}
+
+.terminalStatus {
+  min-height: 44px;
+  margin: 0;
+  color: var(--orders-muted);
+  font-size: 0.76rem;
+  line-height: 44px;
 }
 
 .actionMessage {
@@ -552,8 +682,16 @@
   margin-top: 16px;
 }
 
-.mobileCard .statusControls select {
-  flex: 1 1 auto;
+.contactLinks {
+  display: flex;
+  gap: 4px 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.contactLinks a {
+  color: var(--orders-muted);
+  font-size: 0.75rem;
 }
 
 .pagination {
@@ -635,8 +773,8 @@
 .dateFilter:focus-visible,
 .pagination a:focus-visible,
 .emptyAction:focus-visible,
-.statusControls select:focus-visible,
 .statusControls button:focus-visible,
+.orderDetail > summary:focus-visible,
 .orderTable a:focus-visible,
 .emailLink:focus-visible {
   outline: 2px solid var(--color-focus);
@@ -741,9 +879,16 @@
     flex-direction: column;
   }
 
-  .statusControls button,
-  .statusControls select {
+  .statusControls button {
     width: 100%;
+  }
+
+  .orderDetail {
+    width: 100%;
+  }
+
+  .orderDetailMeta {
+    grid-template-columns: 1fr;
   }
 
   .pagination nav {

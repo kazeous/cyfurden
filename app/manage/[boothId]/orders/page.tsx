@@ -138,24 +138,22 @@ export default async function OrdersPage({
     ...(selectedStatus === "ALL" ? {} : { status: selectedStatus }),
   };
 
-  const [orders, filteredValue] = await Promise.all([
-    db.order.findMany({
-      where: filteredWhere,
-      include: { items: true },
-      orderBy: { placedAt: "desc" },
-      skip: (currentPage - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
-    }),
-    db.order.aggregate({
-      where: filteredWhere,
-      _sum: { totalCents: true },
-    }),
-  ]);
+  const orders = await db.order.findMany({
+    where: filteredWhere,
+    include: { items: true },
+    orderBy: { placedAt: "desc" },
+    skip: (currentPage - 1) * PAGE_SIZE,
+    take: PAGE_SIZE,
+  });
 
   const pageUnits = orders.reduce(
     (total, order) =>
       total + order.items.reduce((sum, item) => sum + item.quantity, 0),
     0,
+  );
+  const pageValue = orders.reduce(
+    (total, order) => total + order.totalCents,
+    BigInt(0),
   );
   const firstVisible = filteredOrderCount
     ? (currentPage - 1) * PAGE_SIZE + 1
@@ -252,21 +250,21 @@ export default async function OrdersPage({
       {filteredOrderCount > 0 ? (
         <dl className={styles.metrics} aria-label="Filtered order summary">
           <div>
-            <dt>Filtered value</dt>
-            <dd>
-              {formatMoney(
-                filteredValue._sum.totalCents ?? BigInt(0),
-                orders[0]?.currency ?? "VND",
-              )}
-            </dd>
-            <small>Across all matching orders</small>
+            <dt>Orders shown</dt>
+            <dd>{orders.length}</dd>
+            <small>
+              {firstVisible}–{lastVisible} of {filteredOrderCount} matching
+            </small>
           </div>
           <div>
-            <dt>Units on this page</dt>
+            <dt>Page value</dt>
+            <dd>{formatMoney(pageValue, orders[0]?.currency ?? "VND")}</dd>
+            <small>Current page total</small>
+          </div>
+          <div>
+            <dt>Units requested</dt>
             <dd>{pageUnits}</dd>
-            <small>
-              Orders {firstVisible}–{lastVisible}
-            </small>
+            <small>Across orders shown</small>
           </div>
         </dl>
       ) : null}
@@ -314,16 +312,17 @@ export default async function OrdersPage({
                       <a href={`mailto:${order.customerEmail}`}>
                         {order.customerEmail}
                       </a>
+                      {order.customerPhone ? (
+                        <a href={`tel:${order.customerPhone}`}>
+                          {order.customerPhone}
+                        </a>
+                      ) : null}
                     </th>
                     <td className={styles.dateCell}>
                       {formatDate(order.placedAt)}
                     </td>
                     <td>
-                      <OrderItems
-                        items={order.items}
-                        note={order.customerNote}
-                        transferReference={order.customerTransferReference}
-                      />
+                      <OrderDetails order={order} />
                     </td>
                     <td className={styles.numericCell}>
                       <strong>
@@ -377,17 +376,20 @@ export default async function OrdersPage({
                     <dd>{formatMoney(order.totalCents, order.currency)}</dd>
                   </div>
                 </dl>
-                <OrderItems
-                  items={order.items}
-                  note={order.customerNote}
-                  transferReference={order.customerTransferReference}
-                />
-                <a
-                  className={styles.emailLink}
-                  href={`mailto:${order.customerEmail}`}
-                >
-                  {order.customerEmail}
-                </a>
+                <OrderDetails order={order} />
+                <div className={styles.contactLinks}>
+                  <a
+                    className={styles.emailLink}
+                    href={`mailto:${order.customerEmail}`}
+                  >
+                    {order.customerEmail}
+                  </a>
+                  {order.customerPhone ? (
+                    <a href={`tel:${order.customerPhone}`}>
+                      {order.customerPhone}
+                    </a>
+                  ) : null}
+                </div>
                 <OrderStatusForm
                   boothId={boothId}
                   orderId={order.id}
@@ -465,21 +467,38 @@ export default async function OrdersPage({
   );
 }
 
-function OrderItems({
-  items,
-  note,
-  transferReference,
+function OrderDetails({
+  order,
 }: {
-  items: Array<{
-    id: string;
-    titleSnapshot: string;
-    variantSnapshot: string | null;
-    quantity: number;
-  }>;
-  note: string | null;
-  transferReference: string | null;
+  order: {
+    code: string;
+    customerName: string;
+    customerEmail: string;
+    customerPhone: string | null;
+    customerNote: string | null;
+    customerTransferReference: string | null;
+    transferReference: string;
+    subtotalCents: bigint;
+    totalCents: bigint;
+    currency: string;
+    placedAt: Date;
+    expiresAt: Date | null;
+    confirmedAt: Date | null;
+    fulfilledAt: Date | null;
+    items: Array<{
+      id: string;
+      titleSnapshot: string;
+      variantSnapshot: string | null;
+      unitPriceCents: bigint;
+      quantity: number;
+    }>;
+  };
 }) {
-  const visibleItems = items.slice(0, 2);
+  const visibleItems = order.items.slice(0, 2);
+  const unitCount = order.items.reduce(
+    (total, item) => total + item.quantity,
+    0,
+  );
   return (
     <div className={styles.itemList}>
       {visibleItems.map((item) => (
@@ -489,23 +508,107 @@ function OrderItems({
           {item.quantity}
         </span>
       ))}
-      {items.length > visibleItems.length ? (
+      {order.items.length > visibleItems.length ? (
         <small>
-          +{items.length - visibleItems.length} more
-          {items.length - visibleItems.length === 1 ? " line" : " lines"}
+          +{order.items.length - visibleItems.length} more
+          {order.items.length - visibleItems.length === 1 ? " line" : " lines"}
         </small>
       ) : null}
-      {note ? (
-        <details className={styles.customerNote}>
-          <summary>Customer note</summary>
-          <p>{note}</p>
-        </details>
-      ) : null}
-      {transferReference ? (
-        <small className={styles.transferReference}>
-          Customer reference: {transferReference}
-        </small>
-      ) : null}
+      <small>
+        {unitCount} {unitCount === 1 ? "unit" : "units"} requested
+      </small>
+      <details className={styles.orderDetail}>
+        <summary>View full order</summary>
+        <div className={styles.orderDetailBody}>
+          <dl className={styles.orderDetailMeta}>
+            <div>
+              <dt>Customer</dt>
+              <dd>{order.customerName}</dd>
+              <dd>
+                <a href={`mailto:${order.customerEmail}`}>
+                  {order.customerEmail}
+                </a>
+              </dd>
+              {order.customerPhone ? (
+                <dd>
+                  <a href={`tel:${order.customerPhone}`}>
+                    {order.customerPhone}
+                  </a>
+                </dd>
+              ) : null}
+            </div>
+            <div>
+              <dt>Transfer message</dt>
+              <dd className={styles.referenceValue}>
+                {order.transferReference}
+              </dd>
+            </div>
+            <div>
+              <dt>Customer bank reference</dt>
+              <dd className={styles.referenceValue}>
+                {order.customerTransferReference ?? "Not submitted"}
+              </dd>
+            </div>
+            <div>
+              <dt>Timeline</dt>
+              <dd>Placed {formatDate(order.placedAt)}</dd>
+              {order.expiresAt ? (
+                <dd>Reservation limit {formatDate(order.expiresAt)}</dd>
+              ) : null}
+              {order.confirmedAt ? (
+                <dd>Confirmed {formatDate(order.confirmedAt)}</dd>
+              ) : null}
+              {order.fulfilledAt ? (
+                <dd>Fulfilled {formatDate(order.fulfilledAt)}</dd>
+              ) : null}
+            </div>
+          </dl>
+
+          <section
+            className={styles.orderLines}
+            aria-label="Complete item list"
+          >
+            <h3>Items</h3>
+            <ul>
+              {order.items.map((item) => (
+                <li key={item.id}>
+                  <div>
+                    <strong>{item.titleSnapshot}</strong>
+                    <span>
+                      {item.variantSnapshot ?? "Standard"} · {item.quantity} ×{" "}
+                      {formatMoney(item.unitPriceCents, order.currency)}
+                    </span>
+                  </div>
+                  <strong>
+                    {formatMoney(
+                      item.unitPriceCents * BigInt(item.quantity),
+                      order.currency,
+                    )}
+                  </strong>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          {order.customerNote ? (
+            <section className={styles.orderNote} aria-label="Customer note">
+              <h3>Customer note</h3>
+              <p>{order.customerNote}</p>
+            </section>
+          ) : null}
+
+          <dl className={styles.orderTotals}>
+            <div>
+              <dt>Subtotal</dt>
+              <dd>{formatMoney(order.subtotalCents, order.currency)}</dd>
+            </div>
+            <div>
+              <dt>Order total</dt>
+              <dd>{formatMoney(order.totalCents, order.currency)}</dd>
+            </div>
+          </dl>
+        </div>
+      </details>
     </div>
   );
 }

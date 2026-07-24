@@ -7,6 +7,7 @@ const adminActionPath = new URL(
   "../app/manage/[boothId]/actions.ts",
   import.meta.url,
 );
+const orderAdminPath = new URL("../lib/order-admin.ts", import.meta.url);
 const schemaPath = new URL("../prisma/schema.prisma", import.meta.url);
 const inventoryPath = new URL("../lib/order-inventory.ts", import.meta.url);
 
@@ -30,12 +31,14 @@ test("public reservations enforce stock atomically and idempotently", async () =
 });
 
 test("released orders restore only inventory actually debited", async () => {
-  const [source, schema, inventory] = await Promise.all([
+  const [actionSource, source, schema, inventory] = await Promise.all([
     readFile(adminActionPath, "utf8"),
+    readFile(orderAdminPath, "utf8"),
     readFile(schemaPath, "utf8"),
     readFile(inventoryPath, "utf8"),
   ]);
-  assert.match(source, /releasesInventory\(nextStatus\)/);
+  assert.match(actionSource, /transitionOrderStatus/);
+  assert.match(source, /releasesInventory\(input\.nextStatus\)/);
   assert.match(source, /inventoryDebited: true/);
   assert.match(source, /stockQuantity: \{ increment: item\.quantity \}/);
   assert.match(source, /synchronizeProductInventoryStatusForVariants/);
@@ -44,6 +47,18 @@ test("released orders restore only inventory actually debited", async () => {
   assert.match(inventory, /restoreSoldOut: true/);
   assert.match(schema, /inventoryDebited\s+Boolean\s+@default\(false\)/);
   assert.match(schema, /paymentSnapshot\s+Json\?/);
+});
+
+test("manual order transitions are serialized, audited, and booth scoped", async () => {
+  const source = await readFile(orderAdminPath, "utf8");
+  assert.match(source, /isolationLevel: "Serializable"/);
+  assert.match(source, /attempt < 3/);
+  assert.match(source, /id: input\.orderId/);
+  assert.match(source, /boothId: input\.boothId/);
+  assert.match(source, /actorUserId: input\.actorUserId/);
+  assert.match(source, /manualReview: true/);
+  assert.match(source, /previousStatus: currentStatus/);
+  assert.match(source, /nextStatus: input\.nextStatus/);
 });
 
 test("stock mutations synchronize the product sold-out state", async () => {

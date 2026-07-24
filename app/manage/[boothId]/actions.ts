@@ -7,11 +7,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireBoothRole, requireUser } from "@/lib/authorization";
 import { db } from "@/lib/db";
-import {
-  canTransitionOrderStatus,
-  type OrderStatusName,
-  releasesInventory,
-} from "@/lib/order-rules";
+import { transitionOrderStatus } from "@/lib/order-admin";
 import {
   discardUploadedPaymentQr,
   discardUploadedProductImage,
@@ -26,10 +22,7 @@ import {
 } from "@/lib/oracle-presign";
 import { isBoothProductImageObjectKey } from "@/lib/oracle-presign-contract";
 import { PRODUCT_IMAGE_MAX_COUNT } from "@/lib/payment-qr";
-import {
-  synchronizeProductInventoryStatus,
-  synchronizeProductInventoryStatusForVariants,
-} from "@/lib/product-inventory";
+import { synchronizeProductInventoryStatus } from "@/lib/product-inventory";
 import {
   storefrontDocumentSchema,
   storefrontSectionIds,
@@ -888,99 +881,12 @@ export async function updateOrderStatusAction(
   try {
     const nextStatus = parsedStatus.data;
     const { session, booth } = await requireBoothRole(boothId, orderRoles);
-    const result = await db.$transaction(
-      async (transaction) => {
-        const order = await transaction.order.findFirst({
-          where: { id: orderId, boothId },
-          select: {
-            code: true,
-            status: true,
-            confirmedAt: true,
-            confirmedById: true,
-            items: {
-              select: {
-                id: true,
-                productVariantId: true,
-                quantity: true,
-                inventoryDebited: true,
-              },
-            },
-          },
-        });
-
-        if (!order) return { kind: "missing" } as const;
-        if (order.status === nextStatus) {
-          return { kind: "unchanged", code: order.code } as const;
-        }
-        if (
-          !canTransitionOrderStatus(order.status as OrderStatusName, nextStatus)
-        ) {
-          return {
-            kind: "invalid-transition",
-            code: order.code,
-            currentStatus: order.status,
-          } as const;
-        }
-
-        const now = new Date();
-        const keepsConfirmation =
-          nextStatus === "CONFIRMED" || nextStatus === "FULFILLED";
-        const updated = await transaction.order.updateMany({
-          where: { id: orderId, boothId, status: order.status },
-          data: {
-            status: nextStatus,
-            confirmedAt: keepsConfirmation ? (order.confirmedAt ?? now) : null,
-            confirmedById: keepsConfirmation
-              ? (order.confirmedById ?? session.user.id)
-              : null,
-            fulfilledAt: nextStatus === "FULFILLED" ? now : null,
-            expiresAt: nextStatus === "EXPIRED" ? now : null,
-          },
-        });
-        if (!updated.count) return { kind: "conflict" } as const;
-
-        let inventoryReleased = false;
-        const restoredVariantIds = new Set<string>();
-        if (releasesInventory(nextStatus)) {
-          for (const item of order.items) {
-            if (!item.inventoryDebited || !item.productVariantId) continue;
-            const restored = await transaction.productVariant.updateMany({
-              where: {
-                id: item.productVariantId,
-                stockQuantity: { not: null },
-              },
-              data: { stockQuantity: { increment: item.quantity } },
-            });
-            if (restored.count) {
-              restoredVariantIds.add(item.productVariantId);
-              inventoryReleased = true;
-            }
-          }
-          await transaction.orderItem.updateMany({
-            where: { orderId, inventoryDebited: true },
-            data: { inventoryDebited: false },
-          });
-          await synchronizeProductInventoryStatusForVariants(
-            transaction,
-            restoredVariantIds,
-            { restoreSoldOut: true },
-          );
-        }
-
-        await transaction.auditLog.create({
-          data: {
-            boothId,
-            actorUserId: session.user.id,
-            action: `order.${nextStatus.toLocaleLowerCase()}`,
-            entityType: "Order",
-            entityId: orderId,
-            metadata: { manualReview: true, inventoryReleased },
-          },
-        });
-        return { kind: "changed", code: order.code } as const;
-      },
-      { isolationLevel: "Serializable" },
-    );
+    const result = await transitionOrderStatus({
+      boothId,
+      orderId,
+      actorUserId: session.user.id,
+      nextStatus,
+    });
 
     if (result.kind === "missing") {
       return {

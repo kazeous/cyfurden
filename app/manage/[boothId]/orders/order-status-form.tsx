@@ -11,13 +11,13 @@ import {
 } from "@/lib/order-rules";
 import styles from "./orders.module.css";
 
-const orderStatuses = [
-  { value: "PENDING", label: "Needs review" },
-  { value: "CONFIRMED", label: "Confirmed" },
-  { value: "FULFILLED", label: "Fulfilled" },
-  { value: "CANCELLED", label: "Cancelled" },
-  { value: "EXPIRED", label: "Expired" },
-] as const;
+const actionLabels: Record<OrderStatusName, string> = {
+  PENDING: "Return to review",
+  CONFIRMED: "Confirm transfer",
+  FULFILLED: "Mark fulfilled",
+  CANCELLED: "Cancel reservation",
+  EXPIRED: "Expire now",
+};
 
 const initialState: OrderStatusActionState = {
   status: "idle",
@@ -33,22 +33,15 @@ export function OrderStatusForm({
   boothId: string;
   orderId: string;
   orderCode: string;
-  currentStatus: (typeof orderStatuses)[number]["value"];
+  currentStatus: OrderStatusName;
 }) {
   const [state, formAction, pending] = useActionState(
     updateOrderStatusAction,
     initialState,
   );
-  const statusId = useId();
   const messageId = useId();
-  const allowedStatuses = orderStatuses.filter(
-    (status) =>
-      status.value === currentStatus ||
-      orderStatusTransitions[currentStatus as OrderStatusName].includes(
-        status.value,
-      ),
-  );
-  const terminal = allowedStatuses.length === 1;
+  const availableTransitions = orderStatusTransitions[currentStatus];
+  const terminal = availableTransitions.length === 0;
 
   return (
     <form
@@ -56,29 +49,28 @@ export function OrderStatusForm({
       className={styles.statusForm}
       aria-busy={pending}
       aria-describedby={state.message ? messageId : undefined}
+      aria-label={`Actions for order ${orderCode}`}
     >
       <input type="hidden" name="boothId" value={boothId} />
       <input type="hidden" name="orderId" value={orderId} />
-      <label className={styles.srOnly} htmlFor={statusId}>
-        Status for order {orderCode}
-      </label>
-      <div className={styles.statusControls}>
-        <select
-          id={statusId}
-          name="status"
-          defaultValue={currentStatus}
-          disabled={pending || terminal}
-        >
-          {allowedStatuses.map((status) => (
-            <option key={status.value} value={status.value}>
-              {status.label}
-            </option>
+      {terminal ? (
+        <p className={styles.terminalStatus}>No further actions</p>
+      ) : (
+        <div className={styles.statusControls}>
+          {availableTransitions.map((nextStatus) => (
+            <button
+              key={nextStatus}
+              type="submit"
+              name="status"
+              value={nextStatus}
+              data-transition={nextStatus}
+              disabled={pending}
+            >
+              {pending ? "Saving…" : actionLabels[nextStatus]}
+            </button>
           ))}
-        </select>
-        <button type="submit" disabled={pending || terminal}>
-          {pending ? "Saving…" : terminal ? "Final" : "Save"}
-        </button>
-      </div>
+        </div>
+      )}
       <p
         id={messageId}
         className={styles.actionMessage}
