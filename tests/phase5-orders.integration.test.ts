@@ -190,6 +190,102 @@ test(
         3,
       );
 
+      const fulfillableOrder = await db.order.create({
+        data: {
+          boothId,
+          code: `P5-F-${suffix.slice(0, 16)}`,
+          status: "PENDING",
+          customerName: "Fulfilment Customer",
+          customerEmail: "fulfilment@example.com",
+          subtotalCents: BigInt(12_500_00),
+          totalCents: BigInt(12_500_00),
+          transferReference: `P5-F-${suffix.slice(0, 16)}`,
+          idempotencyKey: randomUUID(),
+          expiresAt: new Date(Date.now() + 60_000),
+          items: {
+            create: {
+              productId: cancellableProduct.id,
+              productVariantId: cancellableVariant.id,
+              titleSnapshot: cancellableProduct.name,
+              variantSnapshot: cancellableVariant.label,
+              unitPriceCents: BigInt(12_500_00),
+              quantity: 1,
+              inventoryDebited: true,
+            },
+          },
+        },
+      });
+
+      const wrongBooth = await transitionOrderStatus({
+        boothId: `${boothId}-other`,
+        orderId: fulfillableOrder.id,
+        actorUserId: userId,
+        nextStatus: "CONFIRMED",
+      });
+      assert.equal(wrongBooth.kind, "missing");
+
+      const fulfillableConfirmed = await transitionOrderStatus({
+        boothId,
+        orderId: fulfillableOrder.id,
+        actorUserId: userId,
+        nextStatus: "CONFIRMED",
+      });
+      assert.equal(fulfillableConfirmed.kind, "changed");
+      const beforeFulfilment = await db.order.findUniqueOrThrow({
+        where: { id: fulfillableOrder.id },
+      });
+      assert.ok(beforeFulfilment.confirmedAt);
+      assert.equal(beforeFulfilment.confirmedById, userId);
+
+      const fulfilled = await transitionOrderStatus({
+        boothId,
+        orderId: fulfillableOrder.id,
+        actorUserId: userId,
+        nextStatus: "FULFILLED",
+      });
+      assert.equal(fulfilled.kind, "changed");
+      assert.equal(
+        fulfilled.kind === "changed" && fulfilled.inventoryReleased,
+        false,
+      );
+      const fulfilledOrder = await db.order.findUniqueOrThrow({
+        where: { id: fulfillableOrder.id },
+        include: { items: true },
+      });
+      assert.equal(fulfilledOrder.status, "FULFILLED");
+      assert.equal(
+        fulfilledOrder.confirmedAt?.getTime(),
+        beforeFulfilment.confirmedAt?.getTime(),
+      );
+      assert.equal(fulfilledOrder.confirmedById, userId);
+      assert.ok(fulfilledOrder.fulfilledAt);
+      assert.equal(fulfilledOrder.items[0]?.inventoryDebited, true);
+      assert.equal(
+        (
+          await db.productVariant.findUniqueOrThrow({
+            where: { id: cancellableVariant.id },
+          })
+        ).stockQuantity,
+        3,
+      );
+
+      const fulfilledCannotCancel = await transitionOrderStatus({
+        boothId,
+        orderId: fulfillableOrder.id,
+        actorUserId: userId,
+        nextStatus: "CANCELLED",
+      });
+      assert.equal(fulfilledCannotCancel.kind, "invalid-transition");
+
+      const fulfilmentAuditLogs = await db.auditLog.findMany({
+        where: { boothId, entityId: fulfillableOrder.id },
+        orderBy: { createdAt: "asc" },
+      });
+      assert.deepEqual(
+        fulfilmentAuditLogs.map((entry) => entry.action),
+        ["order.confirmed", "order.fulfilled"],
+      );
+
       const staleProduct = await db.product.create({
         data: {
           boothId,
