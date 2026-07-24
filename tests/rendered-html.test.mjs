@@ -250,3 +250,29 @@ test("keeps bank details behind a successful managed reservation", async () => {
     /totalMinorUnits: order\.totalCents\.toString\(\)/,
   );
 });
+
+test("uses one trusted bank selection for VietQR beneficiary details", async () => {
+  const [designer, action] = await Promise.all([
+    readFile(
+      new URL("../components/admin/storefront-designer.tsx", import.meta.url),
+      "utf8",
+    ),
+    readFile(
+      new URL("../app/manage/[boothId]/actions.ts", import.meta.url),
+      "utf8",
+    ),
+  ]);
+
+  assert.match(designer, /<select\s+value=\{payment\.bankCode\}/);
+  assert.match(designer, /const paymentFieldNames = \[\s*"bankCode"/);
+  assert.match(designer, /Select a bank/);
+  assert.doesNotMatch(designer, /label="Bank name"|label="Bank BIN\/code"/);
+  assert.match(
+    action,
+    /findVietQrBank\(requiredText\(formData, "bankCode"\)\)/,
+  );
+  assert.doesNotMatch(
+    action,
+    /bankName:\s*requiredText\(formData,\s*"bankName"\)/,
+  );
+});

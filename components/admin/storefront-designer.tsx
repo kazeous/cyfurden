@@ -23,6 +23,7 @@ import {
   storefrontCornerRadiusPixels,
   storefrontSectionIds,
 } from "@/lib/storefront-document";
+import { resolveVietQrBank, vietQrBanks } from "@/lib/vietqr-banks";
 import { SubmitButton } from "./form-controls";
 import styles from "./storefront-designer.module.css";
 
@@ -184,7 +185,6 @@ const documentFieldNames = [
 ] as const satisfies ReadonlyArray<keyof StorefrontDocument>;
 
 const paymentFieldNames = [
-  "bankName",
   "bankCode",
   "accountName",
   "accountNumber",
@@ -256,7 +256,19 @@ export function StorefrontDesigner({
   featuredCount: number;
 }) {
   const [document, setDocument] = useState(initialDocument);
-  const [payment, setPayment] = useState(initialPayment);
+  const [payment, setPayment] = useState(() => {
+    const bank = resolveVietQrBank(
+      initialPayment.bankCode,
+      initialPayment.bankName,
+    );
+    return bank
+      ? {
+          ...initialPayment,
+          bankName: bank.shortName,
+          bankCode: bank.bin,
+        }
+      : initialPayment;
+  });
   const [selectedSection, setSelectedSection] = useState<SectionId>(
     initialDocument.visibleSections[0] ?? "featured",
   );
@@ -897,28 +909,30 @@ export function StorefrontDesigner({
                         }
                       />
                     </Field>
-                    <Field label="Bank name">
-                      <input
-                        value={payment.bankName}
-                        required
-                        onChange={(event) =>
-                          updatePayment("bankName", event.target.value)
-                        }
-                      />
-                    </Field>
                     <Field
-                      label="Bank BIN/code"
-                      hint="Six-digit bank identifier used to generate a VietQR. Leave blank to use only the uploaded QR or typed account details."
+                      label="Bank"
+                      hint="Choose the receiving bank. Its six-digit BIN is filled automatically for VietQR."
                     >
-                      <input
+                      <select
                         value={payment.bankCode}
-                        inputMode="numeric"
-                        pattern="[0-9]{6}"
-                        maxLength={6}
-                        onChange={(event) =>
-                          updatePayment("bankCode", event.target.value)
-                        }
-                      />
+                        required
+                        onChange={(event) => {
+                          const bank = resolveVietQrBank(event.target.value);
+                          setPayment((current) => ({
+                            ...current,
+                            bankCode: bank?.bin ?? "",
+                            bankName: bank?.shortName ?? "",
+                          }));
+                          setDirty(true);
+                        }}
+                      >
+                        <option value="">Select a bank</option>
+                        {vietQrBanks.map((bank) => (
+                          <option key={bank.bin} value={bank.bin}>
+                            {bank.shortName} — {bank.name}
+                          </option>
+                        ))}
+                      </select>
                     </Field>
                     <Field label="Account name">
                       <input

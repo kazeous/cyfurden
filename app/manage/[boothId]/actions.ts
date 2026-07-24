@@ -33,6 +33,7 @@ import {
   storefrontDocumentSchema,
   storefrontSectionIds,
 } from "@/lib/storefront-document";
+import { findVietQrBank } from "@/lib/vietqr-banks";
 import {
   boothSocialLinksSchema,
   compactBoothSocialLinks,
@@ -73,11 +74,8 @@ const slugify = (value: string) =>
 
 const paymentDraftSchema = z
   .object({
-    bankName: z.string().trim().max(120),
-    bankCode: z
-      .string()
-      .trim()
-      .regex(/^$|^\d{6}$/, "Use the six-digit bank BIN/code for VietQR."),
+    bankName: z.string().trim().min(1).max(120),
+    bankCode: z.string().regex(/^\d{6}$/),
     accountName: z.string().trim().max(120),
     accountNumber: z.string().trim().max(80),
     paymentLabel: z.string().trim().min(2).max(80),
@@ -86,13 +84,12 @@ const paymentDraftSchema = z
     disclaimer: z.string().trim().max(1_000),
   })
   .superRefine((payment, context) => {
-    if (!payment.bankCode) return;
-    if (!payment.bankName || !payment.accountName || !payment.accountNumber) {
+    if (!payment.accountName || !payment.accountNumber) {
       context.addIssue({
         code: "custom",
         path: ["bankCode"],
         message:
-          "Bank name, account name, and account number are required to generate VietQR.",
+          "A bank, account name, and account number are required to generate VietQR.",
       });
       return;
     }
@@ -176,9 +173,15 @@ export async function saveStorefrontAction(
     };
   }
   const document = documentResult.data;
+  const selectedBank = findVietQrBank(requiredText(formData, "bankCode"));
+  if (!selectedBank) {
+    return {
+      error: "Select a supported bank for the receiving account.",
+    };
+  }
   const paymentResult = paymentDraftSchema.safeParse({
-    bankName: requiredText(formData, "bankName"),
-    bankCode: requiredText(formData, "bankCode"),
+    bankName: selectedBank.shortName,
+    bankCode: selectedBank.bin,
     accountName: requiredText(formData, "accountName"),
     accountNumber: requiredText(formData, "accountNumber"),
     paymentLabel: requiredText(formData, "paymentLabel"),

@@ -75,7 +75,7 @@ export default async function StorefrontPage({
         boothStatus={booth.status}
         document={document}
         payment={{
-          bankName: payment?.bankName ?? "Demo Bank",
+          bankName: payment?.bankName ?? "",
           bankCode: payment?.bankCode ?? "",
           accountName: payment?.accountName ?? document.creatorName,
           accountNumber: payment?.accountNumber ?? "0000000000",
