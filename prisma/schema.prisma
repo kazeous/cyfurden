@@ -230,7 +230,7 @@ model BoothPaymentInstruction {
   accountNumber             String
   paymentLabel              String   @default("Bank transfer")
   qrObjectKey               String?
-  transferReferenceTemplate String   @default("CYF-{ORDER}")
+  transferReferenceTemplate String   @default("{code}")
   instructions              String   @db.Text
   disclaimer                String   @db.Text
   createdAt                 DateTime @default(now())

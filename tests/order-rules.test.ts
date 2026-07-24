@@ -8,6 +8,7 @@ import {
   maximumPurchasableQuantity,
   readOrderPaymentSnapshot,
   renderTransferReference,
+  VIETQR_TRANSFER_REFERENCE_MAX_LENGTH,
 } from "../lib/order-rules";
 
 test("tracked stock controls whether a variant is purchasable", () => {
@@ -95,5 +96,19 @@ test("transfer references always retain the private reservation code", () => {
       "125000",
     ),
     "CYF-ABC Moon pin 125000",
+  );
+  const fullReservationCode = "CYF-0123456789ABCDEF0123";
+  assert.equal(
+    renderTransferReference(
+      "A template that cannot fit {code} {item} {amount}",
+      fullReservationCode,
+      "Moon pin",
+      "125000",
+    ),
+    fullReservationCode,
+  );
+  assert.ok(
+    renderTransferReference("{code}", fullReservationCode).length <=
+      VIETQR_TRANSFER_REFERENCE_MAX_LENGTH,
   );
 });

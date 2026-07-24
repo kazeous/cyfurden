@@ -81,7 +81,7 @@ export default async function StorefrontPage({
           accountNumber: payment?.accountNumber ?? "0000000000",
           paymentLabel: payment?.paymentLabel ?? "Bank transfer",
           transferReferenceTemplate:
-            payment?.transferReferenceTemplate ?? "CYF-{ORDER}",
+            payment?.transferReferenceTemplate ?? "{code}",
           qrObjectKey: payment?.qrObjectKey ?? "",
           instructions:
             payment?.instructions ??

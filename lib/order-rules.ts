@@ -1,5 +1,6 @@
 export const PUBLIC_ORDER_MAX_LINES = 30;
 export const PUBLIC_ORDER_MAX_QUANTITY = 99;
+export const VIETQR_TRANSFER_REFERENCE_MAX_LENGTH = 25;
 
 export const purchasableVariantStatuses = [
   "AVAILABLE",
@@ -179,7 +180,7 @@ export function renderTransferReference(
   itemSummary = "order",
   amount = "",
 ) {
-  const normalizedTemplate = template.trim() || "CYF-{ORDER}";
+  const normalizedTemplate = template.trim() || "{code}";
   const replacements: Record<string, string> = {
     "{ORDER}": orderCode,
     "{code}": orderCode,
@@ -193,5 +194,19 @@ export function renderTransferReference(
     (value, [token, replacement]) => value.replaceAll(token, replacement),
     normalizedTemplate,
   );
-  return hasCodeToken ? rendered : `${rendered} ${orderCode}`;
+  const withCode = hasCodeToken ? rendered : `${rendered} ${orderCode}`;
+  const normalized = withCode
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\x20-\x7E]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (normalized.length <= VIETQR_TRANSFER_REFERENCE_MAX_LENGTH) {
+    return normalized;
+  }
+  if (orderCode.length <= VIETQR_TRANSFER_REFERENCE_MAX_LENGTH) {
+    return orderCode;
+  }
+  throw new Error("The reservation code is too long for a VietQR reference.");
 }

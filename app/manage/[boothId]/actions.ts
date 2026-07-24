@@ -40,6 +40,7 @@ import {
   isBoothLogoObjectKey,
   socialPlatforms,
 } from "@/lib/shop-settings";
+import { validateVietQrBeneficiary } from "@/lib/vietqr";
 
 const editorRoles = ["OWNER", "ADMIN"] as const;
 const orderRoles = ["OWNER", "ADMIN", "STAFF"] as const;
@@ -71,19 +72,44 @@ const slugify = (value: string) =>
     .replace(/^-+|-+$/g, "")
     .slice(0, 70);
 
-const paymentDraftSchema = z.object({
-  bankName: z.string().trim().max(120),
-  bankCode: z
-    .string()
-    .trim()
-    .regex(/^$|^\d{6}$/, "Use the six-digit bank BIN/code for VietQR."),
-  accountName: z.string().trim().max(120),
-  accountNumber: z.string().trim().max(80),
-  paymentLabel: z.string().trim().min(2).max(80),
-  transferReferenceTemplate: z.string().trim().max(120),
-  instructions: z.string().trim().max(2_000),
-  disclaimer: z.string().trim().max(1_000),
-});
+const paymentDraftSchema = z
+  .object({
+    bankName: z.string().trim().max(120),
+    bankCode: z
+      .string()
+      .trim()
+      .regex(/^$|^\d{6}$/, "Use the six-digit bank BIN/code for VietQR."),
+    accountName: z.string().trim().max(120),
+    accountNumber: z.string().trim().max(80),
+    paymentLabel: z.string().trim().min(2).max(80),
+    transferReferenceTemplate: z.string().trim().max(120),
+    instructions: z.string().trim().max(2_000),
+    disclaimer: z.string().trim().max(1_000),
+  })
+  .superRefine((payment, context) => {
+    if (!payment.bankCode) return;
+    if (!payment.bankName || !payment.accountName || !payment.accountNumber) {
+      context.addIssue({
+        code: "custom",
+        path: ["bankCode"],
+        message:
+          "Bank name, account name, and account number are required to generate VietQR.",
+      });
+      return;
+    }
+    try {
+      validateVietQrBeneficiary(payment);
+    } catch (error) {
+      context.addIssue({
+        code: "custom",
+        path: ["accountNumber"],
+        message:
+          error instanceof Error
+            ? error.message
+            : "Check the VietQR beneficiary details.",
+      });
+    }
+  });
 
 const productImageManifestSchema = z
   .array(
@@ -253,7 +279,7 @@ export async function saveStorefrontAction(
           paymentLabel: payment.paymentLabel,
           qrObjectKey,
           transferReferenceTemplate:
-            payment.transferReferenceTemplate || "CYF-{ORDER}",
+            payment.transferReferenceTemplate || "{code}",
           instructions: payment.instructions,
           disclaimer:
             payment.disclaimer ||
@@ -267,7 +293,7 @@ export async function saveStorefrontAction(
           paymentLabel: payment.paymentLabel,
           qrObjectKey,
           transferReferenceTemplate:
-            payment.transferReferenceTemplate || "CYF-{ORDER}",
+            payment.transferReferenceTemplate || "{code}",
           instructions: payment.instructions,
           disclaimer:
             payment.disclaimer ||

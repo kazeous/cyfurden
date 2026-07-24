@@ -940,10 +940,11 @@ export function StorefrontDesigner({
                     </Field>
                     <Field
                       label="Transfer message template"
-                      hint="Supports {code}, {item}, and {amount}. {ORDER} remains available for existing booths."
+                      hint="Supports {code}, {item}, and {amount}. References longer than VietQR's 25-character limit safely fall back to the reservation code. {ORDER} remains available for existing booths."
                     >
                       <input
                         value={payment.transferReferenceTemplate}
+                        maxLength={120}
                         onChange={(event) =>
                           updatePayment(
                             "transferReferenceTemplate",

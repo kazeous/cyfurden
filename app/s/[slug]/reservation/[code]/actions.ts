@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { db } from "@/lib/db";
+import { saveCustomerTransferReference } from "@/lib/customer-transfer-reference";
 
 const referenceSchema = z.object({
   slug: z
@@ -37,19 +37,9 @@ export async function submitCustomerTransferReferenceAction(
     };
   }
 
-  let updatedCount: number;
+  let updated: boolean;
   try {
-    const result = await db.order.updateMany({
-      where: {
-        code: parsed.data.code,
-        booth: { slug: parsed.data.slug },
-        status: "PENDING",
-      },
-      data: {
-        customerTransferReference: parsed.data.customerTransferReference,
-      },
-    });
-    updatedCount = result.count;
+    updated = await saveCustomerTransferReference(parsed.data);
   } catch (error) {
     console.error("Failed to save customer transfer reference", error);
     return {
@@ -58,7 +48,7 @@ export async function submitCustomerTransferReferenceAction(
     };
   }
 
-  if (!updatedCount) {
+  if (!updated) {
     return {
       status: "error",
       message: "This reservation is no longer accepting transfer details.",

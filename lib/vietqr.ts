@@ -1,4 +1,5 @@
 import QRCode from "qrcode";
+import { VIETQR_TRANSFER_REFERENCE_MAX_LENGTH } from "@/lib/order-rules";
 
 export type VietQrInput = {
   bankCode: string;
@@ -28,12 +29,34 @@ function ascii(value: string, maxLength: number) {
     .slice(0, maxLength);
 }
 
-function normalizeAccountNumber(value: string) {
+export function normalizeVietQrAccountNumber(value: string) {
   const normalized = value.replace(/[\s.-]/g, "");
   if (!/^[A-Za-z0-9]{1,34}$/.test(normalized)) {
     throw new Error("The bank account number is not valid for VietQR.");
   }
   return normalized;
+}
+
+export function validateVietQrBeneficiary({
+  bankCode,
+  accountNumber,
+  accountName,
+}: Pick<VietQrInput, "bankCode" | "accountNumber" | "accountName">) {
+  if (!/^\d{6}$/.test(bankCode)) {
+    throw new Error("VietQR requires a six-digit bank BIN/code.");
+  }
+
+  const normalizedAccountNumber = normalizeVietQrAccountNumber(accountNumber);
+  const normalizedAccountName = ascii(accountName, 25);
+  if (!normalizedAccountName) {
+    throw new Error("VietQR requires an account name.");
+  }
+
+  return {
+    bankCode,
+    accountNumber: normalizedAccountNumber,
+    accountName: normalizedAccountName,
+  };
 }
 
 function normalizeAmount(value: bigint | string | number) {
@@ -59,18 +82,22 @@ function crc16CcittFalse(value: string) {
 }
 
 export function buildVietQrPayload(input: VietQrInput) {
-  if (!/^\d{6}$/.test(input.bankCode)) {
-    throw new Error("VietQR requires a six-digit bank BIN/code.");
-  }
-
-  const accountNumber = normalizeAccountNumber(input.accountNumber);
-  const accountName = ascii(input.accountName, 25) || "CYFURDEN";
-  const transferReference = ascii(input.transferReference, 25);
+  const { bankCode, accountNumber, accountName } =
+    validateVietQrBeneficiary(input);
+  const transferReference = ascii(
+    input.transferReference,
+    VIETQR_TRANSFER_REFERENCE_MAX_LENGTH + 1,
+  );
   if (!transferReference) {
     throw new Error("VietQR requires a transfer reference.");
   }
+  if (transferReference.length > VIETQR_TRANSFER_REFERENCE_MAX_LENGTH) {
+    throw new Error(
+      `VietQR transfer references cannot exceed ${VIETQR_TRANSFER_REFERENCE_MAX_LENGTH} characters.`,
+    );
+  }
 
-  const beneficiary = field("00", input.bankCode) + field("01", accountNumber);
+  const beneficiary = field("00", bankCode) + field("01", accountNumber);
   const merchantAccount =
     field("00", NAPAS_APPLICATION_ID) +
     field("01", beneficiary) +

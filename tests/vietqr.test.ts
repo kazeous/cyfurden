@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import jsQR from "jsqr";
+import { PNG } from "pngjs";
+import { VIETQR_TRANSFER_REFERENCE_MAX_LENGTH } from "../lib/order-rules";
 import { buildVietQrPayload, generateVietQrDataUrl } from "../lib/vietqr";
 
 function crc16(value: string) {
@@ -34,14 +37,22 @@ test("VietQR payload includes the NAPAS account data, amount, reference, and val
 });
 
 test("VietQR data URLs are generated only from valid account data", async () => {
-  const dataUrl = await generateVietQrDataUrl({
+  const input = {
     bankCode: "970415",
     accountNumber: "0123456789",
     accountName: "Cyfurden Studio",
     amountMinorUnits: "1250000",
     transferReference: "CYF-AB12CD",
-  });
+  };
+  const dataUrl = await generateVietQrDataUrl(input);
   assert.match(dataUrl, /^data:image\/png;base64,/);
+  const png = PNG.sync.read(
+    Buffer.from(dataUrl.replace(/^data:image\/png;base64,/, ""), "base64"),
+  );
+  const decoded = jsQR(new Uint8ClampedArray(png.data), png.width, png.height);
+  assert.ok(decoded, "the generated PNG should be machine-decodable");
+  assert.equal(decoded.data, buildVietQrPayload(input));
+
   assert.throws(
     () =>
       buildVietQrPayload({
@@ -52,5 +63,21 @@ test("VietQR data URLs are generated only from valid account data", async () => 
         transferReference: "CYF-AB12CD",
       }),
     /six-digit bank BIN/i,
+  );
+  assert.throws(
+    () =>
+      buildVietQrPayload({
+        ...input,
+        accountNumber: "not/a/valid/account",
+      }),
+    /account number is not valid/i,
+  );
+  assert.throws(
+    () =>
+      buildVietQrPayload({
+        ...input,
+        transferReference: "X".repeat(VIETQR_TRANSFER_REFERENCE_MAX_LENGTH + 1),
+      }),
+    /cannot exceed 25 characters/i,
   );
 });

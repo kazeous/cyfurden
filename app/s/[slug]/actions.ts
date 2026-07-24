@@ -225,8 +225,7 @@ export async function createPublicOrderAction(
               ? pricedLines[0].titleSnapshot
               : `${pricedLines[0].titleSnapshot} +${pricedLines.length - 1}`;
           const transferReference = renderTransferReference(
-            booth.paymentInstructions?.transferReferenceTemplate ??
-              "CYF-{ORDER}",
+            booth.paymentInstructions?.transferReferenceTemplate ?? "{code}",
             code,
             itemSummary,
             (totalCents / BigInt(100)).toString(),
