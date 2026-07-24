@@ -4,12 +4,20 @@ import { PageHeading } from "@/components/admin/admin-shell";
 import { requireBoothSection } from "@/lib/authorization";
 import { resolveOracleImageUrl } from "@/lib/oracle-images";
 import { db } from "@/lib/db";
+import { productAttentionWhere } from "@/lib/product-inventory";
 import { ProductForm, type ProductEditorValue } from "./product-form";
 import styles from "./products.module.css";
 
 const productStatuses = ["DRAFT", "LIVE", "SOLD_OUT", "HIDDEN"] as const;
+const productFilterIds = [...productStatuses, "ATTENTION"] as const;
+const productFilterOptions = [
+  { id: "LIVE", label: "Live" },
+  { id: "ATTENTION", label: "Low / sold out" },
+  { id: "HIDDEN", label: "Hidden" },
+] as const;
 
 type ProductStatus = (typeof productStatuses)[number];
+type ProductFilter = (typeof productFilterIds)[number];
 type VariantStatus =
   | "AVAILABLE"
   | "LOW_STOCK"
@@ -134,23 +142,33 @@ export default async function ProductsPage({
   const filters = await searchParams;
   await requireBoothSection(boothId, "products");
   const canEdit = true;
-  const status = productStatuses.includes(filters.status as ProductStatus)
-    ? (filters.status as ProductStatus)
+  const activeFilter = productFilterIds.includes(
+    filters.status as ProductFilter,
+  )
+    ? (filters.status as ProductFilter)
     : undefined;
   const query = filters.query?.trim() ?? "";
   const products = await db.product.findMany({
     where: {
       boothId,
-      ...(status ? { status } : {}),
-      ...(query
-        ? {
-            OR: [
-              { name: { contains: query, mode: "insensitive" } },
-              { sku: { contains: query, mode: "insensitive" } },
-              { tags: { has: query.toLocaleLowerCase() } },
-            ],
-          }
-        : {}),
+      AND: [
+        ...(activeFilter === "ATTENTION"
+          ? [productAttentionWhere]
+          : activeFilter
+            ? [{ status: activeFilter }]
+            : []),
+        ...(query
+          ? [
+              {
+                OR: [
+                  { name: { contains: query, mode: "insensitive" as const } },
+                  { sku: { contains: query, mode: "insensitive" as const } },
+                  { tags: { has: query.toLocaleLowerCase() } },
+                ],
+              },
+            ]
+          : []),
+      ],
     },
     include: {
       variants: { orderBy: { sortOrder: "asc" } },
@@ -158,12 +176,13 @@ export default async function ProductsPage({
     },
     orderBy: [{ status: "asc" }, { updatedAt: "desc" }],
   });
-  const [counts, requestedProduct] = await Promise.all([
+  const [counts, attentionCount, requestedProduct] = await Promise.all([
     db.product.groupBy({
       by: ["status"],
       where: { boothId },
       _count: true,
     }),
+    db.product.count({ where: { boothId, ...productAttentionWhere } }),
     filters.product
       ? db.product.findFirst({
           where: { id: filters.product, boothId },
@@ -185,9 +204,11 @@ export default async function ProductsPage({
   const countMap = new Map(counts.map((entry) => [entry.status, entry._count]));
   const total = counts.reduce((sum, entry) => sum + entry._count, 0);
   const hidden = countMap.get("HIDDEN") ?? 0;
-  const attention =
-    (countMap.get("DRAFT") ?? 0) + (countMap.get("SOLD_OUT") ?? 0);
-  const cancelHref = productHref(boothId, { query, status });
+  const attention = attentionCount;
+  const cancelHref = productHref(boothId, {
+    query,
+    status: activeFilter,
+  });
 
   return (
     <div className={styles.page}>
@@ -245,8 +266,8 @@ export default async function ProductsPage({
               defaultValue={query}
               placeholder="Search by name, SKU, or tag"
             />
-            {status ? (
-              <input type="hidden" name="status" value={status} />
+            {activeFilter ? (
+              <input type="hidden" name="status" value={activeFilter} />
             ) : null}
             <button className={styles.clearButton} type="submit">
               Search
@@ -263,18 +284,21 @@ export default async function ProductsPage({
           <Link
             className={styles.filterLink}
             href={productHref(boothId, { query })}
-            aria-current={!status ? "page" : undefined}
+            aria-current={!activeFilter ? "page" : undefined}
           >
             All {total}
           </Link>
-          {productStatuses.map((entry) => (
+          {productFilterOptions.map((entry) => (
             <Link
               className={styles.filterLink}
-              href={productHref(boothId, { query, status: entry })}
-              aria-current={status === entry ? "page" : undefined}
-              key={entry}
+              href={productHref(boothId, { query, status: entry.id })}
+              aria-current={activeFilter === entry.id ? "page" : undefined}
+              key={entry.id}
             >
-              {displayStatus(entry)} {countMap.get(entry) ?? 0}
+              {entry.label}{" "}
+              {entry.id === "ATTENTION"
+                ? attention
+                : (countMap.get(entry.id) ?? 0)}
             </Link>
           ))}
         </div>
@@ -308,7 +332,7 @@ export default async function ProductsPage({
                             href={productHref(boothId, {
                               product: product.id,
                               query,
-                              status,
+                              status: activeFilter,
                             })}
                           >
                             <ProductThumbnail
@@ -345,7 +369,7 @@ export default async function ProductsPage({
                             href={productHref(boothId, {
                               product: product.id,
                               query,
-                              status,
+                              status: activeFilter,
                             })}
                           >
                             Edit
@@ -363,7 +387,7 @@ export default async function ProductsPage({
                 const href = productHref(boothId, {
                   product: product.id,
                   query,
-                  status,
+                  status: activeFilter,
                 });
                 return (
                   <Link className={styles.card} href={href} key={product.id}>
@@ -409,14 +433,16 @@ export default async function ProductsPage({
           <div className={styles.empty}>
             <div>
               <h2>
-                {query || status ? "No matching products" : "No products yet"}
+                {query || activeFilter
+                  ? "No matching products"
+                  : "No products yet"}
               </h2>
               <p>
-                {query || status
+                {query || activeFilter
                   ? "Try a different search or clear the current filter."
                   : "Create the first listing to start building this booth catalogue."}
               </p>
-              {query || status ? (
+              {query || activeFilter ? (
                 <Link
                   className={styles.clearButton}
                   href={productHref(boothId, {})}
@@ -440,7 +466,12 @@ export default async function ProductsPage({
         <p className={styles.staleNotice} role="status">
           This product is outside the current filter, so it remains selected
           while you edit it.
-          <Link href={productHref(boothId, { query, status })}>
+          <Link
+            href={productHref(boothId, {
+              query,
+              status: activeFilter,
+            })}
+          >
             Clear selection
           </Link>
         </p>

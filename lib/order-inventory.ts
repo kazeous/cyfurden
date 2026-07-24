@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { synchronizeProductInventoryStatusForVariants } from "@/lib/product-inventory";
 
 export const ORDER_RESERVATION_TTL_MS = 7 * 24 * 60 * 60 * 1_000;
 
@@ -28,6 +29,7 @@ export async function expireStaleOrdersInTransaction(
   });
 
   let expiredCount = 0;
+  const restoredVariantIds = new Set<string>();
   for (const order of staleOrders) {
     const expired = await transaction.order.updateMany({
       where: { id: order.id, boothId, status: "PENDING" },
@@ -37,13 +39,14 @@ export async function expireStaleOrdersInTransaction(
 
     for (const item of order.items) {
       if (!item.inventoryDebited || !item.productVariantId) continue;
-      await transaction.productVariant.updateMany({
+      const restored = await transaction.productVariant.updateMany({
         where: {
           id: item.productVariantId,
           stockQuantity: { not: null },
         },
         data: { stockQuantity: { increment: item.quantity } },
       });
+      if (restored.count) restoredVariantIds.add(item.productVariantId);
     }
     await transaction.orderItem.updateMany({
       where: { orderId: order.id, inventoryDebited: true },
@@ -51,6 +54,12 @@ export async function expireStaleOrdersInTransaction(
     });
     expiredCount += 1;
   }
+
+  await synchronizeProductInventoryStatusForVariants(
+    transaction,
+    restoredVariantIds,
+    { restoreSoldOut: true },
+  );
 
   return expiredCount;
 }

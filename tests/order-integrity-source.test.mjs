@@ -30,13 +30,27 @@ test("public reservations enforce stock atomically and idempotently", async () =
 });
 
 test("released orders restore only inventory actually debited", async () => {
-  const [source, schema] = await Promise.all([
+  const [source, schema, inventory] = await Promise.all([
     readFile(adminActionPath, "utf8"),
     readFile(schemaPath, "utf8"),
+    readFile(inventoryPath, "utf8"),
   ]);
   assert.match(source, /releasesInventory\(nextStatus\)/);
   assert.match(source, /inventoryDebited: true/);
   assert.match(source, /stockQuantity: \{ increment: item\.quantity \}/);
+  assert.match(source, /synchronizeProductInventoryStatusForVariants/);
+  assert.match(source, /restoreSoldOut: true/);
+  assert.match(inventory, /synchronizeProductInventoryStatusForVariants/);
+  assert.match(inventory, /restoreSoldOut: true/);
   assert.match(schema, /inventoryDebited\s+Boolean\s+@default\(false\)/);
   assert.match(schema, /paymentSnapshot\s+Json\?/);
+});
+
+test("stock mutations synchronize the product sold-out state", async () => {
+  const [publicSource, adminSource] = await Promise.all([
+    readFile(orderActionPath, "utf8"),
+    readFile(adminActionPath, "utf8"),
+  ]);
+  assert.match(publicSource, /synchronizeProductInventoryStatus\(/);
+  assert.match(adminSource, /synchronizeProductInventoryStatus\(/);
 });

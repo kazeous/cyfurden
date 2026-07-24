@@ -17,6 +17,7 @@ import {
   purchasableVariantStatuses,
   renderTransferReference,
 } from "@/lib/order-rules";
+import { synchronizeProductInventoryStatus } from "@/lib/product-inventory";
 
 const lineSchema = z.object({
   productId: z.string().min(1).max(100),
@@ -206,6 +207,13 @@ export async function createPublicOrderAction(
               inventoryDebited: tracksInventory,
             });
           }
+
+          await synchronizeProductInventoryStatus(
+            transaction,
+            pricedLines.flatMap((line) =>
+              line.inventoryDebited ? [line.productId] : [],
+            ),
+          );
 
           const totalCents = pricedLines.reduce(
             (sum, line) => sum + line.unitPriceCents * BigInt(line.quantity),

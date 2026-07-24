@@ -404,6 +404,10 @@ export function ProductForm({
                 <option value="SOLD_OUT">Sold out</option>
                 <option value="HIDDEN">Hidden</option>
               </select>
+              <small>
+                Live products become sold out automatically when all tracked
+                stock reaches zero.
+              </small>
             </label>
             <label className={styles.field}>
               Variant status
@@ -414,6 +418,7 @@ export function ProductForm({
                 <option value="SOLD_OUT">Sold out</option>
                 <option value="HIDDEN">Hidden</option>
               </select>
+              <small>Low-stock variants appear in the attention filter.</small>
             </label>
             <label className={styles.field}>
               Variant label

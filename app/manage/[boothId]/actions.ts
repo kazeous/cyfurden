@@ -27,6 +27,10 @@ import {
 import { isBoothProductImageObjectKey } from "@/lib/oracle-presign-contract";
 import { PRODUCT_IMAGE_MAX_COUNT } from "@/lib/payment-qr";
 import {
+  synchronizeProductInventoryStatus,
+  synchronizeProductInventoryStatusForVariants,
+} from "@/lib/product-inventory";
+import {
   storefrontDocumentSchema,
   storefrontSectionIds,
 } from "@/lib/storefront-document";
@@ -706,6 +710,7 @@ async function saveProduct(
       }
 
       if (!nextProductId) throw new Error("Product could not be saved.");
+      await synchronizeProductInventoryStatus(transaction, [nextProductId]);
       await transaction.productImage.deleteMany({
         where: { productId: nextProductId },
       });
@@ -909,22 +914,31 @@ export async function updateOrderStatusAction(
         if (!updated.count) return { kind: "conflict" } as const;
 
         let inventoryReleased = false;
+        const restoredVariantIds = new Set<string>();
         if (releasesInventory(nextStatus)) {
           for (const item of order.items) {
             if (!item.inventoryDebited || !item.productVariantId) continue;
-            await transaction.productVariant.updateMany({
+            const restored = await transaction.productVariant.updateMany({
               where: {
                 id: item.productVariantId,
                 stockQuantity: { not: null },
               },
               data: { stockQuantity: { increment: item.quantity } },
             });
-            inventoryReleased = true;
+            if (restored.count) {
+              restoredVariantIds.add(item.productVariantId);
+              inventoryReleased = true;
+            }
           }
           await transaction.orderItem.updateMany({
             where: { orderId, inventoryDebited: true },
             data: { inventoryDebited: false },
           });
+          await synchronizeProductInventoryStatusForVariants(
+            transaction,
+            restoredVariantIds,
+            { restoreSoldOut: true },
+          );
         }
 
         await transaction.auditLog.create({
