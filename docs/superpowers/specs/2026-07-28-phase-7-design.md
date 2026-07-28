@@ -58,7 +58,7 @@ The public booth query adds `Product.sku` to the existing product DTO. Both feat
 
 The chip is display-only and non-interactive. Product-level SKU is canonical for a card that may represent multiple variants. Variant SKUs remain internal.
 
-The implementation must verify and document the existing runtime SKU contract exactly: normalization, regex, and uniqueness scope come from the current product form/action and database constraints rather than being redefined for Phase 7.
+Implementation must verify and document the existing runtime SKU contract exactly: normalization, regex, and uniqueness scope come from the current product form/action and database constraints rather than being redefined for Phase 7.
 
 ### 3.2 Cart mutations
 
@@ -129,7 +129,7 @@ createdAt >= startOfTodayInHoChiMinh
 createdAt < startOfTomorrowInHoChiMinh
 ```
 
-The Orders URL recognizes a dedicated Today state. The implementation may use `today=1` or an equivalent explicit value that integrates cleanly with the existing date-filter parser. Today is mutually exclusive with explicit date-from/date-to values; when both are present, Today wins and the explicit range is ignored.
+The Orders URL recognizes a dedicated Today state, represented as the query parameter `today=1`. Today is mutually exclusive with explicit date-from/date-to values; when both are present, Today wins and the explicit range is ignored.
 
 The Today control appears beside the existing date controls. Activating it sets Today and clears explicit date inputs in the visible state and URL. Leaving Today clears the Today state. Pagination and status filters remain intact.
 
