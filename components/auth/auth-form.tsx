@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { signIn, signUp } from "@/lib/auth-client";
 import { translate, type Locale } from "@/lib/i18n";
+import { safeReturnTo } from "@/lib/redirect";
 import styles from "./auth.module.css";
 
 type AuthMode = "sign-in" | "sign-up";
@@ -14,12 +15,6 @@ interface AuthFormProps {
   mode: AuthMode;
   returnTo?: string;
   locale?: Locale;
-}
-
-function safeReturnTo(value: string | undefined) {
-  return value && value.startsWith("/") && !value.startsWith("//")
-    ? value
-    : "/dashboard";
 }
 
 function GoogleIcon() {
@@ -45,7 +40,12 @@ function GoogleIcon() {
   );
 }
 
-export function AuthForm({ googleEnabled, mode, returnTo, locale = "en" }: AuthFormProps) {
+export function AuthForm({
+  googleEnabled,
+  mode,
+  returnTo,
+  locale = "en",
+}: AuthFormProps) {
   const router = useRouter();
   const isSignUp = mode === "sign-up";
   const t = translate(locale, "publicAuth");
@@ -61,16 +61,16 @@ export function AuthForm({ googleEnabled, mode, returnTo, locale = "en" }: AuthF
   const submitPendingLabel = isSignUp
     ? t.submitPending.signUp
     : t.submitPending.signIn;
-  const switchPrompt = isSignUp
-    ? t.switchPrompt.signUp
-    : t.switchPrompt.signIn;
+  const switchPrompt = isSignUp ? t.switchPrompt.signUp : t.switchPrompt.signIn;
   const switchLink = isSignUp ? t.switchLink.signUp : t.switchLink.signIn;
   const emailLabel = isSignUp ? t.signUpEmailLabel : t.signInEmailLabel;
-  const passwordLabel = isSignUp ? t.signUpPasswordLabel : t.signInPasswordLabel;
+  const passwordLabel = isSignUp
+    ? t.signUpPasswordLabel
+    : t.signInPasswordLabel;
   const submitLabel = isSignUp ? t.signUpSubmit : t.signInSubmit;
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
-  const destination = safeReturnTo(returnTo);
+  const destination = safeReturnTo(returnTo, "/dashboard");
   const alternateAuthHref = `${isSignUp ? "/sign-in" : "/sign-up"}?returnTo=${encodeURIComponent(destination)}`;
 
   const handleEmailSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -254,8 +254,7 @@ export function AuthForm({ googleEnabled, mode, returnTo, locale = "en" }: AuthF
       </form>
 
       <p className={styles.switchPrompt}>
-        {switchPrompt}{" "}
-        <Link href={alternateAuthHref}>{switchLink}</Link>
+        {switchPrompt} <Link href={alternateAuthHref}>{switchLink}</Link>
       </p>
     </div>
   );
