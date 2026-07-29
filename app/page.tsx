@@ -18,91 +18,30 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-const workflow = [
-  {
-    index: "1.0",
-    title: "Set the table online.",
-    description:
-      "Choose your booth copy, colours, sections, products, and manual-payment instructions in one focused workspace.",
-    note: "Preview the storefront at phone and desktop sizes before publishing.",
-  },
-  {
-    index: "2.0",
-    title: "Share one booth link.",
-    description:
-      "Fans can browse featured work, filter the catalogue, inspect variants, and build a cart without creating an account.",
-    note: "Use the public link online, in a bio, or beside your table QR.",
-  },
-  {
-    index: "3.0",
-    title: "Hand off payment clearly.",
-    description:
-      "Cyfurden displays your bank QR or account details with a clear order reference. It never claims a transfer was verified.",
-    note: "Payment confirmation stays with the artist or an approved helper.",
-  },
-  {
-    index: "4.0",
-    title: "Run the queue together.",
-    description:
-      "Owners and invited teammates can review reservations, update their status, and prepare convention pickup by hand.",
-    note: "Role-based access keeps each booth and its work separate.",
-  },
-] as const;
-
-const functions = [
-  {
-    title: "Public storefront",
-    description:
-      "Featured drops, search, filters, product details, availability, and a persistent cart.",
-    scope: "For fans",
-  },
-  {
-    title: "Storefront designer",
-    description:
-      "Edit booth identity, reorder visible sections, preview layouts, and manage payment instructions.",
-    scope: "For artists",
-  },
-  {
-    title: "Products and orders",
-    description:
-      "Maintain the catalogue and move manual reservations through a clear convention-day queue.",
-    scope: "For the table",
-  },
-  {
-    title: "Team access",
-    description:
-      "Invite trusted helpers with owner, admin, or staff permissions for the booth they support.",
-    scope: "For helpers",
-  },
-  {
-    title: "Free promotion tools",
-    description:
-      "Configure an optional free gacha-style promotion without paid pulls or stored-value mechanics.",
-    scope: "For events",
-  },
-] as const;
-
 export default async function Home() {
   const locale = (await readLocaleCookie()) as Locale;
   const landing = translate(locale, "publicLanding");
-  const isVi = locale === "vi";
   return (
     <div className={styles.page}>
       <a className={styles.skipLink} href="#main-content">
-        {isVi ? "Bỏ qua đến nội dung" : "Skip to content"}
+        {landing.skipLink}
       </a>
 
       <header className={styles.siteHeader}>
-        <Link className={styles.wordmark} href="/" aria-label="Cyfurden home">
+        <Link
+          className={styles.wordmark}
+          href="/"
+          aria-label={landing.wordmarkAria}
+        >
           <span className={styles.brandMark} aria-hidden="true">
             C
           </span>
           <span>Cyfurden</span>
         </Link>
-        <nav aria-label={isVi ? "Điều hướng chính" : "Primary navigation"}>
+        <nav aria-label={landing.navAria}>
           <LanguageToggle current={locale} redirectTo="/" />
           <Link className={styles.signInLink} href="/sign-in">
-            {isVi ? "Đăng nhập" : "Sign in"}
+            {landing.topbarSignIn}
           </Link>
         </nav>
       </header>
@@ -110,22 +49,19 @@ export default async function Home() {
       <main id="main-content" className={styles.main}>
         <section className={styles.hero} aria-labelledby="landing-title">
           <div className={styles.heroCopy}>
+            <p className={styles.heroEyebrow}>{landing.heroEyebrow}</p>
             <h1 id="landing-title">{landing.heroTitle}</h1>
             <p className={styles.heroLead}>{landing.heroBody}</p>
+            <p className={styles.heroNote}>{landing.heroNote}</p>
             <div className={styles.heroActions}>
               <Link className={styles.primaryLink} href="/sign-up">
                 {landing.heroActionPrimary}{" "}
                 <span aria-hidden="true">→</span>
               </Link>
-              <Link className={styles.secondaryLink} href="#workflow">
+              <Link className={styles.secondaryLink} href="/sign-in">
                 {landing.heroActionSecondary}
               </Link>
             </div>
-            <p className={styles.heroNote}>
-              {isVi
-                ? "Khách xem không cần tài khoản. Nghệ sĩ đăng nhập để quản lý booth của mình."
-                : "Fans browse without an account. Artists sign in to manage their booths."}
-            </p>
           </div>
 
           <figure className={styles.heroFigure}>
@@ -134,71 +70,49 @@ export default async function Home() {
                 <div className={styles.previewHeader}>
                   <div>
                     <span className={styles.previewLabel}>
-                      Storefront preview
+                      {landing.mockPreviewHeading}
                     </span>
-                    <strong>Your booth</strong>
+                    <strong>{landing.feature1Title}</strong>
                   </div>
-                  <span className={styles.statusPill}>Draft preview</span>
+                  <span className={styles.statusPill}>
+                    {landing.mockPreviewStatus}
+                  </span>
                 </div>
                 <p className={styles.previewTagline}>
-                  A storefront shaped around your work.
+                  {landing.mockPreviewTagline}
                 </p>
                 <ul className={styles.previewProductList}>
-                  <li>
-                    <span
-                      className={`${styles.productSwatch} ${styles.swatch1}`}
-                      aria-hidden="true"
-                    />
-                    <span className={styles.previewProductName}>
-                      Featured work
-                    </span>
-                    <span className={styles.previewPrice}>Lead</span>
-                  </li>
-                  <li>
-                    <span
-                      className={`${styles.productSwatch} ${styles.swatch2}`}
-                      aria-hidden="true"
-                    />
-                    <span className={styles.previewProductName}>
-                      Product catalogue
-                    </span>
-                    <span className={styles.previewPrice}>Browse</span>
-                  </li>
-                  <li>
-                    <span
-                      className={`${styles.productSwatch} ${styles.swatch3}`}
-                      aria-hidden="true"
-                    />
-                    <span className={styles.previewProductName}>
-                      Reservation handoff
-                    </span>
-                    <span className={styles.previewPrice}>Reserve</span>
-                  </li>
+                  {landing.mockPreviewItems.map((item) => (
+                    <li key={item.name}>
+                      <span
+                        className={`${styles.productSwatch} ${styles.swatch1}`}
+                        aria-hidden="true"
+                      />
+                      <span className={styles.previewProductName}>
+                        {item.name}
+                      </span>
+                      <span className={styles.previewPrice}>{item.tag}</span>
+                    </li>
+                  ))}
                 </ul>
               </div>
 
               <div className={styles.queueSlip}>
-                <span className={styles.previewLabel}>Reservation queue</span>
-                <strong>Ready for a human check</strong>
+                <span className={styles.previewLabel}>
+                  {landing.mockPreviewQueueLabel}
+                </span>
+                <strong>{landing.mockPreviewQueueTitle}</strong>
                 <dl>
-                  <div>
-                    <dt>Items</dt>
-                    <dd>3</dd>
-                  </div>
-                  <div>
-                    <dt>Payment</dt>
-                    <dd>Manual</dd>
-                  </div>
-                  <div>
-                    <dt>Handoff</dt>
-                    <dd>Event pickup</dd>
-                  </div>
+                  {landing.mockPreviewQueueItems.map((entry, idx) => (
+                    <div key={idx}>
+                      <dt>{entry.dt}</dt>
+                      <dd>{entry.dd}</dd>
+                    </div>
+                  ))}
                 </dl>
               </div>
             </div>
-            <figcaption>
-              A schematic preview of the storefront and reservation workflow.
-            </figcaption>
+            <figcaption>{landing.mockPreviewCaption}</figcaption>
           </figure>
         </section>
 
@@ -207,25 +121,15 @@ export default async function Home() {
           aria-labelledby="audience-title"
         >
           <h2 id="audience-title" className="sr-only">
-            Who Cyfurden helps
+            {landing.audienceHeading}
           </h2>
           <ul>
-            <li>
-              <strong>Fans</strong>
-              <span>Browse and reserve from a phone</span>
-            </li>
-            <li>
-              <strong>Artists</strong>
-              <span>Shape a booth around their work</span>
-            </li>
-            <li>
-              <strong>Helpers</strong>
-              <span>Share one practical order queue</span>
-            </li>
-            <li>
-              <strong>Payments</strong>
-              <span>Stay manual and clearly labelled</span>
-            </li>
+            {landing.audienceItems.map((item) => (
+              <li key={item.title}>
+                <strong>{item.title}</strong>
+                <span>{item.subtitle}</span>
+              </li>
+            ))}
           </ul>
         </section>
 
@@ -235,18 +139,17 @@ export default async function Home() {
           aria-labelledby="flow-title"
         >
           <header className={styles.sectionHeading}>
-            <h2 id="flow-title">From first scan to final handoff.</h2>
-            <p>
-              Cyfurden follows the real order of a convention table, without
-              pretending that software replaces the person running it.
-            </p>
+            <h2 id="flow-title">{landing.workflowHeading}</h2>
+            <p>{landing.workflowIntro}</p>
           </header>
 
           <ol className={styles.workflowList}>
-            {workflow.map((step) => (
-              <li key={step.index}>
+            {landing.workflowSteps.map((step, idx) => (
+              <li key={step.title}>
                 <div className={styles.stageCopy}>
-                  <span className={styles.stageIndex}>{step.index}</span>
+                  <span className={styles.stageIndex}>
+                    {(idx + 1).toFixed(1)}
+                  </span>
                   <h3>{step.title}</h3>
                   <p>{step.description}</p>
                 </div>
@@ -261,14 +164,11 @@ export default async function Home() {
           aria-labelledby="function-title"
         >
           <header className={styles.functionHeading}>
-            <h2 id="function-title">What lives inside Cyfurden.</h2>
-            <p>
-              One public storefront, one protected booth workspace, and no
-              marketplace feed competing with your own identity.
-            </p>
+            <h2 id="function-title">{landing.functionHeading}</h2>
+            <p>{landing.functionIntro}</p>
           </header>
           <div className={styles.functionList}>
-            {functions.map((item) => (
+            {landing.functionItems.map((item) => (
               <article key={item.title}>
                 <h3>{item.title}</h3>
                 <p>{item.description}</p>
@@ -279,17 +179,10 @@ export default async function Home() {
         </section>
 
         <section className={styles.manualBand} aria-labelledby="manual-title">
-          <h2 id="manual-title">Payment stays manual—and visibly so.</h2>
+          <h2 id="manual-title">{landing.manualHeading}</h2>
           <div>
-            <p>
-              Booth owners provide their bank QR or account details. Cyfurden
-              shows the order reference and keeps the queue organised; the
-              artist or a staff member confirms the transfer themselves.
-            </p>
-            <p className={styles.boundaryLine}>
-              No card checkout · No automatic transfer verification · No paid
-              gacha
-            </p>
+            <p>{landing.manualBody}</p>
+            <p className={styles.boundaryLine}>{landing.manualBoundary}</p>
           </div>
         </section>
 
@@ -298,18 +191,15 @@ export default async function Home() {
           aria-labelledby="final-title"
         >
           <div>
-            <h2 id="final-title">Give your next table an online front door.</h2>
-            <p>
-              Start with a booth of your own and shape the public storefront
-              around your work.
-            </p>
+            <h2 id="final-title">{landing.finalHeading}</h2>
+            <p>{landing.finalBody}</p>
           </div>
           <div className={styles.finalActions}>
             <Link className={styles.primaryLink} href="/sign-up">
-              Create your booth <span aria-hidden="true">→</span>
+              {landing.finalPrimary} <span aria-hidden="true">→</span>
             </Link>
             <Link className={styles.textLink} href="/sign-in">
-              Sign in to manage <span aria-hidden="true">→</span>
+              {landing.finalSecondary}
             </Link>
           </div>
         </section>
@@ -317,14 +207,12 @@ export default async function Home() {
 
       <footer className={styles.footer}>
         <div>
-          <p className={styles.footerWordmark}>Cyfurden</p>
-          <p className={styles.footerTagline}>
-            Artist storefronts for conventions, pre-orders, and human handoff.
-          </p>
+          <p className={styles.footerWordmark}>{landing.footerWordmark}</p>
+          <p className={styles.footerTagline}>{landing.footerTagline}</p>
         </div>
-        <nav className={styles.footerLinks} aria-label="Footer navigation">
-          <Link href="/sign-in">Sign in</Link>
-          <Link href="/sign-up">Create booth</Link>
+        <nav className={styles.footerLinks} aria-label={landing.footerNavAria}>
+          <Link href="/sign-in">{landing.footerSignIn}</Link>
+          <Link href="/sign-up">{landing.footerCreateBooth}</Link>
         </nav>
       </footer>
     </div>

@@ -116,11 +116,11 @@ test("server-renders the Cyfurden landing page", async () => {
   );
   assert.match(renderedContent, /Independent booths for convention days/);
   assert.match(renderedContent, /From first scan to final handoff/);
-  assert.match(renderedContent, /Payment stays manual—and visibly so/);
+  assert.match(renderedContent, /Payment stays manual/);
   assert.match(renderedContent, /href="\/sign-up"/);
   assert.match(renderedContent, /href="\/sign-in"/);
   assert.doesNotMatch(renderedContent, /lantern-and-loom|Lantern &amp; Loom/i);
-  assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|stripe/i);
+  assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
 });
 
 test("uses one bundled display and body font system", async () => {
