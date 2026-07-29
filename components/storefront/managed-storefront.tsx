@@ -13,6 +13,7 @@ import {
 } from "@/lib/order-rules";
 import { filterAndSortCatalogue, type CatalogueSort } from "@/lib/catalogue";
 import { createSocialQrDataUrl } from "@/lib/social-qr";
+import { translate, type Locale } from "@/lib/i18n";
 import {
   resolveStorefrontFeaturedProductIds,
   storefrontCornerRadiusPixels,
@@ -48,8 +49,8 @@ type CartLine = { productId: string; variantId: string; quantity: number };
 
 const initialOrderState: PublicOrderState = { status: "idle", message: "" };
 
-const money = (minorUnits: bigint | string) =>
-  new Intl.NumberFormat("vi-VN", {
+const money = (minorUnits: bigint | string, locale: Locale = "en") =>
+  new Intl.NumberFormat(locale === "vi" ? "vi-VN" : "en-GB", {
     style: "currency",
     currency: "VND",
     maximumFractionDigits: 0,
@@ -173,15 +174,17 @@ function CatalogueIcon({ name }: { name: "grid" | "list" | "search" }) {
   );
 }
 
-function availabilityLabel(product: ProductDto) {
+function availabilityLabel(product: ProductDto, t: import("@/lib/i18n").PublicBoothStrings) {
   const available = product.variants.find((variant) =>
     isPurchasableVariant(variant.status, variant.stockQuantity),
   );
-  if (!available) return "Sold out";
+  if (!available) return t.productDetailAvailabilitySoldOut;
   if (available.stockQuantity !== null) {
-    return `${available.stockQuantity} left`;
+    return t.productDetailAvailabilityLeft(available.stockQuantity);
   }
-  return available.status === "PREORDER" ? "Pre-order" : "Available";
+  return available.status === "PREORDER"
+    ? t.productDetailAvailabilityPreorder
+    : t.productDetailAvailabilityAvailable;
 }
 
 function ProductQr({
@@ -231,6 +234,7 @@ export function ManagedStorefront({
   document,
   products,
   canAcceptReservations,
+  locale = "en",
 }: {
   booth: { id: string; slug: string };
   identity: {
@@ -240,6 +244,7 @@ export function ManagedStorefront({
   document: StorefrontDocument;
   products: ProductDto[];
   canAcceptReservations: boolean;
+  locale?: Locale;
 }) {
   const [query, setQuery] = useState("");
   const [categorySlug, setCategorySlug] = useState("all");
@@ -268,6 +273,7 @@ export function ManagedStorefront({
   const orderErrorRef = useRef<HTMLParagraphElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const storageKey = `cyfurden:cart:${booth.slug}`;
+  const t = useMemo(() => translate(locale, "publicBooth"), [locale]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -286,6 +292,14 @@ export function ManagedStorefront({
     }, 0);
     return () => window.clearTimeout(timer);
   }, [products, storageKey]);
+
+  useEffect(() => {
+    if (typeof globalThis.document === "undefined") return;
+    globalThis.document.documentElement.lang = locale;
+    return () => {
+      globalThis.document.documentElement.lang = "en";
+    };
+  }, [locale]);
 
   useEffect(() => {
     if (!hydrated || !idempotencyKey) return;
@@ -645,7 +659,8 @@ export function ManagedStorefront({
                   {document.tagline}
                 </strong>
                 <p className={styles.featuredProductLabel}>
-                  {featuredProduct.eyebrow ?? "Featured release"}
+                  {featuredProduct.eyebrow ??
+                    (locale === "vi" ? "Sản phẩm nổi bật" : "Featured release")}
                 </p>
                 <h1>{featuredProduct.name}</h1>
                 <p className={styles.featuredDescription}>
@@ -656,8 +671,8 @@ export function ManagedStorefront({
                   {document.introduction}
                 </p>
                 <div className={styles.featuredFacts}>
-                  <strong>{money(price)}</strong>
-                  <span>{availabilityLabel(featuredProduct)}</span>
+                  <strong>{money(price, locale)}</strong>
+                  <span>{availabilityLabel(featuredProduct, t)}</span>
                 </div>
                 <div className={styles.featuredActions}>
                   <button
@@ -669,19 +684,19 @@ export function ManagedStorefront({
                     }
                   >
                     {!canAcceptReservations
-                      ? "Reservations paused"
+                      ? t.productDetailReservationsPaused
                       : atStockLimit
-                        ? "Stock limit reached"
+                        ? t.productDetailStockLimitReached
                         : available
-                          ? "Add to bag"
-                          : "Sold out"}
+                          ? t.productDetailAddToBag
+                          : t.productDetailSoldOut}
                   </button>
                   <button
                     type="button"
                     className={styles.detailsButton}
                     onClick={() => openDetails(featuredProduct)}
                   >
-                    View item
+                    {locale === "vi" ? "Xem sản phẩm" : "View item"}
                   </button>
                 </div>
                 <div className={styles.featuredNavigation}>
@@ -754,7 +769,7 @@ export function ManagedStorefront({
                   aria-label={`View details for ${featuredProduct.name}`}
                 >
                   <ProductArt product={featuredProduct} />
-                  <span>{availabilityLabel(featuredProduct)}</span>
+                  <span>{availabilityLabel(featuredProduct, t)}</span>
                 </button>
               </div>
             </div>
@@ -800,12 +815,12 @@ export function ManagedStorefront({
         return (
           <section
             className={`${styles.storeSection} ${styles.browseControls}`}
-            aria-label="Browse products"
+            aria-label={t.browseTitle}
           >
             <div
               className={styles.categoryRail}
               role="group"
-              aria-label="Filter products by category"
+              aria-label={t.browseTitle}
             >
               <button
                 type="button"
@@ -813,7 +828,7 @@ export function ManagedStorefront({
                 aria-pressed={categorySlug === "all"}
                 onClick={() => setCategorySlug("all")}
               >
-                All
+                {locale === "vi" ? "Tất cả" : "All"}
               </button>
               {categories.map((category) => (
                 <button
@@ -838,8 +853,8 @@ export function ManagedStorefront({
                   type="search"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search items..."
-                  aria-label="Search products"
+                  placeholder={t.browseSearchPlaceholder}
+                  aria-label={t.browseSearchPlaceholder}
                 />
               </label>
               <select
@@ -848,23 +863,33 @@ export function ManagedStorefront({
                 onChange={(event) =>
                   setSort(event.target.value as CatalogueSort)
                 }
-                aria-label="Sort products"
+                aria-label={locale === "vi" ? "Sắp xếp sản phẩm" : "Sort products"}
               >
-                <option value="featured">Recommended</option>
-                <option value="newest">Newest</option>
-                <option value="price-asc">Price: low to high</option>
-                <option value="price-desc">Price: high to low</option>
-                <option value="name">Name: A to Z</option>
+                <option value="featured">
+                  {locale === "vi" ? "Đề xuất" : "Recommended"}
+                </option>
+                <option value="newest">
+                  {locale === "vi" ? "Mới nhất" : "Newest"}
+                </option>
+                <option value="price-asc">
+                  {locale === "vi" ? "Giá: thấp đến cao" : "Price: low to high"}
+                </option>
+                <option value="price-desc">
+                  {locale === "vi" ? "Giá: cao đến thấp" : "Price: high to low"}
+                </option>
+                <option value="name">
+                  {locale === "vi" ? "Tên: A đến Z" : "Name: A to Z"}
+                </option>
               </select>
               <div
                 className={styles.viewToggle}
                 role="group"
-                aria-label="Catalogue view"
+                aria-label={locale === "vi" ? "Kiểu hiển thị" : "Catalogue view"}
               >
                 <button
                   type="button"
                   className={styles.viewButton}
-                  aria-label="Show product grid"
+                  aria-label={locale === "vi" ? "Hiển thị dạng lưới" : "Show product grid"}
                   aria-pressed={viewMode === "grid"}
                   onClick={() => setViewMode("grid")}
                 >
@@ -873,7 +898,7 @@ export function ManagedStorefront({
                 <button
                   type="button"
                   className={styles.viewButton}
-                  aria-label="Show product list"
+                  aria-label={locale === "vi" ? "Hiển thị dạng danh sách" : "Show product list"}
                   aria-pressed={viewMode === "list"}
                   onClick={() => setViewMode("list")}
                 >
@@ -938,14 +963,17 @@ export function ManagedStorefront({
                       <div className={styles.cardCopy}>
                         <div className={styles.cardHeading}>
                           <p className={styles.cardEyebrow}>
-                            {product.eyebrow ?? "New release"}
+                            {product.eyebrow ??
+                              (locale === "vi" ? "Mới ra mắt" : "New release")}
                           </p>
                           <div className={styles.badges}>
                             {product.featured ? (
-                              <span className={styles.badge}>Featured</span>
+                              <span className={styles.badge}>
+                                {locale === "vi" ? "Nổi bật" : "Featured"}
+                              </span>
                             ) : null}
                             <span className={styles.badge}>
-                              {availabilityLabel(product)}
+                              {availabilityLabel(product, t)}
                             </span>
                           </div>
                         </div>
@@ -961,21 +989,21 @@ export function ManagedStorefront({
                         ) : null}
                         <p>{product.shortDescription ?? product.description}</p>
                         {product.tags.length ? (
-                          <div className={styles.tagList} aria-label="Tags">
+                          <div className={styles.tagList} aria-label={t.tagAriaLabel}>
                             {product.tags.slice(0, 3).map((tag) => (
                               <span key={tag}>#{tag}</span>
                             ))}
                           </div>
                         ) : null}
                         <div className={styles.cardFooter}>
-                          <strong>{money(price)}</strong>
+                          <strong>{money(price, locale)}</strong>
                           <div className={styles.cardActions}>
                             <button
                               type="button"
                               className={styles.detailsButton}
                               onClick={() => openDetails(product)}
                             >
-                              Details
+                              {t.productDetailDetails}
                             </button>
                             <button
                               type="button"
@@ -988,12 +1016,12 @@ export function ManagedStorefront({
                               }
                             >
                               {!canAcceptReservations
-                                ? "Reservations paused"
+                                ? t.productDetailReservationsPaused
                                 : atStockLimit
-                                  ? "Stock limit reached"
+                                  ? t.productDetailStockLimitReached
                                   : available
-                                    ? "Add to bag"
-                                    : "Sold out"}
+                                    ? t.productDetailAddToBag
+                                    : t.productDetailSoldOut}
                             </button>
                           </div>
                         </div>
@@ -1004,8 +1032,8 @@ export function ManagedStorefront({
               </div>
             ) : (
               <div className={styles.empty}>
-                <h3>No matching merch</h3>
-                <p>Try a different search.</p>
+                <h3>{locale === "vi" ? "Không có sản phẩm phù hợp" : "No matching merch"}</h3>
+                <p>{locale === "vi" ? "Thử từ khoá khác." : "Try a different search."}</p>
               </div>
             )}
           </section>
@@ -1013,31 +1041,29 @@ export function ManagedStorefront({
       case "cart":
         return (
           <section className={`${styles.storeSection} ${styles.cartSummary}`}>
-            <p className={styles.eyebrow}>Shopping cart</p>
+            <p className={styles.eyebrow}>{t.cartEyebrow}</p>
             <span className={styles.cartSummaryIcon} aria-hidden="true">
               ▣
             </span>
             <h2>
               {cartCount
-                ? `${cartCount} item${cartCount === 1 ? "" : "s"}`
-                : "Your bag is empty"}
+                ? t.cartTitleItems(cartCount)
+                : t.cartTitleEmpty}
             </h2>
             <p>
               {cartCount
-                ? `${money(totalCents)} ready for manual reservation.`
-                : "Add a piece from the collection to begin."}
+                ? t.cartReadyForReservation(money(totalCents, locale))
+                : t.cartEmptyHint}
             </p>
             <button
               type="button"
               className={styles.addButton}
               onClick={() => setCartOpen(true)}
             >
-              {cartCount ? "Review bag" : "Open bag"}
+              {cartCount ? t.cartReview : t.cartOpen}
             </button>
             <small>
-              {canAcceptReservations
-                ? "Manual bank transfer · no automatic verification"
-                : "Reservations are paused until payment instructions are ready"}
+              {canAcceptReservations ? t.cartManualNote : t.cartPausedNote}
             </small>
           </section>
         );
@@ -1232,9 +1258,10 @@ export function ManagedStorefront({
                     {money(
                       selectedDetailVariant?.priceCents ??
                         detailProduct.priceCents,
+                      locale,
                     )}
                   </strong>
-                  <span>{availabilityLabel(detailProduct)}</span>
+                  <span>{availabilityLabel(detailProduct, t)}</span>
                 </div>
                 {selectedDetailVariant?.fulfillmentNote ? (
                   <p className={styles.detailNote}>
@@ -1478,6 +1505,7 @@ export function ManagedStorefront({
                         {money(
                           BigInt(variant.priceCents ?? product.priceCents) *
                             BigInt(line.quantity),
+                          locale,
                         )}
                       </strong>
                       <button
@@ -1494,7 +1522,7 @@ export function ManagedStorefront({
                 </div>
                 <div className={styles.total}>
                   <span>Total</span>
-                  <strong>{money(totalCents)}</strong>
+                  <strong>{money(totalCents, locale)}</strong>
                 </div>
                 <form
                   action={orderAction}

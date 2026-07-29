@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ReservationConfirmation } from "@/components/storefront/reservation-confirmation";
 import { db } from "@/lib/db";
+import { translate, type Locale } from "@/lib/i18n";
 import {
   createOrderPaymentSnapshot,
   readOrderPaymentSnapshot,
@@ -9,11 +10,26 @@ import {
 import { resolveOracleImageUrl } from "@/lib/oracle-images";
 import { readStorefrontDocument } from "@/lib/storefront-document";
 import { generateVietQrDataUrl } from "@/lib/vietqr";
+import { LangSetter } from "./LangSetter";
 
-export const metadata: Metadata = {
-  title: "Reservation received",
-  description: "Reservation reference and manual bank-transfer instructions.",
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const booth = await db.booth.findUnique({
+    where: { slug },
+    include: { storefront: true },
+  });
+  const locale = (booth?.storefront?.publishedDocument as { locale?: Locale } | null)
+    ?.locale;
+  const strings = translate(locale, "publicReservation");
+  return {
+    title: strings.pageTitle,
+    description: strings.pageDescription,
+  };
+}
 
 export default async function ReservationPage({
   params,
@@ -46,6 +62,7 @@ export default async function ReservationPage({
   const payment =
     readOrderPaymentSnapshot(order.paymentSnapshot) ??
     createOrderPaymentSnapshot(order.booth.paymentInstructions);
+  const tBooth = translate(document.locale, "publicBooth");
   const qrUrl = payment?.qrObjectKey
     ? resolveOracleImageUrl({ objectKey: payment.qrObjectKey })
     : undefined;
@@ -65,43 +82,46 @@ export default async function ReservationPage({
   }
 
   return (
-    <ReservationConfirmation
-      boothSlug={order.booth.slug}
-      document={document}
-      reservation={{
-        code: order.code,
-        status: order.status,
-        currency: order.currency,
-        totalMinorUnits: order.totalCents.toString(),
-        transferReference: order.transferReference,
-        customerTransferReference: order.customerTransferReference,
-        idempotencyKey: order.idempotencyKey,
-        items: order.items.map((item) => ({
-          id: item.id,
-          title: item.titleSnapshot,
-          variant: item.variantSnapshot,
-          quantity: item.quantity,
-          unitPriceMinorUnits: item.unitPriceCents.toString(),
-        })),
-      }}
-      payment={
-        payment
-          ? {
-              bankName: payment.bankName,
-              accountName: payment.accountName,
-              accountNumber: payment.accountNumber,
-              paymentLabel: payment.paymentLabel,
-              instructions: payment.instructions,
-              disclaimer: payment.disclaimer,
-              qrUrl: generatedQrUrl ?? qrUrl,
-              qrSource: generatedQrUrl
-                ? "Generated for this reservation"
-                : qrUrl
-                  ? "Booth-provided QR"
-                  : undefined,
-            }
-          : null
-      }
-    />
+    <>
+      <LangSetter locale={document.locale} />
+      <ReservationConfirmation
+        boothSlug={order.booth.slug}
+        document={document}
+        reservation={{
+          code: order.code,
+          status: order.status,
+          currency: order.currency,
+          totalMinorUnits: order.totalCents.toString(),
+          transferReference: order.transferReference,
+          customerTransferReference: order.customerTransferReference,
+          idempotencyKey: order.idempotencyKey,
+          items: order.items.map((item) => ({
+            id: item.id,
+            title: item.titleSnapshot,
+            variant: item.variantSnapshot,
+            quantity: item.quantity,
+            unitPriceMinorUnits: item.unitPriceCents.toString(),
+          })),
+        }}
+        payment={
+          payment
+            ? {
+                bankName: payment.bankName,
+                accountName: payment.accountName,
+                accountNumber: payment.accountNumber,
+                paymentLabel: payment.paymentLabel,
+                instructions: payment.instructions,
+                disclaimer: payment.disclaimer,
+                qrUrl: generatedQrUrl ?? qrUrl,
+                qrSource: generatedQrUrl
+                  ? tBooth.reservationQrCaptionGenerated
+                  : qrUrl
+                    ? tBooth.reservationQrCaptionBooth
+                    : undefined,
+              }
+            : null
+        }
+      />
+    </>
   );
 }

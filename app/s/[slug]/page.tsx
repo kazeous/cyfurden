@@ -150,6 +150,7 @@ export default async function PublicBoothPage({
       canAcceptReservations={Boolean(
         createOrderPaymentSnapshot(managed.paymentInstructions),
       )}
+      locale={document.locale}
     />
   );
 }
