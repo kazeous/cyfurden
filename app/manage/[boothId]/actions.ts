@@ -871,6 +871,8 @@ export async function hideProductAction(formData: FormData) {
 export async function savePromotionAction(formData: FormData) {
   const boothId = requiredText(formData, "boothId");
   await requireBoothRole(boothId, editorRoles);
+  // Wired by Phase 9 (G-3 promotions end-to-end). Kept reachable from
+  // the action surface even though no UI invokes it today.
   const promotionId = optionalText(formData, "promotionId");
   const data = {
     name: requiredText(formData, "name") || "Quantity promotion",

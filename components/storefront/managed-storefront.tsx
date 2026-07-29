@@ -184,12 +184,20 @@ function availabilityLabel(product: ProductDto) {
   return available.status === "PREORDER" ? "Pre-order" : "Available";
 }
 
-function ProductQr({ label, url }: { label: string; url: string }) {
+function ProductQr({
+  label,
+  url,
+  centerLogoUrl,
+}: {
+  label: string;
+  url: string;
+  centerLogoUrl?: string;
+}) {
   const [qrUrl, setQrUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    createSocialQrDataUrl(url)
+    createSocialQrDataUrl(url, { centerLogoUrl })
       .then((value) => {
         if (active) setQrUrl(value);
       })
@@ -199,7 +207,7 @@ function ProductQr({ label, url }: { label: string; url: string }) {
     return () => {
       active = false;
     };
-  }, [url]);
+  }, [url, centerLogoUrl]);
 
   return qrUrl ? (
     <Image
@@ -1363,7 +1371,11 @@ export function ManagedStorefront({
                       target="_blank"
                       rel="noreferrer"
                     >
-                      <ProductQr label={social.label} url={social.url} />
+                      <ProductQr
+                        label={social.label}
+                        url={social.url}
+                        centerLogoUrl={identity.logoUrl}
+                      />
                       <span>
                         <strong>{social.label}</strong>
                         <small>Open profile</small>

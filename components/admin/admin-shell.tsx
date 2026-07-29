@@ -153,29 +153,4 @@ export function PageHeading({
   );
 }
 
-export function MetricCard({
-  icon,
-  label,
-  value,
-  detail,
-}: {
-  icon: string;
-  label: string;
-  value: ReactNode;
-  detail: string;
-}) {
-  return (
-    <article className={styles.metricCard}>
-      <span className={styles.metricIcon} aria-hidden="true">
-        {icon}
-      </span>
-      <span>
-        <small>{label}</small>
-        <strong>{value}</strong>
-        <em>{detail}</em>
-      </span>
-    </article>
-  );
-}
-
 export { styles as adminStyles };
