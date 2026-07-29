@@ -13,7 +13,7 @@ import {
 } from "@/lib/order-rules";
 import { filterAndSortCatalogue, type CatalogueSort } from "@/lib/catalogue";
 import { createSocialQrDataUrl } from "@/lib/social-qr";
-import { translate, type Locale } from "@/lib/i18n";
+import { parseBilingual, translate, type Locale } from "@/lib/i18n";
 import {
   resolveStorefrontFeaturedProductIds,
   storefrontCornerRadiusPixels,
@@ -274,6 +274,10 @@ export function ManagedStorefront({
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const storageKey = `cyfurden:cart:${booth.slug}`;
   const t = useMemo(() => translate(locale, "publicBooth"), [locale]);
+  const b = useMemo(
+    () => (value: string | null | undefined) => parseBilingual(value, locale),
+    [locale],
+  );
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -589,13 +593,13 @@ export function ManagedStorefront({
               className={`${styles.storeSection} ${styles.featured} ${styles.featuredEmpty}`}
             >
               <p className={styles.featuredAnnouncement}>
-                {document.announcement}
+                {b(document.announcement)}
               </p>
-              <h1>{document.tagline}</h1>
-              <p>{document.introduction}</p>
+              <h1>{b(document.tagline)}</h1>
+              <p>{b(document.introduction)}</p>
               <div className={styles.heroMeta}>
-                <span>{document.eventStatusLabel}</span>
-                <span>{document.eventHours}</span>
+                <span>{b(document.eventStatusLabel)}</span>
+                <span>{b(document.eventHours)}</span>
               </div>
             </section>
           );
@@ -653,10 +657,10 @@ export function ManagedStorefront({
             >
               <div className={styles.featuredCopy}>
                 <p className={styles.featuredAnnouncement}>
-                  {document.announcement}
+                  {b(document.announcement)}
                 </p>
                 <strong className={styles.featuredTagline}>
-                  {document.tagline}
+                  {b(document.tagline)}
                 </strong>
                 <p className={styles.featuredProductLabel}>
                   {featuredProduct.eyebrow ??
@@ -668,7 +672,7 @@ export function ManagedStorefront({
                     featuredProduct.description}
                 </p>
                 <p className={styles.featuredWelcome}>
-                  {document.introduction}
+                  {b(document.introduction)}
                 </p>
                 <div className={styles.featuredFacts}>
                   <strong>{money(price, locale)}</strong>
@@ -780,10 +784,10 @@ export function ManagedStorefront({
         return (
           <aside className={`${styles.storeSection} ${styles.boothInfo}`}>
             <p className={styles.eyebrow}>Booth guide</p>
-            <h2>{document.creatorName}</h2>
-            <p>{document.creatorBio}</p>
+            <h2>{b(document.creatorName)}</h2>
+            <p>{b(document.creatorBio)}</p>
             {document.creatorLocation ? (
-              <small>{document.creatorLocation}</small>
+              <small>{b(document.creatorLocation)}</small>
             ) : null}
             {identity.socialLinks.length ? (
               <nav className={styles.socialLinks} aria-label="Creator profiles">
@@ -800,7 +804,7 @@ export function ManagedStorefront({
               </nav>
             ) : null}
             <small>
-              {document.eventVenue} · {document.eventBoothLabel}
+              {b(document.eventVenue)} · {b(document.eventBoothLabel)}
             </small>
             <button
               type="button"
@@ -1097,9 +1101,9 @@ export function ManagedStorefront({
             )}
           </span>
           <span>
-            <strong>{document.name}</strong>
+            <strong>{b(document.name)}</strong>
             <small>
-              {document.eventName} · {document.eventBoothLabel}
+              {b(document.eventName)} · {b(document.eventBoothLabel)}
             </small>
           </span>
         </div>
@@ -1140,7 +1144,7 @@ export function ManagedStorefront({
         </div>
 
         <footer className={styles.footer}>
-          <span>{document.eventFulfillment}</span>
+          <span>{b(document.eventFulfillment)}</span>
           <span>Manual bank-transfer handoff · no automatic verification</span>
         </footer>
       </div>
@@ -1356,7 +1360,7 @@ export function ManagedStorefront({
             <div className={styles.cartHeader}>
               <div>
                 <p className={styles.eyebrow}>Booth guide</p>
-                <h2 id="booth-info-heading">{document.name}</h2>
+                <h2 id="booth-info-heading">{b(document.name)}</h2>
               </div>
               <button
                 ref={infoCloseButtonRef}
@@ -1370,20 +1374,20 @@ export function ManagedStorefront({
             </div>
             <div className={styles.infoGrid}>
               <div>
-                <h3>{document.creatorName}</h3>
-                <p>{document.creatorBio}</p>
+                <h3>{b(document.creatorName)}</h3>
+                <p>{b(document.creatorBio)}</p>
                 {document.creatorLocation ? (
                   <p className={styles.detailNote}>
-                    {document.creatorLocation}
+                    {b(document.creatorLocation)}
                   </p>
                 ) : null}
               </div>
               <div className={styles.eventDetails}>
-                <strong>{document.eventName}</strong>
-                <span>{document.eventVenue}</span>
-                <span>{document.eventBoothLabel}</span>
-                <span>{document.eventHours}</span>
-                <span>{document.eventStatusLabel}</span>
+                <strong>{b(document.eventName)}</strong>
+                <span>{b(document.eventVenue)}</span>
+                <span>{b(document.eventBoothLabel)}</span>
+                <span>{b(document.eventHours)}</span>
+                <span>{b(document.eventStatusLabel)}</span>
               </div>
             </div>
             {identity.socialLinks.length ? (
@@ -1413,7 +1417,7 @@ export function ManagedStorefront({
               </div>
             ) : null}
             <p className={styles.infoFulfillment}>
-              {document.eventFulfillment}
+              {b(document.eventFulfillment)}
             </p>
           </div>
         </div>

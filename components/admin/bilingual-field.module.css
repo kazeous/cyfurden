@@ -1,0 +1,46 @@
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field label {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #3d4a63;
+}
+
+.textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #d9d4ca;
+  border-radius: 10px;
+  font: inherit;
+  resize: vertical;
+}
+
+.preview {
+  margin-top: 4px;
+  padding: 8px 10px;
+  border: 1px dashed #d5c9b1;
+  border-radius: 10px;
+  background: #faf4e8;
+  font-size: 12px;
+}
+
+.preview summary {
+  cursor: pointer;
+  color: #5b3a1c;
+  font-weight: 700;
+}
+
+.preview p {
+  margin: 6px 0 0;
+  color: #5b3a1c;
+  line-height: 1.5;
+}
+
+.preview strong {
+  margin-right: 4px;
+  color: #3d352a;
+}

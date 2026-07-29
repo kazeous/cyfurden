@@ -27,6 +27,7 @@ import {
 } from "@/lib/storefront-document";
 import { resolveVietQrBank, vietQrBanks } from "@/lib/vietqr-banks";
 import { SubmitButton } from "./form-controls";
+import { BilingualField } from "./bilingual-field";
 import styles from "./storefront-designer.module.css";
 
 type SectionId = (typeof storefrontSectionIds)[number];
@@ -1078,15 +1079,14 @@ export function StorefrontDesigner({
                       }
                     />
                   </Field>
-                  <Field label="Welcome copy">
-                    <textarea
-                      value={document.introduction}
-                      required
-                      onChange={(event) =>
-                        updateDocument("introduction", event.target.value)
-                      }
-                    />
-                  </Field>
+                  <BilingualField
+                    label="Welcome copy (EN + VI)"
+                    value={document.introduction}
+                    required
+                    onChange={(value) =>
+                      updateDocument("introduction", value)
+                    }
+                  />
                   <p className={styles.panelNote}>
                     Saving updates the draft selection. Visitors see the new
                     slider only after you publish the saved draft.

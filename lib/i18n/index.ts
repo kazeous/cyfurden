@@ -15,6 +15,8 @@ export {
   type Locale,
 } from "./locales";
 
+export { parseBilingual } from "./parser";
+
 const catalogues: Record<Locale, Catalogue> = {
   en: enCatalogue,
   vi: viCatalogue,
