@@ -9,16 +9,44 @@ export const enCatalogue: Catalogue = {
     boothInfoTitle: "About the booth",
     boothInfoOpen: "Booth info",
     boothInfoClose: "Close booth info",
+    boothGuideEyebrow: "Booth guide",
+    boothSideCta: "Booth highlights",
     featuredEyebrow: "Featured spotlight",
     featuredTitle: "Hand-picked pieces",
     featuredSeeAll: "View piece",
+    featuredProductEyebrow: "Featured",
+    featuredSeeItem: "View piece details",
+    featuredCarouselA11y: {
+      landmark: "Featured pieces carousel",
+      slidePosition: (current, total) => `Slide ${current} of ${total}`,
+      prev: "Previous featured piece",
+      next: "Next featured piece",
+      dots: "Featured pieces pagination",
+      slide: (name) => `${name} featured slide`,
+      artButton: (name) => `View details for ${name}`,
+    },
     browseEyebrow: "Browse",
     browseTitle: "Find your small wonder",
     browseEmpty: "Nothing matches yet — try another search or category.",
     browseSearchPlaceholder: "Search pieces, tags, descriptions",
+    browseAllLabel: "All",
+    browseSortAria: "Sort pieces",
+    browseSortFeatured: "Featured",
+    browseSortNewest: "Newest",
+    browseSortPriceAsc: "Price: low to high",
+    browseSortPriceDesc: "Price: high to low",
+    browseSortName: "Name",
+    browseViewAria: "Change view",
+    browseViewGrid: "Grid view",
+    browseViewList: "List view",
+    creatorProfilesAria: "Creator profiles",
     catalogueEyebrow: "Product collection",
     catalogueTitle: "Find a small wonder",
     catalogueEmpty: "No pieces to show yet.",
+    catalogueEmptyHeading: "No matching merch",
+    catalogueEmptyHint: "Try another category or clear your search.",
+    newReleaseEyebrow: "New release",
+    featuredBadge: "Featured",
     cartEyebrow: "Shopping cart",
     cartTitleEmpty: "Your bag is empty",
     cartTitleItems: (count) => pluralItems(count),
@@ -30,6 +58,7 @@ export const enCatalogue: Catalogue = {
     cartManualNote: "Manual bank transfer · no automatic verification",
     cartPausedNote:
       "Reservations are paused until payment instructions are ready",
+    cartDisclaimer: "Payment is manual bank transfer — no automatic verification.",
     topbarBag: "Bag",
     productDetailEyebrow: "Product detail",
     productDetailChooseOption: "Choose an option",
@@ -47,6 +76,10 @@ export const enCatalogue: Catalogue = {
     productDetailClose: "Close product details",
     productDetailRemoveOne: "Remove one",
     productDetailAddOne: "Add one",
+    productDetailImagesAria: "Product images",
+    productDetailShowImage: (n) => `Show image ${n}`,
+    productDetailDisclaimer: "Image colours may differ slightly from the actual piece.",
+    cartFooter: "You will receive manual bank-transfer instructions after submitting. Cyfurden does not verify payment automatically.",
     cartLineRemove: "Remove from bag",
     cartLineRemoveOne: (name) => `Remove one ${name}`,
     cartLineAddOne: (name) => `Add one ${name}`,
@@ -105,6 +138,7 @@ export const enCatalogue: Catalogue = {
     socialOpenProfile: "Open profile",
     socialQrAlt: (label) => `${label} profile QR code`,
     tagAriaLabel: "Tags",
+    infoSocialsHeading: "Booth socials",
   },
   publicReservation: {
     pageTitle: "Reservation received",
@@ -114,14 +148,205 @@ export const enCatalogue: Catalogue = {
     notFoundBody:
       "We could not find this reservation. Double-check the link from your confirmation email.",
     notFoundAction: "Open the booth",
+    backToBooth: "Back to the booth",
+    receiptEyebrow: "Reservation receipt",
+    referenceCaption: "Save this reference — staff will ask for it.",
+    copy: "Copy",
+    copied: "Copied",
+    copyNumber: "Copy account number",
+    copyAccount: "Copy account name",
+    copyReference: "Copy reference",
+    copyError: "Copy failed",
+    copySuccess: (target) => `${target} copied`,
+    statusBlocks: (status) => {
+      const blocks: Record<
+        "PENDING" | "CONFIRMED" | "FULFILLED" | "CANCELLED" | "EXPIRED",
+        { heading: string; description: string; label: string }
+      > = {
+        PENDING: {
+          heading: "Awaiting your transfer",
+          description:
+            "Send the amount to the account below and use the reference. Staff will confirm manually.",
+          label: "Awaiting your transfer",
+        },
+        CONFIRMED: {
+          heading: "Transfer confirmed",
+          description:
+            "Staff has confirmed your transfer. Hold on for fulfilment updates.",
+          label: "Transfer confirmed",
+        },
+        FULFILLED: {
+          heading: "Reservation fulfilled",
+          description: "Your piece is ready. Pick it up at the booth.",
+          label: "Fulfilled",
+        },
+        CANCELLED: {
+          heading: "Reservation cancelled",
+          description:
+            "This reservation was cancelled by the booth. Reach out if this was unexpected.",
+          label: "Cancelled by booth",
+        },
+        EXPIRED: {
+          heading: "Reservation expired",
+          description:
+            "This reservation has expired. Place a new one from the booth.",
+          label: "Reservation expired",
+        },
+      };
+      return blocks[status];
+    },
+    paymentLabelFallback: "Untitled reservation",
+    paymentHeading: "Manual bank transfer",
+    paymentSubhead: "Send the amount and use this reference — staff will check manually.",
+    paymentStep1: "Open your banking app",
+    paymentStep2: "Scan the QR or enter the account details",
+    paymentStep3: "Use the reference so staff can match your transfer",
+    qrAlt: (accountName) => `QR code for ${accountName}`,
+    qrUnavailableHeading: "QR not available",
+    qrUnavailableHint: "Use the account details below to transfer manually.",
+    bankLabel: "Receiving bank",
+    accountNameLabel: "Account name",
+    accountNumberLabel: "Account number",
+    reservationTotalLabel: "Reservation total",
+    transferReferenceLabel: "Transfer reference",
+    boothInstructionsHeading: "Booth instructions",
+    referenceFormHeading: "Already transferred?",
+    referenceFormBody: "Share what you wrote in the transfer message so staff can match it.",
+    referenceFieldLabel: "Bank reference / transfer message",
+    referenceSubmit: "Submit reference",
+    referenceSubmitting: "Submitting…",
+    paymentUnavailableHeading: "Payment not ready yet",
+    paymentUnavailableBody: "The booth is still setting up payment instructions. Check back soon.",
+    noTransferHeading: "No payment required",
+    summaryEyebrow: "Reservation summary",
+    summaryHeading: "Reservation details",
+    summaryAmountDue: "Amount to transfer",
+    summaryReservationTotal: "Reservation total",
+    summaryStatusLabel: "Status",
+    itemsAriaLabel: "Reservation items",
+    summaryFooter: "No automatic verification — staff confirms manually.",
   },
   publicLanding: {
+    skipLink: "Skip to content",
+    wordmarkAria: "Cyfurden home",
+    navAria: "Primary navigation",
+    topbarSignIn: "Sign in",
     heroEyebrow: "Cyfurden",
     heroTitle: "Independent booths for convention days",
     heroBody:
       "A pocket-sized studio for small-batch art, convention pre-orders, and pickup-without-paperwork.",
+    heroNote: "No Stripe · no marketplace middleman · you own the relationship",
     heroActionPrimary: "Start a booth",
     heroActionSecondary: "Sign in",
+    mockPreviewHeading: "Preview booth",
+    mockPreviewStatus: "Open · booth #07",
+    mockPreviewTagline: "Moonlit zines & oddities",
+    mockPreviewItems: [
+      { name: "Bramble Coil A6 zine", tag: "Limited" },
+      { name: "Mossfolk enamel pin", tag: "Pre-order" },
+      { name: "Lantern A5 print", tag: "New" },
+    ],
+    mockPreviewQueueLabel: "Reservation queue",
+    mockPreviewQueueTitle: "Today's pickups",
+    mockPreviewQueueItems: [
+      { dt: "10:12", dd: "Lyra · 1 × Bramble Coil" },
+      { dt: "11:35", dd: "Kai · 2 × Mossfolk pin" },
+      { dt: "13:02", dd: "Mira · 1 × Lantern print" },
+    ],
+    mockPreviewCaption: "A preview of what your booth looks like to visitors.",
+    audienceHeading: "Built for the small studio",
+    audienceItems: [
+      {
+        title: "Solo illustrators",
+        subtitle: "Sell zines, prints, pins, and oddities without a marketplace middleman.",
+      },
+      {
+        title: "Convention weekends",
+        subtitle: "Accept pre-orders before the event and hand off at the booth.",
+      },
+      {
+        title: "Small-batch crafters",
+        subtitle: "Run a focused catalogue and a manual bank-transfer checkout.",
+      },
+      {
+        title: "Pop-up curators",
+        subtitle: "Spin up a booth for a single weekend and archive it after.",
+      },
+    ],
+    workflowHeading: "From first scan to final handoff",
+    workflowIntro:
+      "Four steps. Each one manual, visible, and in your hands.",
+    workflowSteps: [
+      {
+        title: "Set up the booth",
+        description: "Add pieces, prices, and payment details from the booth workspace.",
+        note: "Catalogue, payment label, and bank details live in one place.",
+      },
+      {
+        title: "Share the storefront link",
+        description: "Visitors browse a focused collection on their phone.",
+        note: "No app download, no account required for buyers.",
+      },
+      {
+        title: "Receive reservations",
+        description: "Visitors reserve pieces and get a payment reference.",
+        note: "Each reservation has a unique reference so staff can match transfers.",
+      },
+      {
+        title: "Confirm and hand off",
+        description: "Staff reviews transfers manually and marks reservations fulfilled.",
+        note: "You decide when to confirm — Cyfurden never auto-verifies.",
+      },
+    ],
+    functionHeading: "What lives inside Cyfurden",
+    functionIntro:
+      "The features below are the whole surface area — small on purpose.",
+    functionItems: [
+      {
+        title: "Booth workspace",
+        description:
+          "Update the catalogue, change the payment label, and review orders from one page.",
+        scope: "Admin",
+      },
+      {
+        title: "Public storefront",
+        description:
+          "Visitors browse pieces, reserve, and pay by manual bank transfer.",
+        scope: "Public",
+      },
+      {
+        title: "Reservation queue",
+        description:
+          "See pending, confirmed, fulfilled, and cancelled reservations by booth.",
+        scope: "Admin",
+      },
+      {
+        title: "Bank-transfer payment",
+        description:
+          "Each reservation ships with a QR and account details. No Stripe, no middleman.",
+        scope: "Public + Admin",
+      },
+      {
+        title: "Booth socials",
+        description:
+          "Pin Instagram, Twitter, and a personal site so visitors can follow your work.",
+        scope: "Public + Admin",
+      },
+    ],
+    manualHeading: "Payment stays manual — and visibly so",
+    manualBody:
+      "Cyfurden does not connect to a payment processor. Visitors reserve pieces, then transfer to your bank account and write the reservation reference in the transfer message. Staff matches transfers manually.",
+    manualBoundary:
+      "No Stripe. No third-party checkout. The relationship stays between you and the buyer.",
+    finalHeading: "Ready to publish your booth?",
+    finalBody: "Create an account, set up your booth, and share the link.",
+    finalPrimary: "Create an account",
+    finalSecondary: "I already have one",
+    footerWordmark: "Cyfurden",
+    footerTagline: "An independent-artist booth studio",
+    footerNavAria: "Footer navigation",
+    footerSignIn: "Sign in",
+    footerCreateBooth: "Create account",
     feature1Title: "Manage the booth in one place",
     feature1Body:
       "Update the catalogue, change payment details, and review orders from a single booth workspace.",
@@ -175,5 +400,56 @@ export const enCatalogue: Catalogue = {
     invitationDecline: "Decline",
     invitationExpired: "This invitation link has expired.",
     invitationAlreadyAccepted: "This invitation has already been accepted.",
+    formEyebrow: {
+      signUp: "Create account",
+      signIn: "Welcome back",
+    },
+    formHeading: {
+      signUp: "Set up your Cyfurden account",
+      signIn: "Sign in to Cyfurden",
+    },
+    formBody: {
+      signUp:
+        "Publish a booth and start taking manual reservations from visitors.",
+      signIn: "Pick up where you left off — manage booths and review reservations.",
+    },
+    dividerOrEmail: "or sign in with email",
+    namePlaceholder: "Your display name",
+    passwordPlaceholder: {
+      signUp: "Choose a password (8+ characters)",
+      signIn: "Your password",
+    },
+    passwordHint:
+      "Use 8+ characters with an uppercase letter, a lowercase letter, and a number.",
+    confirmPasswordLabel: "Confirm password",
+    confirmPasswordPlaceholder: "Re-enter your password",
+    submitPending: {
+      signUp: "Creating your account…",
+      signIn: "Signing you in…",
+    },
+    switchPrompt: {
+      signUp: "Already have an account?",
+      signIn: "New to Cyfurden?",
+    },
+    switchLink: {
+      signUp: "Sign in instead",
+      signIn: "Create an account",
+    },
+    errorPasswordMismatch: "Passwords do not match — please re-enter.",
+    errorGeneric: "Something went wrong. Try again.",
+    errorGoogleUnavailable:
+      "Google sign-in is not configured for this deployment.",
+    pageBrandAria: "Cyfurden home",
+    pageBrandSubline: {
+      en: "An independent-artist booth studio",
+      vi: "Studio booth dành cho nghệ sĩ độc lập",
+    },
+    pageVisitStorefront: "Visit a sample booth",
+    storyTag: "Independent artist studio",
+    storyHeading: "Run your booth — without giving up control",
+    storyBody:
+      "Cyfurden is a pocket-sized studio for small-batch artists who want to take reservations at convention weekends without a marketplace middleman.",
+    storyNote:
+      "No Stripe. No marketplace fees. You and the buyer stay in direct contact.",
   },
 };

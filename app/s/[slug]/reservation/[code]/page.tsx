@@ -87,6 +87,7 @@ export default async function ReservationPage({
       <ReservationConfirmation
         boothSlug={order.booth.slug}
         document={document}
+        locale={document.locale}
         reservation={{
           code: order.code,
           status: order.status,

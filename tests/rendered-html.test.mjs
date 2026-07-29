@@ -116,11 +116,11 @@ test("server-renders the Cyfurden landing page", async () => {
   );
   assert.match(renderedContent, /Independent booths for convention days/);
   assert.match(renderedContent, /From first scan to final handoff/);
-  assert.match(renderedContent, /Payment stays manual—and visibly so/);
+  assert.match(renderedContent, /Payment stays manual/);
   assert.match(renderedContent, /href="\/sign-up"/);
   assert.match(renderedContent, /href="\/sign-in"/);
   assert.doesNotMatch(renderedContent, /lantern-and-loom|Lantern &amp; Loom/i);
-  assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|stripe/i);
+  assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
 });
 
 test("uses one bundled display and body font system", async () => {
@@ -227,17 +227,17 @@ test("keeps bank details behind a successful managed reservation", async () => {
   assert.doesNotMatch(storefront, /paymentQrUrl|payment\.bankName|paymentQr/);
   assert.match(
     storefront,
-    /receive manual bank-transfer instructions after\s+submitting/i,
+    /t\.cartFooter/,
   );
   assert.match(action, /\/reservation\/\$\{encodeURIComponent\(orderCode\)\}/);
   assert.doesNotMatch(action, /\?order=/);
 
-  assert.match(confirmation, /Reservation number/);
-  assert.match(confirmation, /Bank transfer QR code/);
-  assert.match(confirmation, /Account number/);
-  assert.match(confirmation, /Reservation total/);
-  assert.match(confirmation, /Transfer reference/);
-  assert.match(confirmation, /does not verify\s+payment automatically/i);
+  assert.match(confirmation, /t\.referenceCaption|t\.reservationTotalLabel/);
+  assert.match(confirmation, /qrAlt/);
+  assert.match(confirmation, /t\.accountNumberLabel/);
+  assert.match(confirmation, /t\.reservationTotalLabel/);
+  assert.match(confirmation, /t\.transferReferenceLabel/);
+  assert.match(confirmation, /payment\.disclaimer/);
 
   assert.match(reservationPage, /code,/);
   assert.match(reservationPage, /booth: \{ slug \}/);

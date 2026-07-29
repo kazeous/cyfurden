@@ -5,16 +5,44 @@ export type PublicBoothStrings = {
   boothInfoTitle: string;
   boothInfoOpen: string;
   boothInfoClose: string;
+  boothGuideEyebrow: string;
+  boothSideCta: string;
   featuredEyebrow: string;
   featuredTitle: string;
   featuredSeeAll: string;
+  featuredProductEyebrow: string;
+  featuredSeeItem: string;
+  featuredCarouselA11y: {
+    landmark: string;
+    slidePosition: (current: number, total: number) => string;
+    prev: string;
+    next: string;
+    dots: string;
+    slide: (name: string) => string;
+    artButton: (name: string) => string;
+  };
   browseEyebrow: string;
   browseTitle: string;
   browseEmpty: string;
   browseSearchPlaceholder: string;
+  browseAllLabel: string;
+  browseSortAria: string;
+  browseSortFeatured: string;
+  browseSortNewest: string;
+  browseSortPriceAsc: string;
+  browseSortPriceDesc: string;
+  browseSortName: string;
+  browseViewAria: string;
+  browseViewGrid: string;
+  browseViewList: string;
+  creatorProfilesAria: string;
   catalogueEyebrow: string;
   catalogueTitle: string;
   catalogueEmpty: string;
+  catalogueEmptyHeading: string;
+  catalogueEmptyHint: string;
+  newReleaseEyebrow: string;
+  featuredBadge: string;
   cartEyebrow: string;
   cartTitleEmpty: string;
   cartTitleItems: (count: number) => string;
@@ -41,6 +69,10 @@ export type PublicBoothStrings = {
   productDetailClose: string;
   productDetailRemoveOne: string;
   productDetailAddOne: string;
+  productDetailImagesAria: string;
+  productDetailShowImage: (n: number) => string;
+  productDetailDisclaimer: string;
+  cartFooter: string;
   cartLineRemove: string;
   cartLineRemoveOne: (name: string) => string;
   cartLineAddOne: (name: string) => string;
@@ -64,6 +96,7 @@ export type PublicBoothStrings = {
   cartSubmitErrorRequired: string;
   cartSubmitErrorInvalidEmail: string;
   cartSubmitErrorGeneric: string;
+  cartDisclaimer: string;
   bagFootnote: string;
   publicFooterManual: string;
   reservationPending: string;
@@ -95,6 +128,7 @@ export type PublicBoothStrings = {
   socialOpenProfile: string;
   socialQrAlt: (label: string) => string;
   tagAriaLabel: string;
+  infoSocialsHeading: string;
 };
 
 export type PublicReservationStrings = {
@@ -103,14 +137,95 @@ export type PublicReservationStrings = {
   notFoundTitle: string;
   notFoundBody: string;
   notFoundAction: string;
+  backToBooth: string;
+  receiptEyebrow: string;
+  referenceCaption: string;
+  copy: string;
+  copied: string;
+  copyNumber: string;
+  copyAccount: string;
+  copyReference: string;
+  copyError: string;
+  copySuccess: (target: string) => string;
+  statusBlocks: (
+    status:
+      | "PENDING"
+      | "CONFIRMED"
+      | "FULFILLED"
+      | "CANCELLED"
+      | "EXPIRED",
+  ) => { heading: string; description: string; label: string };
+  paymentLabelFallback: string;
+  paymentHeading: string;
+  paymentSubhead: string;
+  paymentStep1: string;
+  paymentStep2: string;
+  paymentStep3: string;
+  qrAlt: (accountName: string) => string;
+  qrUnavailableHeading: string;
+  qrUnavailableHint: string;
+  bankLabel: string;
+  accountNameLabel: string;
+  accountNumberLabel: string;
+  reservationTotalLabel: string;
+  transferReferenceLabel: string;
+  boothInstructionsHeading: string;
+  referenceFormHeading: string;
+  referenceFormBody: string;
+  referenceFieldLabel: string;
+  referenceSubmit: string;
+  referenceSubmitting: string;
+  paymentUnavailableHeading: string;
+  paymentUnavailableBody: string;
+  noTransferHeading: string;
+  summaryEyebrow: string;
+  summaryHeading: string;
+  summaryAmountDue: string;
+  summaryReservationTotal: string;
+  summaryStatusLabel: string;
+  itemsAriaLabel: string;
+  summaryFooter: string;
 };
 
 export type PublicLandingStrings = {
+  skipLink: string;
+  wordmarkAria: string;
+  navAria: string;
+  topbarSignIn: string;
   heroEyebrow: string;
   heroTitle: string;
   heroBody: string;
+  heroNote: string;
   heroActionPrimary: string;
   heroActionSecondary: string;
+  mockPreviewHeading: string;
+  mockPreviewStatus: string;
+  mockPreviewTagline: string;
+  mockPreviewItems: { name: string; tag: string }[];
+  mockPreviewQueueLabel: string;
+  mockPreviewQueueTitle: string;
+  mockPreviewQueueItems: { dt: string; dd: string }[];
+  mockPreviewCaption: string;
+  audienceHeading: string;
+  audienceItems: { title: string; subtitle: string }[];
+  workflowHeading: string;
+  workflowIntro: string;
+  workflowSteps: { title: string; description: string; note: string }[];
+  functionHeading: string;
+  functionIntro: string;
+  functionItems: { title: string; description: string; scope: string }[];
+  manualHeading: string;
+  manualBody: string;
+  manualBoundary: string;
+  finalHeading: string;
+  finalBody: string;
+  finalPrimary: string;
+  finalSecondary: string;
+  footerWordmark: string;
+  footerTagline: string;
+  footerNavAria: string;
+  footerSignIn: string;
+  footerCreateBooth: string;
   feature1Title: string;
   feature1Body: string;
   feature2Title: string;
@@ -155,6 +270,28 @@ export type PublicAuthStrings = {
   invitationDecline: string;
   invitationExpired: string;
   invitationAlreadyAccepted: string;
+  formEyebrow: { signUp: string; signIn: string };
+  formHeading: { signUp: string; signIn: string };
+  formBody: { signUp: string; signIn: string };
+  dividerOrEmail: string;
+  namePlaceholder: string;
+  passwordPlaceholder: { signUp: string; signIn: string };
+  passwordHint: string;
+  confirmPasswordLabel: string;
+  confirmPasswordPlaceholder: string;
+  submitPending: { signUp: string; signIn: string };
+  switchPrompt: { signUp: string; signIn: string };
+  switchLink: { signUp: string; signIn: string };
+  errorPasswordMismatch: string;
+  errorGeneric: string;
+  errorGoogleUnavailable: string;
+  pageBrandAria: string;
+  pageBrandSubline: { en: string; vi: string };
+  pageVisitStorefront: string;
+  storyTag: string;
+  storyHeading: string;
+  storyBody: string;
+  storyNote: string;
 };
 
 export type Catalogue = {

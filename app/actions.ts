@@ -2,16 +2,13 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import {
-  localeCookieName,
-  parseLocale,
-  type Locale,
-} from "@/lib/i18n";
+import { localeCookieName, parseLocale, type Locale } from "@/lib/i18n";
+import { safeReturnTo } from "@/lib/redirect";
 
 export async function setLocaleAction(formData: FormData) {
   const requested = formData.get("locale");
   const locale = parseLocale(requested);
-  const redirectTo = (formData.get("redirectTo") as string) || "/";
+  const redirectTo = safeReturnTo(formData.get("redirectTo") as string | null);
 
   try {
     const store = await cookies();
