@@ -7,6 +7,7 @@ import {
   submitCustomerTransferReferenceAction,
   type CustomerTransferReferenceState,
 } from "@/app/s/[slug]/reservation/[code]/actions";
+import { translate, type Locale, type PublicReservationStrings } from "@/lib/i18n";
 import type { StorefrontDocument } from "@/lib/storefront-document";
 import styles from "./reservation-confirmation.module.css";
 
@@ -40,46 +41,18 @@ type ReservationDetails = {
 
 type CopyTarget = "reservation" | "account" | "reference";
 
-const targetLabel: Record<CopyTarget, string> = {
-  reservation: "reservation number",
-  account: "account number",
-  reference: "transfer reference",
-};
-
-const reservationStatusCopy: Record<
-  ReservationDetails["status"],
-  { heading: string; description: string; label: string }
-> = {
-  PENDING: {
-    heading: "Your items are reserved.",
-    description:
-      "Keep the number below. You will need it for this reservation and when contacting the booth owner.",
-    label: "Awaiting manual transfer review",
-  },
-  CONFIRMED: {
-    heading: "Your transfer was confirmed.",
-    description:
-      "The booth owner marked this reservation as confirmed after reviewing payment manually.",
-    label: "Confirmed manually",
-  },
-  FULFILLED: {
-    heading: "Your reservation was fulfilled.",
-    description:
-      "The booth owner marked every item in this reservation as fulfilled.",
-    label: "Fulfilled",
-  },
-  CANCELLED: {
-    heading: "This reservation was cancelled.",
-    description:
-      "Do not send a transfer for this reservation. Contact the booth owner if you believe this is a mistake.",
-    label: "Cancelled",
-  },
-  EXPIRED: {
-    heading: "This reservation expired.",
-    description:
-      "Do not send a transfer for this reservation. Return to the booth to check current availability.",
-    label: "Expired",
-  },
+const copyTargetLabel = (
+  target: CopyTarget,
+  t: PublicReservationStrings,
+): string => {
+  switch (target) {
+    case "reservation":
+      return t.copyNumber;
+    case "account":
+      return t.copyAccount;
+    case "reference":
+      return t.copyReference;
+  }
 };
 
 const initialReferenceState: CustomerTransferReferenceState = {
@@ -100,11 +73,13 @@ export function ReservationConfirmation({
   document,
   reservation,
   payment,
+  locale = "en",
 }: {
   boothSlug: string;
   document: StorefrontDocument;
   reservation: ReservationDetails;
   payment: PaymentDetails | null;
+  locale?: Locale;
 }) {
   const [copied, setCopied] = useState<CopyTarget | null>(null);
   const [copyError, setCopyError] = useState(false);
@@ -112,8 +87,9 @@ export function ReservationConfirmation({
     submitCustomerTransferReferenceAction,
     initialReferenceState,
   );
+  const t = translate(locale, "publicReservation");
   const total = formatMoney(reservation.totalMinorUnits, reservation.currency);
-  const statusCopy = reservationStatusCopy[reservation.status];
+  const statusCopy = t.statusBlocks(reservation.status);
   const paymentRequired = reservation.status === "PENDING";
   const hasBankAccount = Boolean(
     payment?.bankName && payment.accountName && payment.accountNumber,
@@ -163,26 +139,26 @@ export function ReservationConfirmation({
           </span>
         </a>
         <a className={styles.backLink} href={`/s/${boothSlug}`}>
-          Back to booth
+          {t.backToBooth}
         </a>
       </header>
 
       <div className={styles.content}>
         <section className={styles.receipt} aria-labelledby="receipt-heading">
           <div className={styles.receiptCopy}>
-            <p className={styles.eyebrow}>Reservation received</p>
+            <p className={styles.eyebrow}>{t.receiptEyebrow}</p>
             <h1 id="receipt-heading">{statusCopy.heading}</h1>
             <p>{statusCopy.description}</p>
           </div>
           <div className={styles.referenceBlock}>
-            <span>Reservation number</span>
+            <span>{t.referenceCaption}</span>
             <strong>{reservation.code}</strong>
             <button
               type="button"
               onClick={() => copy("reservation", reservation.code)}
               data-copied={copied === "reservation"}
             >
-              {copied === "reservation" ? "Copied" : "Copy number"}
+              {copied === "reservation" ? t.copied : t.copyNumber}
             </button>
           </div>
         </section>
@@ -194,17 +170,13 @@ export function ReservationConfirmation({
           >
             <div className={styles.sectionHeading}>
               <p className={styles.eyebrow}>
-                {payment?.paymentLabel || "Manual bank transfer"}
+                {payment?.paymentLabel || t.paymentLabelFallback}
               </p>
               <h2 id="payment-heading">
-                {paymentRequired
-                  ? "Transfer to finish your reservation"
-                  : statusCopy.heading}
+                {paymentRequired ? t.paymentHeading : statusCopy.heading}
               </h2>
               <p>
-                {paymentRequired
-                  ? "Payment is checked by the booth owner. Cyfurden does not verify payment automatically."
-                  : statusCopy.description}
+                {paymentRequired ? t.paymentSubhead : statusCopy.description}
               </p>
             </div>
 
@@ -213,15 +185,15 @@ export function ReservationConfirmation({
                 <ol className={styles.steps}>
                   <li>
                     <span>1</span>
-                    Scan the QR code or use the bank account below.
+                    {t.paymentStep1}
                   </li>
                   <li>
                     <span>2</span>
-                    Transfer the exact reservation total.
+                    {t.paymentStep2}
                   </li>
                   <li>
                     <span>3</span>
-                    Include the transfer reference exactly as shown.
+                    {t.paymentStep3}
                   </li>
                 </ol>
 
@@ -231,7 +203,7 @@ export function ReservationConfirmation({
                       <>
                         <img
                           src={payment.qrUrl}
-                          alt={`Bank transfer QR code for ${payment.accountName}`}
+                          alt={t.qrAlt(payment.accountName)}
                         />
                         {payment.qrSource ? (
                           <small>{payment.qrSource}</small>
@@ -239,8 +211,8 @@ export function ReservationConfirmation({
                       </>
                     ) : (
                       <div className={styles.qrFallback}>
-                        <strong>QR code unavailable</strong>
-                        <span>Use the bank details beside this panel.</span>
+                        <strong>{t.qrUnavailableHeading}</strong>
+                        <span>{t.qrUnavailableHint}</span>
                       </div>
                     )}
                   </div>
@@ -249,15 +221,15 @@ export function ReservationConfirmation({
                     {hasBankAccount ? (
                       <>
                         <div>
-                          <dt>Bank</dt>
+                          <dt>{t.bankLabel}</dt>
                           <dd>{payment.bankName}</dd>
                         </div>
                         <div>
-                          <dt>Account name</dt>
+                          <dt>{t.accountNameLabel}</dt>
                           <dd>{payment.accountName}</dd>
                         </div>
                         <div>
-                          <dt>Account number</dt>
+                          <dt>{t.accountNumberLabel}</dt>
                           <dd className={styles.copyValue}>
                             <strong>{payment.accountNumber}</strong>
                             <button
@@ -267,18 +239,18 @@ export function ReservationConfirmation({
                               }
                               data-copied={copied === "account"}
                             >
-                              {copied === "account" ? "Copied" : "Copy"}
+                              {copied === "account" ? t.copied : t.copyAccount}
                             </button>
                           </dd>
                         </div>
                       </>
                     ) : null}
                     <div>
-                      <dt>Reservation total</dt>
+                      <dt>{t.reservationTotalLabel}</dt>
                       <dd className={styles.total}>{total}</dd>
                     </div>
                     <div>
-                      <dt>Transfer reference</dt>
+                      <dt>{t.transferReferenceLabel}</dt>
                       <dd className={styles.copyValue}>
                         <strong>{reservation.transferReference}</strong>
                         <button
@@ -288,7 +260,9 @@ export function ReservationConfirmation({
                           }
                           data-copied={copied === "reference"}
                         >
-                          {copied === "reference" ? "Copied" : "Copy"}
+                          {copied === "reference"
+                            ? t.copied
+                            : t.copyReference}
                         </button>
                       </dd>
                     </div>
@@ -296,19 +270,16 @@ export function ReservationConfirmation({
                 </div>
 
                 <div className={styles.ownerNote}>
-                  <strong>Booth instructions</strong>
+                  <strong>{t.boothInstructionsHeading}</strong>
                   <p>{payment.instructions}</p>
                 </div>
                 <form action={referenceAction} className={styles.referenceForm}>
-                  <strong>Submit your bank transaction reference</strong>
-                  <p>
-                    After transferring, enter the reference from your bank
-                    receipt so the booth owner can match it manually.
-                  </p>
+                  <strong>{t.referenceFormHeading}</strong>
+                  <p>{t.referenceFormBody}</p>
                   <input type="hidden" name="slug" value={boothSlug} />
                   <input type="hidden" name="code" value={reservation.code} />
                   <label>
-                    Bank transaction reference
+                    {t.referenceFieldLabel}
                     <input
                       name="customerTransferReference"
                       defaultValue={reservation.customerTransferReference ?? ""}
@@ -318,7 +289,7 @@ export function ReservationConfirmation({
                     />
                   </label>
                   <button type="submit" disabled={referencePending}>
-                    {referencePending ? "Submitting..." : "Submit reference"}
+                    {referencePending ? t.referenceSubmitting : t.referenceSubmit}
                   </button>
                   <p
                     className={
@@ -337,34 +308,38 @@ export function ReservationConfirmation({
               </>
             ) : paymentRequired ? (
               <div className={styles.paymentUnavailable}>
-                <strong>Payment instructions are not available yet.</strong>
-                <p>
-                  Keep your reservation number and contact the booth owner
-                  before sending a transfer.
-                </p>
+                <strong>{t.paymentUnavailableHeading}</strong>
+                <p>{t.paymentUnavailableBody}</p>
               </div>
             ) : (
               <div className={styles.paymentUnavailable}>
-                <strong>No transfer action is required.</strong>
+                <strong>{t.noTransferHeading}</strong>
                 <p>{statusCopy.description}</p>
               </div>
             )}
           </section>
 
           <aside className={styles.summary} aria-labelledby="summary-heading">
-            <p className={styles.eyebrow}>Reservation summary</p>
-            <h2 id="summary-heading">What happens next</h2>
+            <p className={styles.eyebrow}>{t.summaryEyebrow}</p>
+            <h2 id="summary-heading">{t.summaryHeading}</h2>
             <dl>
               <div>
-                <dt>{paymentRequired ? "Amount due" : "Reservation total"}</dt>
+                <dt>
+                  {paymentRequired
+                    ? t.summaryAmountDue
+                    : t.summaryReservationTotal}
+                </dt>
                 <dd>{total}</dd>
               </div>
               <div>
-                <dt>Status</dt>
+                <dt>{t.summaryStatusLabel}</dt>
                 <dd>{statusCopy.label}</dd>
               </div>
             </dl>
-            <ul className={styles.itemSummary} aria-label="Reserved items">
+            <ul
+              className={styles.itemSummary}
+              aria-label={t.itemsAriaLabel}
+            >
               {reservation.items.map((item) => (
                 <li key={item.id}>
                   <span>
@@ -383,19 +358,15 @@ export function ReservationConfirmation({
                 </li>
               ))}
             </ul>
-            <p>
-              {paymentRequired
-                ? "After transferring, keep your bank receipt. The booth owner will review the payment outside Cyfurden and update the reservation manually."
-                : statusCopy.description}
-            </p>
+            <p>{t.summaryFooter}</p>
           </aside>
         </div>
 
         <p className={styles.copyStatus} role="status" aria-live="polite">
           {copyError
-            ? "Copying was blocked by your browser. Select the value and copy it manually."
+            ? t.copyError
             : copied
-              ? `Copied ${targetLabel[copied]}.`
+              ? t.copySuccess(copyTargetLabel(copied, t))
               : ""}
         </p>
       </div>

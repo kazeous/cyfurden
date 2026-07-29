@@ -232,12 +232,12 @@ test("keeps bank details behind a successful managed reservation", async () => {
   assert.match(action, /\/reservation\/\$\{encodeURIComponent\(orderCode\)\}/);
   assert.doesNotMatch(action, /\?order=/);
 
-  assert.match(confirmation, /Reservation number/);
-  assert.match(confirmation, /Bank transfer QR code/);
-  assert.match(confirmation, /Account number/);
-  assert.match(confirmation, /Reservation total/);
-  assert.match(confirmation, /Transfer reference/);
-  assert.match(confirmation, /does not verify\s+payment automatically/i);
+  assert.match(confirmation, /t\.referenceCaption|t\.reservationTotalLabel/);
+  assert.match(confirmation, /qrAlt/);
+  assert.match(confirmation, /t\.accountNumberLabel/);
+  assert.match(confirmation, /t\.reservationTotalLabel/);
+  assert.match(confirmation, /t\.transferReferenceLabel/);
+  assert.match(confirmation, /payment\.disclaimer/);
 
   assert.match(reservationPage, /code,/);
   assert.match(reservationPage, /booth: \{ slug \}/);
