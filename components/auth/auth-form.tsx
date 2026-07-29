@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { signIn, signUp } from "@/lib/auth-client";
+import { translate, type Locale } from "@/lib/i18n";
 import styles from "./auth.module.css";
 
 type AuthMode = "sign-in" | "sign-up";
@@ -12,6 +13,7 @@ interface AuthFormProps {
   googleEnabled: boolean;
   mode: AuthMode;
   returnTo?: string;
+  locale?: Locale;
 }
 
 function safeReturnTo(value: string | undefined) {
@@ -43,9 +45,29 @@ function GoogleIcon() {
   );
 }
 
-export function AuthForm({ googleEnabled, mode, returnTo }: AuthFormProps) {
+export function AuthForm({ googleEnabled, mode, returnTo, locale = "en" }: AuthFormProps) {
   const router = useRouter();
   const isSignUp = mode === "sign-up";
+  const t = translate(locale, "publicAuth");
+  const signInLabel = t.signInGoogleButton;
+  const signUpLabel = t.signUpGoogleButton;
+  const googleButtonLabel = isSignUp ? signUpLabel : signInLabel;
+  const eyebrow = isSignUp ? t.formEyebrow.signUp : t.formEyebrow.signIn;
+  const heading = isSignUp ? t.formHeading.signUp : t.formHeading.signIn;
+  const body = isSignUp ? t.formBody.signUp : t.formBody.signIn;
+  const passwordPlaceholder = isSignUp
+    ? t.passwordPlaceholder.signUp
+    : t.passwordPlaceholder.signIn;
+  const submitPendingLabel = isSignUp
+    ? t.submitPending.signUp
+    : t.submitPending.signIn;
+  const switchPrompt = isSignUp
+    ? t.switchPrompt.signUp
+    : t.switchPrompt.signIn;
+  const switchLink = isSignUp ? t.switchLink.signUp : t.switchLink.signIn;
+  const emailLabel = isSignUp ? t.signUpEmailLabel : t.signInEmailLabel;
+  const passwordLabel = isSignUp ? t.signUpPasswordLabel : t.signInPasswordLabel;
+  const submitLabel = isSignUp ? t.signUpSubmit : t.signInSubmit;
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const destination = safeReturnTo(returnTo);
@@ -65,7 +87,7 @@ export function AuthForm({ googleEnabled, mode, returnTo }: AuthFormProps) {
       );
 
       if (password !== passwordConfirmation) {
-        setError("Those passwords do not match. Please try again.");
+        setError(t.errorPasswordMismatch);
         return;
       }
     }
@@ -89,9 +111,7 @@ export function AuthForm({ googleEnabled, mode, returnTo }: AuthFormProps) {
       if (result.error) {
         setError(
           result.error.message ??
-            (isSignUp
-              ? "We could not create your account. Please check your details."
-              : "We could not sign you in. Please check your details."),
+            (isSignUp ? t.signUpErrorGeneric : t.signInErrorInvalid),
         );
         return;
       }
@@ -99,7 +119,7 @@ export function AuthForm({ googleEnabled, mode, returnTo }: AuthFormProps) {
       router.replace(destination);
       router.refresh();
     } catch {
-      setError("Something went wrong. Please wait a moment and try again.");
+      setError(t.errorGeneric);
     } finally {
       setPending(false);
     }
@@ -116,14 +136,11 @@ export function AuthForm({ googleEnabled, mode, returnTo }: AuthFormProps) {
       });
 
       if (result?.error) {
-        setError(
-          result.error.message ??
-            "Google sign-in could not be started. Please try again.",
-        );
+        setError(result.error.message ?? t.errorGoogleUnavailable);
         setPending(false);
       }
     } catch {
-      setError("Google sign-in could not be started. Please try again.");
+      setError(t.errorGoogleUnavailable);
       setPending(false);
     }
   };
@@ -131,15 +148,9 @@ export function AuthForm({ googleEnabled, mode, returnTo }: AuthFormProps) {
   return (
     <div className={styles.formPanel}>
       <div className={styles.formHeading}>
-        <p className={styles.eyebrow}>
-          {isSignUp ? "Your creative workspace" : "Welcome back"}
-        </p>
-        <h1>{isSignUp ? "Make room for your work" : "Step into your booth"}</h1>
-        <p>
-          {isSignUp
-            ? "Create an account to organize your booths, products, and convention orders."
-            : "Sign in to choose a booth and pick up where you left off."}
-        </p>
+        <p className={styles.eyebrow}>{eyebrow}</p>
+        <h1>{heading}</h1>
+        <p>{body}</p>
       </div>
 
       {googleEnabled ? (
@@ -151,10 +162,10 @@ export function AuthForm({ googleEnabled, mode, returnTo }: AuthFormProps) {
             type="button"
           >
             <GoogleIcon />
-            Continue with Google
+            {googleButtonLabel}
           </button>
           <div className={styles.divider} aria-hidden="true">
-            <span>or use email</span>
+            <span>{t.dividerOrEmail}</span>
           </div>
         </>
       ) : null}
@@ -166,14 +177,14 @@ export function AuthForm({ googleEnabled, mode, returnTo }: AuthFormProps) {
       >
         {isSignUp ? (
           <label className={styles.field}>
-            <span>Display name</span>
+            <span>{t.signUpNameLabel}</span>
             <input
               autoComplete="name"
               disabled={pending}
               maxLength={80}
               minLength={2}
               name="name"
-              placeholder="How should we greet you?"
+              placeholder={t.namePlaceholder}
               required
               type="text"
             />
@@ -181,7 +192,7 @@ export function AuthForm({ googleEnabled, mode, returnTo }: AuthFormProps) {
         ) : null}
 
         <label className={styles.field}>
-          <span>Email address</span>
+          <span>{emailLabel}</span>
           <input
             autoCapitalize="none"
             autoComplete="email"
@@ -195,30 +206,30 @@ export function AuthForm({ googleEnabled, mode, returnTo }: AuthFormProps) {
         </label>
 
         <label className={styles.field}>
-          <span>Password</span>
+          <span>{passwordLabel}</span>
           <input
             autoComplete={isSignUp ? "new-password" : "current-password"}
             disabled={pending}
             maxLength={128}
             minLength={8}
             name="password"
-            placeholder={isSignUp ? "At least 8 characters" : "Your password"}
+            placeholder={passwordPlaceholder}
             required
             type="password"
           />
-          {isSignUp ? <small>Use 8–128 characters.</small> : null}
+          {isSignUp ? <small>{t.passwordHint}</small> : null}
         </label>
 
         {isSignUp ? (
           <label className={styles.field}>
-            <span>Confirm password</span>
+            <span>{t.confirmPasswordLabel}</span>
             <input
               autoComplete="new-password"
               disabled={pending}
               maxLength={128}
               minLength={8}
               name="passwordConfirmation"
-              placeholder="Type it once more"
+              placeholder={t.confirmPasswordPlaceholder}
               required
               type="password"
             />
@@ -230,7 +241,7 @@ export function AuthForm({ googleEnabled, mode, returnTo }: AuthFormProps) {
           className={`${styles.message} ${error ? styles.messageVisible : ""}`}
           role={error ? "alert" : undefined}
         >
-          {error || "\u00a0"}
+          {error || " "}
         </p>
 
         <button
@@ -238,21 +249,13 @@ export function AuthForm({ googleEnabled, mode, returnTo }: AuthFormProps) {
           disabled={pending}
           type="submit"
         >
-          {pending
-            ? isSignUp
-              ? "Creating your account…"
-              : "Signing you in…"
-            : isSignUp
-              ? "Create account"
-              : "Sign in"}
+          {pending ? submitPendingLabel : submitLabel}
         </button>
       </form>
 
       <p className={styles.switchPrompt}>
-        {isSignUp ? "Already have an account?" : "New to Cyfurden?"}{" "}
-        <Link href={alternateAuthHref}>
-          {isSignUp ? "Sign in" : "Create an account"}
-        </Link>
+        {switchPrompt}{" "}
+        <Link href={alternateAuthHref}>{switchLink}</Link>
       </p>
     </div>
   );
