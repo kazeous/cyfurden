@@ -1,17 +1,22 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { LanguageToggle } from "@/components/landing/language-toggle";
+import { readLocaleCookie } from "@/lib/i18n/server-locale";
+import { translate, type Locale } from "@/lib/i18n";
 import styles from "./landing.module.css";
 
-export const metadata: Metadata = {
-  title: "Cyfurden — Artist booths for convention days",
-  description:
-    "Build a shareable artist storefront, collect manual-payment reservations, and keep a convention team aligned with Cyfurden.",
-  openGraph: {
-    title: "Cyfurden artist booths",
-    description:
-      "A practical online booth for independent artists, convention pre-orders, and manual handoff.",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = (await readLocaleCookie()) as Locale;
+  const landing = translate(locale, "publicLanding");
+  return {
+    title: `Cyfurden — ${landing.heroTitle}`,
+    description: landing.heroBody,
+    openGraph: {
+      title: `Cyfurden — ${landing.heroTitle}`,
+      description: landing.heroBody,
+    },
+  };
+}
 
 const workflow = [
   {
@@ -77,11 +82,14 @@ const functions = [
   },
 ] as const;
 
-export default function Home() {
+export default async function Home() {
+  const locale = (await readLocaleCookie()) as Locale;
+  const landing = translate(locale, "publicLanding");
+  const isVi = locale === "vi";
   return (
     <div className={styles.page}>
       <a className={styles.skipLink} href="#main-content">
-        Skip to content
+        {isVi ? "Bỏ qua đến nội dung" : "Skip to content"}
       </a>
 
       <header className={styles.siteHeader}>
@@ -91,9 +99,10 @@ export default function Home() {
           </span>
           <span>Cyfurden</span>
         </Link>
-        <nav aria-label="Primary navigation">
+        <nav aria-label={isVi ? "Điều hướng chính" : "Primary navigation"}>
+          <LanguageToggle current={locale} redirectTo="/" />
           <Link className={styles.signInLink} href="/sign-in">
-            Sign in
+            {isVi ? "Đăng nhập" : "Sign in"}
           </Link>
         </nav>
       </header>
@@ -101,23 +110,21 @@ export default function Home() {
       <main id="main-content" className={styles.main}>
         <section className={styles.hero} aria-labelledby="landing-title">
           <div className={styles.heroCopy}>
-            <h1 id="landing-title">A calmer booth for busy convention days.</h1>
-            <p className={styles.heroLead}>
-              Publish your merch, collect reservations, show manual
-              bank-transfer instructions, and keep helpers aligned while fans
-              browse from their phones.
-            </p>
+            <h1 id="landing-title">{landing.heroTitle}</h1>
+            <p className={styles.heroLead}>{landing.heroBody}</p>
             <div className={styles.heroActions}>
               <Link className={styles.primaryLink} href="/sign-up">
-                Create your booth <span aria-hidden="true">→</span>
+                {landing.heroActionPrimary}{" "}
+                <span aria-hidden="true">→</span>
               </Link>
               <Link className={styles.secondaryLink} href="#workflow">
-                See how it works
+                {landing.heroActionSecondary}
               </Link>
             </div>
             <p className={styles.heroNote}>
-              Fans browse without an account. Artists sign in to manage their
-              booths.
+              {isVi
+                ? "Khách xem không cần tài khoản. Nghệ sĩ đăng nhập để quản lý booth của mình."
+                : "Fans browse without an account. Artists sign in to manage their booths."}
             </p>
           </div>
 

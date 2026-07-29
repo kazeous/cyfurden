@@ -112,9 +112,9 @@ test("server-renders the Cyfurden landing page", async () => {
 
   assert.match(
     renderedContent,
-    /<title>Cyfurden — Artist booths for convention days<\/title>/i,
+    /<title>Cyfurden — Independent booths for convention days<\/title>/i,
   );
-  assert.match(renderedContent, /A calmer booth for busy convention days/);
+  assert.match(renderedContent, /Independent booths for convention days/);
   assert.match(renderedContent, /From first scan to final handoff/);
   assert.match(renderedContent, /Payment stays manual—and visibly so/);
   assert.match(renderedContent, /href="\/sign-up"/);
