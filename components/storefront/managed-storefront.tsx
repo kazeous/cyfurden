@@ -191,10 +191,12 @@ function ProductQr({
   label,
   url,
   centerLogoUrl,
+  alt,
 }: {
   label: string;
   url: string;
   centerLogoUrl?: string;
+  alt: string;
 }) {
   const [qrUrl, setQrUrl] = useState<string | null>(null);
 
@@ -216,7 +218,7 @@ function ProductQr({
     <Image
       className={styles.infoQr}
       src={qrUrl}
-      alt={`${label} profile QR code`}
+      alt={alt}
       width={62}
       height={62}
       unoptimized
@@ -630,7 +632,7 @@ export function ManagedStorefront({
         return (
           <section
             className={`${styles.storeSection} ${styles.featured}`}
-            aria-label="Featured products"
+            aria-label={t.featuredCarouselA11y.landmark}
             aria-roledescription="carousel"
             onKeyDown={(event) => {
               if (featuredProducts.length < 2) return;
@@ -653,7 +655,10 @@ export function ManagedStorefront({
               className={styles.featuredSlide}
               role="group"
               aria-roledescription="slide"
-              aria-label={`${featuredIndex + 1} of ${featuredProducts.length}`}
+              aria-label={t.featuredCarouselA11y.slidePosition(
+                featuredIndex + 1,
+                featuredProducts.length,
+              )}
             >
               <div className={styles.featuredCopy}>
                 <p className={styles.featuredAnnouncement}>
@@ -663,8 +668,7 @@ export function ManagedStorefront({
                   {b(document.tagline)}
                 </strong>
                 <p className={styles.featuredProductLabel}>
-                  {featuredProduct.eyebrow ??
-                    (locale === "vi" ? "Sản phẩm nổi bật" : "Featured release")}
+                  {featuredProduct.eyebrow ?? t.featuredProductEyebrow}
                 </p>
                 <h1>{featuredProduct.name}</h1>
                 <p className={styles.featuredDescription}>
@@ -700,7 +704,7 @@ export function ManagedStorefront({
                     className={styles.detailsButton}
                     onClick={() => openDetails(featuredProduct)}
                   >
-                    {locale === "vi" ? "Xem sản phẩm" : "View item"}
+                    {t.featuredSeeItem}
                   </button>
                 </div>
                 <div className={styles.featuredNavigation}>
@@ -715,20 +719,20 @@ export function ManagedStorefront({
                       )
                     }
                     disabled={featuredProducts.length < 2}
-                    aria-label="Show previous featured product"
+                    aria-label={t.featuredCarouselA11y.prev}
                   >
                     <CarouselArrow direction="previous" />
                   </button>
                   <div
                     className={styles.featuredDots}
                     role="group"
-                    aria-label="Choose a featured product"
+                    aria-label={t.featuredCarouselA11y.dots}
                   >
                     {featuredProducts.map((product, index) => (
                       <button
                         type="button"
                         key={product.id}
-                        aria-label={`Show ${product.name}`}
+                        aria-label={t.featuredCarouselA11y.slide(product.name)}
                         aria-current={
                           index === featuredIndex ? "true" : undefined
                         }
@@ -749,7 +753,7 @@ export function ManagedStorefront({
                       )
                     }
                     disabled={featuredProducts.length < 2}
-                    aria-label="Show next featured product"
+                    aria-label={t.featuredCarouselA11y.next}
                   >
                     <CarouselArrow direction="next" />
                   </button>
@@ -770,7 +774,9 @@ export function ManagedStorefront({
                   type="button"
                   className={styles.featuredArtButton}
                   onClick={() => openDetails(featuredProduct)}
-                  aria-label={`View details for ${featuredProduct.name}`}
+                  aria-label={t.featuredCarouselA11y.artButton(
+                    featuredProduct.name,
+                  )}
                 >
                   <ProductArt product={featuredProduct} />
                   <span>{availabilityLabel(featuredProduct, t)}</span>
@@ -783,14 +789,14 @@ export function ManagedStorefront({
       case "booth-info":
         return (
           <aside className={`${styles.storeSection} ${styles.boothInfo}`}>
-            <p className={styles.eyebrow}>Booth guide</p>
+            <p className={styles.eyebrow}>{t.boothGuideEyebrow}</p>
             <h2>{b(document.creatorName)}</h2>
             <p>{b(document.creatorBio)}</p>
             {document.creatorLocation ? (
               <small>{b(document.creatorLocation)}</small>
             ) : null}
             {identity.socialLinks.length ? (
-              <nav className={styles.socialLinks} aria-label="Creator profiles">
+              <nav className={styles.socialLinks} aria-label={t.creatorProfilesAria}>
                 {identity.socialLinks.map((social) => (
                   <a
                     href={social.url}
@@ -811,7 +817,7 @@ export function ManagedStorefront({
               className={styles.infoButton}
               onClick={() => setInfoOpen(true)}
             >
-              Open booth info
+              {t.boothInfoOpen}
             </button>
           </aside>
         );
@@ -832,7 +838,7 @@ export function ManagedStorefront({
                 aria-pressed={categorySlug === "all"}
                 onClick={() => setCategorySlug("all")}
               >
-                {locale === "vi" ? "Tất cả" : "All"}
+                {t.browseAllLabel}
               </button>
               {categories.map((category) => (
                 <button
@@ -867,33 +873,23 @@ export function ManagedStorefront({
                 onChange={(event) =>
                   setSort(event.target.value as CatalogueSort)
                 }
-                aria-label={locale === "vi" ? "Sắp xếp sản phẩm" : "Sort products"}
+                aria-label={t.browseSortAria}
               >
-                <option value="featured">
-                  {locale === "vi" ? "Đề xuất" : "Recommended"}
-                </option>
-                <option value="newest">
-                  {locale === "vi" ? "Mới nhất" : "Newest"}
-                </option>
-                <option value="price-asc">
-                  {locale === "vi" ? "Giá: thấp đến cao" : "Price: low to high"}
-                </option>
-                <option value="price-desc">
-                  {locale === "vi" ? "Giá: cao đến thấp" : "Price: high to low"}
-                </option>
-                <option value="name">
-                  {locale === "vi" ? "Tên: A đến Z" : "Name: A to Z"}
-                </option>
+                <option value="featured">{t.browseSortFeatured}</option>
+                <option value="newest">{t.browseSortNewest}</option>
+                <option value="price-asc">{t.browseSortPriceAsc}</option>
+                <option value="price-desc">{t.browseSortPriceDesc}</option>
+                <option value="name">{t.browseSortName}</option>
               </select>
               <div
                 className={styles.viewToggle}
                 role="group"
-                aria-label={locale === "vi" ? "Kiểu hiển thị" : "Catalogue view"}
+                aria-label={t.browseViewAria}
               >
                 <button
                   type="button"
                   className={styles.viewButton}
-                  aria-label={locale === "vi" ? "Hiển thị dạng lưới" : "Show product grid"}
+                  aria-label={t.browseViewGrid}
                   aria-pressed={viewMode === "grid"}
                   onClick={() => setViewMode("grid")}
                 >
@@ -902,7 +898,7 @@ export function ManagedStorefront({
                 <button
                   type="button"
                   className={styles.viewButton}
-                  aria-label={locale === "vi" ? "Hiển thị dạng danh sách" : "Show product list"}
+                  aria-label={t.browseViewList}
                   aria-pressed={viewMode === "list"}
                   onClick={() => setViewMode("list")}
                 >
@@ -920,8 +916,8 @@ export function ManagedStorefront({
           >
             <div className={styles.sectionHeader}>
               <div>
-                <p className={styles.eyebrow}>Product collection</p>
-                <h2 id="catalogue-heading">Find a small wonder</h2>
+                <p className={styles.eyebrow}>{t.catalogueEyebrow}</p>
+                <h2 id="catalogue-heading">{t.catalogueTitle}</h2>
               </div>
             </div>
             {visibleProducts.length ? (
@@ -960,20 +956,21 @@ export function ManagedStorefront({
                         type="button"
                         className={styles.artButton}
                         onClick={() => openDetails(product)}
-                        aria-label={`View details for ${product.name}`}
+                        aria-label={t.featuredCarouselA11y.artButton(
+                          product.name,
+                        )}
                       >
                         <ProductArt product={product} />
                       </button>
                       <div className={styles.cardCopy}>
                         <div className={styles.cardHeading}>
                           <p className={styles.cardEyebrow}>
-                            {product.eyebrow ??
-                              (locale === "vi" ? "Mới ra mắt" : "New release")}
+                            {product.eyebrow ?? t.newReleaseEyebrow}
                           </p>
                           <div className={styles.badges}>
                             {product.featured ? (
                               <span className={styles.badge}>
-                                {locale === "vi" ? "Nổi bật" : "Featured"}
+                                {t.featuredBadge}
                               </span>
                             ) : null}
                             <span className={styles.badge}>
@@ -1036,8 +1033,8 @@ export function ManagedStorefront({
               </div>
             ) : (
               <div className={styles.empty}>
-                <h3>{locale === "vi" ? "Không có sản phẩm phù hợp" : "No matching merch"}</h3>
-                <p>{locale === "vi" ? "Thử từ khoá khác." : "Try a different search."}</p>
+                <h3>{t.catalogueEmptyHeading}</h3>
+                <p>{t.catalogueEmptyHint}</p>
               </div>
             )}
           </section>
@@ -1113,14 +1110,14 @@ export function ManagedStorefront({
             type="button"
             onClick={() => setInfoOpen(true)}
           >
-            Booth info
+            {t.boothInfoOpen}
           </button>
           <button
             className={styles.bagButton}
             type="button"
             onClick={() => setCartOpen(true)}
           >
-            Bag <span>{cartCount}</span>
+            {t.topbarBag} <span>{cartCount}</span>
           </button>
         </div>
       </header>
@@ -1145,7 +1142,7 @@ export function ManagedStorefront({
 
         <footer className={styles.footer}>
           <span>{b(document.eventFulfillment)}</span>
-          <span>Manual bank-transfer handoff · no automatic verification</span>
+          <span>{t.publicFooterManual}</span>
         </footer>
       </div>
 
@@ -1166,7 +1163,7 @@ export function ManagedStorefront({
           >
             <div className={styles.cartHeader}>
               <div>
-                <p className={styles.eyebrow}>Product detail</p>
+                <p className={styles.eyebrow}>{t.productDetailEyebrow}</p>
                 <h2 id="product-detail-heading">{detailProduct.name}</h2>
               </div>
               <button
@@ -1174,7 +1171,7 @@ export function ManagedStorefront({
                 type="button"
                 className={styles.close}
                 onClick={() => setDetailProduct(null)}
-                aria-label="Close product details"
+                aria-label={t.productDetailClose}
               >
                 ×
               </button>
@@ -1196,7 +1193,7 @@ export function ManagedStorefront({
                 {detailProduct.images.length > 1 ? (
                   <div
                     className={styles.thumbnailRow}
-                    aria-label="Product images"
+                    aria-label={t.productDetailImagesAria}
                   >
                     {detailProduct.images.map((image, index) => (
                       <button
@@ -1204,7 +1201,7 @@ export function ManagedStorefront({
                         type="button"
                         className={`${styles.thumbnail} ${index === detailImageIndex ? styles.thumbnailActive : ""}`}
                         onClick={() => setDetailImageIndex(index)}
-                        aria-label={`Show image ${index + 1}`}
+                        aria-label={t.productDetailShowImage(index + 1)}
                         aria-pressed={index === detailImageIndex}
                         style={{
                           backgroundImage: `url("${resolveOracleImageUrl(image)}")`,
@@ -1216,13 +1213,13 @@ export function ManagedStorefront({
               </div>
               <div className={styles.detailCopy}>
                 <p className={styles.cardEyebrow}>
-                  {detailProduct.eyebrow ?? "New release"}
+                  {detailProduct.eyebrow ?? t.newReleaseEyebrow}
                 </p>
                 <p className={styles.detailDescription}>
                   {detailProduct.description}
                 </p>
                 {detailProduct.tags.length ? (
-                  <div className={styles.tagList} aria-label="Tags">
+                  <div className={styles.tagList} aria-label={t.tagAriaLabel}>
                     {detailProduct.tags.map((tag) => (
                       <span key={tag}>#{tag}</span>
                     ))}
@@ -1230,7 +1227,7 @@ export function ManagedStorefront({
                 ) : null}
                 {detailProduct.variants.length > 1 ? (
                   <label className={styles.detailField}>
-                    Choose an option
+                    {t.productDetailChooseOption}
                     <select
                       className={styles.select}
                       value={detailVariantId ?? ""}
@@ -1247,14 +1244,15 @@ export function ManagedStorefront({
                             variant.stockQuantity,
                           )
                             ? ""
-                            : " — unavailable"}
+                            : t.productDetailUnavailable}
                         </option>
                       ))}
                     </select>
                   </label>
                 ) : selectedDetailVariant ? (
                   <p className={styles.detailOption}>
-                    Option: <strong>{selectedDetailVariant.label}</strong>
+                    {t.productDetailOptionLabel}:{" "}
+                    <strong>{selectedDetailVariant.label}</strong>
                   </p>
                 ) : null}
                 <div className={styles.detailPriceRow}>
@@ -1279,7 +1277,7 @@ export function ManagedStorefront({
                       onClick={() =>
                         setDetailQuantity((current) => Math.max(1, current - 1))
                       }
-                      aria-label="Remove one"
+                      aria-label={t.productDetailRemoveOne}
                     >
                       −
                     </button>
@@ -1296,7 +1294,7 @@ export function ManagedStorefront({
                           ),
                         )
                       }
-                      aria-label="Add one"
+                      aria-label={t.productDetailAddOne}
                       disabled={
                         !selectedDetailVariant ||
                         detailQuantity >=
@@ -1322,20 +1320,17 @@ export function ManagedStorefront({
                     }
                   >
                     {!canAcceptReservations
-                      ? "Reservations paused"
+                      ? t.productDetailReservationsPaused
                       : selectedDetailVariant &&
                           isPurchasableVariant(
                             selectedDetailVariant.status,
                             selectedDetailVariant.stockQuantity,
                           )
-                        ? "Add to bag"
-                        : "Sold out"}
+                        ? t.productDetailAddToBag
+                        : t.productDetailSoldOut}
                   </button>
                 </div>
-                <p className={styles.disclaimer}>
-                  Reserve without an account. Payment instructions appear only
-                  after submitting the reservation.
-                </p>
+                <p className={styles.disclaimer}>{t.productDetailDisclaimer}</p>
               </div>
             </div>
           </div>
@@ -1359,7 +1354,7 @@ export function ManagedStorefront({
           >
             <div className={styles.cartHeader}>
               <div>
-                <p className={styles.eyebrow}>Booth guide</p>
+                <p className={styles.eyebrow}>{t.boothGuideEyebrow}</p>
                 <h2 id="booth-info-heading">{b(document.name)}</h2>
               </div>
               <button
@@ -1367,7 +1362,7 @@ export function ManagedStorefront({
                 type="button"
                 className={styles.close}
                 onClick={() => setInfoOpen(false)}
-                aria-label="Close booth info"
+                aria-label={t.boothInfoClose}
               >
                 ×
               </button>
@@ -1392,7 +1387,7 @@ export function ManagedStorefront({
             </div>
             {identity.socialLinks.length ? (
               <div className={styles.infoSocials}>
-                <h3>Find the creator online</h3>
+                <h3>{t.infoSocialsHeading}</h3>
                 <div className={styles.infoSocialGrid}>
                   {identity.socialLinks.map((social) => (
                     <a
@@ -1406,10 +1401,11 @@ export function ManagedStorefront({
                         label={social.label}
                         url={social.url}
                         centerLogoUrl={identity.logoUrl}
+                        alt={t.socialQrAlt(social.label)}
                       />
                       <span>
                         <strong>{social.label}</strong>
-                        <small>Open profile</small>
+                        <small>{t.socialOpenProfile}</small>
                       </span>
                     </a>
                   ))}
@@ -1445,8 +1441,8 @@ export function ManagedStorefront({
           >
             <div className={styles.cartHeader}>
               <div>
-                <p className={styles.eyebrow}>Shopping cart</p>
-                <h2 id="bag-heading">Your bag</h2>
+                <p className={styles.eyebrow}>{t.cartEyebrow}</p>
+                <h2 id="bag-heading">{t.bagHeading}</h2>
               </div>
               <div className={styles.cartHeaderActions}>
                 <button
@@ -1454,16 +1450,16 @@ export function ManagedStorefront({
                   className={styles.clearButton}
                   onClick={clearCart}
                   disabled={orderPending || cartCount === 0}
-                  aria-label="Clear all items from bag"
+                  aria-label={t.cartClear}
                 >
-                  Clear bag
+                  {t.cartClear}
                 </button>
                 <button
                   ref={closeButtonRef}
                   type="button"
                   className={styles.close}
                   onClick={() => setCartOpen(false)}
-                  aria-label="Close bag"
+                  aria-label={t.cartClose}
                   disabled={orderPending}
                 >
                   ×
@@ -1479,14 +1475,14 @@ export function ManagedStorefront({
                         <strong>{product.name}</strong>
                         <small>{variant.label}</small>
                         {variant.stockQuantity !== null ? (
-                          <small>{variant.stockQuantity} available</small>
+                          <small>{t.cartLineAvailable(variant.stockQuantity)}</small>
                         ) : null}
                       </div>
                       <div className={styles.quantity}>
                         <button
                           type="button"
                           onClick={() => adjust(variant.id, -1)}
-                          aria-label={`Remove one ${product.name}`}
+                          aria-label={t.cartLineRemoveOne(product.name)}
                           disabled={orderPending}
                         >
                           −
@@ -1495,7 +1491,7 @@ export function ManagedStorefront({
                         <button
                           type="button"
                           onClick={() => adjust(variant.id, 1)}
-                          aria-label={`Add one ${product.name}`}
+                          aria-label={t.cartLineAddOne(product.name)}
                           disabled={
                             orderPending ||
                             line.quantity >=
@@ -1516,7 +1512,7 @@ export function ManagedStorefront({
                         type="button"
                         className={styles.cartLineRemove}
                         onClick={() => removeLine(variant.id)}
-                        aria-label={`Remove ${product.name} from bag`}
+                        aria-label={t.cartLineRemove}
                         disabled={orderPending}
                       >
                         <span aria-hidden="true">×</span>
@@ -1525,7 +1521,7 @@ export function ManagedStorefront({
                   ))}
                 </div>
                 <div className={styles.total}>
-                  <span>Total</span>
+                  <span>{t.cartTotalLabel}</span>
                   <strong>{money(totalCents, locale)}</strong>
                 </div>
                 <form
@@ -1546,33 +1542,33 @@ export function ManagedStorefront({
                     value={JSON.stringify(cart)}
                   />
                   <label>
-                    Name
+                    {t.cartNameLabel}
                     <input
                       name="customerName"
                       required
                       minLength={2}
                       maxLength={100}
-                      placeholder="Your name"
+                      placeholder={t.cartNamePlaceholder}
                       disabled={orderPending}
                     />
                   </label>
                   <label>
-                    Email
+                    {t.cartEmailLabel}
                     <input
                       name="customerEmail"
                       type="email"
                       required
                       maxLength={254}
-                      placeholder="you@example.com"
+                      placeholder={t.cartEmailPlaceholder}
                       disabled={orderPending}
                     />
                   </label>
                   <label>
-                    Note (optional)
+                    {t.cartNoteLabel}
                     <textarea
                       name="customerNote"
                       maxLength={500}
-                      placeholder="Pickup notes or questions"
+                      placeholder={t.cartNotePlaceholder}
                       disabled={orderPending}
                     />
                   </label>
@@ -1595,18 +1591,15 @@ export function ManagedStorefront({
                       !canAcceptReservations
                     }
                   >
-                    {orderPending ? "Saving reservation…" : "Send reservation"}
+                    {orderPending ? t.cartSubmitPending : t.cartSubmit}
                   </button>
-                  <p className={styles.disclaimer}>
-                    You will receive manual bank-transfer instructions after
-                    submitting. Cyfurden does not verify payment automatically.
-                  </p>
+                  <p className={styles.disclaimer}>{t.cartFooter}</p>
                 </form>
               </>
             ) : (
               <div className={styles.empty}>
-                <h3>Your bag is empty</h3>
-                <p>Add an item to start a reservation.</p>
+                <h3>{t.cartTitleEmpty}</h3>
+                <p>{t.cartEmptyHint}</p>
               </div>
             )}
           </div>

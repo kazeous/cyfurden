@@ -80,6 +80,7 @@ export const viCatalogue: Catalogue = {
     productDetailImagesAria: "Hình ảnh sản phẩm",
     productDetailShowImage: (n) => `Xem hình ${n}`,
     productDetailDisclaimer: "Màu sắc thực tế có thể chênh lệch nhẹ so với hình.",
+    cartFooter: "Sau khi gửi, bạn sẽ nhận hướng dẫn chuyển khoản thủ công. Cyfurden không tự xác minh thanh toán.",
     cartLineRemove: "Xoá khỏi giỏ",
     cartLineRemoveOne: (name) => `Bớt một ${name}`,
     cartLineAddOne: (name) => `Thêm một ${name}`,

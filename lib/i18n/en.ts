@@ -79,6 +79,7 @@ export const enCatalogue: Catalogue = {
     productDetailImagesAria: "Product images",
     productDetailShowImage: (n) => `Show image ${n}`,
     productDetailDisclaimer: "Image colours may differ slightly from the actual piece.",
+    cartFooter: "You will receive manual bank-transfer instructions after submitting. Cyfurden does not verify payment automatically.",
     cartLineRemove: "Remove from bag",
     cartLineRemoveOne: (name) => `Remove one ${name}`,
     cartLineAddOne: (name) => `Add one ${name}`,

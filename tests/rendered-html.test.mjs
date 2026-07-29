@@ -227,7 +227,7 @@ test("keeps bank details behind a successful managed reservation", async () => {
   assert.doesNotMatch(storefront, /paymentQrUrl|payment\.bankName|paymentQr/);
   assert.match(
     storefront,
-    /receive manual bank-transfer instructions after\s+submitting/i,
+    /t\.cartFooter/,
   );
   assert.match(action, /\/reservation\/\$\{encodeURIComponent\(orderCode\)\}/);
   assert.doesNotMatch(action, /\?order=/);

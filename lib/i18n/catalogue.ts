@@ -72,6 +72,7 @@ export type PublicBoothStrings = {
   productDetailImagesAria: string;
   productDetailShowImage: (n: number) => string;
   productDetailDisclaimer: string;
+  cartFooter: string;
   cartLineRemove: string;
   cartLineRemoveOne: (name: string) => string;
   cartLineAddOne: (name: string) => string;
