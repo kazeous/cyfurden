@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireBoothSection } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { expireStaleOrders } from "@/lib/order-inventory";
+import { readStorefrontDocument } from "@/lib/storefront-document";
 import { OrderStatusForm } from "./order-status-form";
 import styles from "./orders.module.css";
 
@@ -15,7 +16,7 @@ const orderStatuses = [
 
 type OrderStatus = (typeof orderStatuses)[number];
 type StatusFilter = OrderStatus | "ALL";
-type DateRange = "7" | "30" | "90" | "all";
+type DateRange = "today" | "7" | "30" | "90" | "all";
 
 const statusFilters: Array<{ value: StatusFilter; label: string }> = [
   { value: "ALL", label: "All" },
@@ -27,6 +28,7 @@ const statusFilters: Array<{ value: StatusFilter; label: string }> = [
 ];
 
 const dateRanges: Array<{ value: DateRange; label: string }> = [
+  { value: "today", label: "Today" },
   { value: "7", label: "7 days" },
   { value: "30", label: "30 days" },
   { value: "90", label: "90 days" },
@@ -64,10 +66,17 @@ const parseStatus = (value: string | undefined): StatusFilter => {
 const parseDateRange = (value: string | undefined): DateRange =>
   dateRanges.some((range) => range.value === value)
     ? (value as DateRange)
-    : "30";
+    : "7";
 
 const getDateCutoff = (range: DateRange) => {
   if (range === "all") return undefined;
+  if (range === "today") {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    return { gte: start, lt: end };
+  }
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - Number(range));
   return cutoff;
@@ -110,16 +119,33 @@ export default async function OrdersPage({
     Number.parseInt(firstValue(query.page) ?? "1", 10) || 1,
   );
   const cutoff = getDateCutoff(selectedDate);
-  const dateWhere = cutoff ? { placedAt: { gte: cutoff } } : {};
+  const dateWhere =
+    cutoff instanceof Date
+      ? { placedAt: { gte: cutoff } }
+      : cutoff
+        ? { placedAt: cutoff }
+        : {};
 
-  const [grouped, totalOrderCount] = await Promise.all([
-    db.order.groupBy({
-      by: ["status"],
-      where: { boothId, ...dateWhere },
-      _count: true,
-    }),
-    db.order.count({ where: { boothId } }),
-  ]);
+  const [grouped, totalOrderCount, boothWithSettings, liveProductCount] =
+    await Promise.all([
+      db.order.groupBy({
+        by: ["status"],
+        where: { boothId, ...dateWhere },
+        _count: true,
+      }),
+      db.order.count({ where: { boothId } }),
+      db.booth.findUnique({
+        where: { id: boothId },
+        include: { paymentInstructions: true, storefront: true },
+      }),
+      db.product.count({
+        where: {
+          boothId,
+          status: "LIVE",
+          variants: { some: { stockQuantity: { gt: 0 } } },
+        },
+      }),
+    ]);
 
   const counts = new Map(grouped.map((entry) => [entry.status, entry._count]));
   const scopedOrderCount = grouped.reduce(
@@ -166,6 +192,80 @@ export default async function OrdersPage({
     statusFilters.find((filter) => filter.value === selectedStatus)?.label ??
     "orders";
 
+  const payment = boothWithSettings?.paymentInstructions;
+  const storefrontDoc = boothWithSettings?.storefront?.publishedDocument
+    ? readStorefrontDocument(
+        boothWithSettings.storefront.publishedDocument,
+        boothWithSettings.name,
+      )
+    : null;
+
+  const DEFAULT_LOCATION_TOKENS = [
+    "details coming soon",
+    "to be announced",
+    "online and at selected conventions",
+  ];
+  const DEFAULT_HOURS_TOKENS = ["hours to be announced", "tba", "to be announced"];
+
+  const checklistItems: Array<{
+    key: string;
+    label: string;
+    href: string;
+  }> = [];
+
+  if (liveProductCount === 0) {
+    checklistItems.push({
+      key: "live-product",
+      label: "Add at least one live product",
+      href: `/manage/${boothId}/products`,
+    });
+  }
+  if (!payment?.bankCode || !payment?.accountNumber) {
+    checklistItems.push({
+      key: "payment",
+      label: "Set payment details (bank + account)",
+      href: `/manage/${boothId}/storefront`,
+    });
+  }
+  const introText = storefrontDoc?.introduction?.trim() ?? "";
+  if (!storefrontDoc || introText.length < 10) {
+    checklistItems.push({
+      key: "introduction",
+      label: "Name and describe your booth",
+      href: `/manage/${boothId}/storefront`,
+    });
+  } else {
+    const normalizedLocation = (storefrontDoc.creatorLocation ?? "")
+      .trim()
+      .toLowerCase();
+    const normalizedVenue = (storefrontDoc.eventVenue ?? "")
+      .trim()
+      .toLowerCase();
+    const normalizedHours = (storefrontDoc.eventHours ?? "")
+      .trim()
+      .toLowerCase();
+    const locationMissing =
+      !normalizedLocation ||
+      DEFAULT_LOCATION_TOKENS.includes(normalizedLocation) ||
+      normalizedLocation === normalizedVenue;
+    const hoursMissing =
+      !normalizedHours ||
+      DEFAULT_HOURS_TOKENS.some((token) => normalizedHours.includes(token));
+    if (locationMissing || hoursMissing) {
+      checklistItems.push({
+        key: "location-hours",
+        label: locationMissing && hoursMissing
+          ? "Add location and event hours"
+          : locationMissing
+            ? "Add a location"
+            : "Add event hours",
+        href: `/manage/${boothId}/storefront`,
+      });
+    }
+  }
+
+  const hasChecklist = checklistItems.length > 0;
+
   return (
     <div className={styles.ordersPage}>
       <header className={styles.pageHeader}>
@@ -191,6 +291,31 @@ export default async function OrdersPage({
           </p>
         </div>
       </aside>
+
+      {hasChecklist ? (
+        <aside
+          className={styles.setupChecklist}
+          aria-label="Booth setup checklist"
+        >
+          <header>
+            <span className={styles.noticeIcon} aria-hidden="true">
+              ⚠
+            </span>
+            <strong>Attention needed</strong>
+            <span className={styles.checklistCount}>
+              {checklistItems.length}{" "}
+              {checklistItems.length === 1 ? "item" : "items"}
+            </span>
+          </header>
+          <ul>
+            {checklistItems.map((item) => (
+              <li key={item.key}>
+                <Link href={item.href}>{item.label}</Link>
+              </li>
+            ))}
+          </ul>
+        </aside>
+      ) : null}
 
       <section className={styles.filters} aria-labelledby="order-filters-title">
         <div className={styles.filterHeader}>
