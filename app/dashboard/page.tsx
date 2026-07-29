@@ -78,6 +78,11 @@ export default async function DashboardPage({
     },
   });
 
+  const ownedCount = memberships.filter(
+    (membership) => membership.role === "OWNER",
+  ).length;
+  const joinedCount = memberships.length - ownedCount;
+
   return (
     <main className={styles.dashboardShell}>
       <header className={styles.topbar}>
@@ -115,6 +120,17 @@ export default async function DashboardPage({
             <h1 id="dashboard-title">Your booths</h1>
             <p>
               Choose a booth to update its storefront, products, and orders.
+            </p>
+            <p className={styles.boothCounter}>
+              <strong>
+                {ownedCount} of 5 booths used
+              </strong>
+              <small>
+                Joined booths do not count toward your cap.
+                {joinedCount > 0
+                  ? ` You currently join ${joinedCount} booth${joinedCount === 1 ? "" : "s"}.`
+                  : ""}
+              </small>
             </p>
           </div>
           <Link className={styles.headerAction} href="/dashboard/new">

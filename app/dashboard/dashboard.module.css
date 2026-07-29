@@ -184,12 +184,37 @@
   line-height: 1.05;
 }
 
-.heading > p:last-child,
+.heading > p:last-child:not(.boothCounter),
 .newHeading > p:last-child {
   margin-top: 12px;
   color: var(--ink-muted);
   font-size: 0.9rem;
   line-height: 1.55;
+}
+
+.heading p.boothCounter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.55);
+  font-size: 0.95rem;
+}
+
+.boothCounter strong {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.boothCounter small {
+  color: var(--ink-muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
 }
 
 .headerAction,
