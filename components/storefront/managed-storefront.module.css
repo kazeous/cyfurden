@@ -699,6 +699,14 @@
   text-align: center;
 }
 
+@media (min-width: 900px) {
+  .cartSummary {
+    position: sticky;
+    top: 24px;
+    align-self: start;
+  }
+}
+
 .cartSummaryIcon {
   display: grid;
   width: 40px;
@@ -1362,10 +1370,37 @@
   gap: 10px;
 }
 .cartLine {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
   gap: 10px;
   justify-content: space-between;
   padding: 12px 0;
   border-bottom: 1px solid #ebe5db;
+}
+
+@media (max-width: 480px) {
+  .cartLine {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "title remove"
+      "qty total";
+    row-gap: 8px;
+  }
+  .cartLine > div:first-child {
+    grid-area: title;
+  }
+  .cartLine .quantity {
+    grid-area: qty;
+  }
+  .cartLine > strong {
+    grid-area: total;
+    justify-self: end;
+  }
+  .cartLine .cartLineRemove {
+    grid-area: remove;
+    align-self: start;
+  }
 }
 .cartLine > div:first-child {
   display: grid;
@@ -1607,4 +1642,86 @@
   .featuredArtButton:active {
     transform: none;
   }
+}
+
+.cartHeaderActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.clearButton {
+  align-self: center;
+  padding: 6px 10px;
+  border: 1px solid #d6d0c4;
+  border-radius: 999px;
+  color: #5a6577;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+
+.clearButton:hover:not(:disabled),
+.clearButton:focus-visible:not(:disabled) {
+  border-color: #8a785f;
+  color: #3d352a;
+}
+
+.clearButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cartLine {
+  position: relative;
+}
+
+.cartLineRemove {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  align-self: flex-start;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  color: #8a785f;
+  background: transparent;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease,
+    border-color 120ms ease;
+}
+
+.cartLineRemove:hover:not(:disabled),
+.cartLineRemove:focus-visible:not(:disabled) {
+  border-color: #d5c9b1;
+  color: #5b3a1c;
+  background: #faf4e8;
+}
+
+.cartLineRemove:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.skuChip {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border: 1px solid #d6d0c4;
+  border-radius: 999px;
+  color: #6d7a8f;
+  background: rgba(255, 255, 255, 0.6);
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  width: max-content;
 }

@@ -28,6 +28,7 @@ type ProductDto = {
   shortDescription: string | null;
   description: string;
   priceCents: string;
+  sku: string | null;
   featured: boolean;
   tags: string[];
   sortOrder: number;
@@ -452,6 +453,14 @@ export function ManagedStorefront({
         return quantity > 0 ? [{ ...line, quantity }] : [];
       }),
     );
+  };
+
+  const removeLine = (variantId: string) => {
+    updateCart((current) => current.filter((line) => line.variantId !== variantId));
+  };
+
+  const clearCart = () => {
+    updateCart(() => []);
   };
 
   const handleCartKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -939,6 +948,9 @@ export function ManagedStorefront({
                         >
                           {product.name}
                         </button>
+                        {product.sku ? (
+                          <span className={styles.skuChip}>SKU {product.sku}</span>
+                        ) : null}
                         <p>{product.shortDescription ?? product.description}</p>
                         {product.tags.length ? (
                           <div className={styles.tagList} aria-label="Tags">
@@ -1393,16 +1405,27 @@ export function ManagedStorefront({
                 <p className={styles.eyebrow}>Shopping cart</p>
                 <h2 id="bag-heading">Your bag</h2>
               </div>
-              <button
-                ref={closeButtonRef}
-                type="button"
-                className={styles.close}
-                onClick={() => setCartOpen(false)}
-                aria-label="Close bag"
-                disabled={orderPending}
-              >
-                ×
-              </button>
+              <div className={styles.cartHeaderActions}>
+                <button
+                  type="button"
+                  className={styles.clearButton}
+                  onClick={clearCart}
+                  disabled={orderPending || cartCount === 0}
+                  aria-label="Clear all items from bag"
+                >
+                  Clear bag
+                </button>
+                <button
+                  ref={closeButtonRef}
+                  type="button"
+                  className={styles.close}
+                  onClick={() => setCartOpen(false)}
+                  aria-label="Close bag"
+                  disabled={orderPending}
+                >
+                  ×
+                </button>
+              </div>
             </div>
             {cartDetails.length ? (
               <>
@@ -1445,6 +1468,15 @@ export function ManagedStorefront({
                             BigInt(line.quantity),
                         )}
                       </strong>
+                      <button
+                        type="button"
+                        className={styles.cartLineRemove}
+                        onClick={() => removeLine(variant.id)}
+                        aria-label={`Remove ${product.name} from bag`}
+                        disabled={orderPending}
+                      >
+                        <span aria-hidden="true">×</span>
+                      </button>
                     </div>
                   ))}
                 </div>

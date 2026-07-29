@@ -114,6 +114,7 @@ export default async function PublicBoothPage({
     shortDescription: product.shortDescription,
     description: product.description,
     priceCents: product.priceCents.toString(),
+    sku: product.sku,
     featured: featuredProductIdSet.has(product.id),
     tags: product.tags,
     sortOrder: product.sortOrder,
