@@ -11,7 +11,7 @@ import { readStorefrontDocument } from "@/lib/storefront-document";
 import { generateVietQrDataUrl } from "@/lib/vietqr";
 
 export const metadata: Metadata = {
-  title: "Reservation received · Cyfurden",
+  title: "Reservation received",
   description: "Reservation reference and manual bank-transfer instructions.",
 };
 

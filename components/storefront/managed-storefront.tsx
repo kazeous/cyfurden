@@ -1126,7 +1126,7 @@ export function ManagedStorefront({
                 onClick={() => setDetailProduct(null)}
                 aria-label="Close product details"
               >
-                Ã—
+                ×
               </button>
             </div>
             <div className={styles.detailLayout}>
@@ -1230,7 +1230,7 @@ export function ManagedStorefront({
                       }
                       aria-label="Remove one"
                     >
-                      âˆ’
+                      −
                     </button>
                     <span aria-live="polite">{detailQuantity}</span>
                     <button
@@ -1318,7 +1318,7 @@ export function ManagedStorefront({
                 onClick={() => setInfoOpen(false)}
                 aria-label="Close booth info"
               >
-                Ã—
+                ×
               </button>
             </div>
             <div className={styles.infoGrid}>
