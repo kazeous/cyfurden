@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ReservationConfirmation } from "@/components/storefront/reservation-confirmation";
 import { db } from "@/lib/db";
-import { translate, type Locale } from "@/lib/i18n";
+import { translate } from "@/lib/i18n";
 import {
   createOrderPaymentSnapshot,
   readOrderPaymentSnapshot,
@@ -22,9 +22,10 @@ export async function generateMetadata({
     where: { slug },
     include: { storefront: true },
   });
-  const locale = (
-    booth?.storefront?.publishedDocument as { locale?: Locale } | null
-  )?.locale;
+  const locale = booth?.storefront?.publishedDocument
+    ? readStorefrontDocument(booth.storefront.publishedDocument, booth.name)
+        .locale
+    : undefined;
   const strings = translate(locale, "publicReservation");
   return {
     title: strings.pageTitle,

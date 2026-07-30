@@ -1,9 +1,5 @@
 import { setLocaleAction } from "@/app/actions";
-import {
-  localeCookieName,
-  localeDisplayCodes,
-  supportedLocales,
-} from "@/lib/i18n";
+import { localeDisplayCodes, supportedLocales } from "@/lib/i18n";
 import styles from "./language-toggle.module.css";
 
 export function LanguageToggle({
@@ -38,5 +34,3 @@ export function LanguageToggle({
     </form>
   );
 }
-
-export const languageCookieName = localeCookieName;

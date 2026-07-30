@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import "@fontsource-variable/manrope/wght.css";
 import "@fontsource-variable/ibm-plex-sans/wght.css";
+import { readLocaleCookie } from "@/lib/i18n/server-locale";
 import "./globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -55,13 +56,15 @@ export const viewport: Viewport = {
   themeColor: "#f4efe3",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await readLocaleCookie();
+
   return (
-    <html lang="en" data-scroll-behavior="smooth">
+    <html lang={locale} data-scroll-behavior="smooth">
       <body>{children}</body>
     </html>
   );

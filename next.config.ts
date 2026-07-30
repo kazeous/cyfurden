@@ -8,11 +8,45 @@ const hasSentrySourceMapCredentials = Boolean(
 );
 
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
   experimental: {
     serverActions: {
       // Allows a 5 MB QR image plus the storefront form fields and multipart overhead.
       bodySizeLimit: "6mb",
     },
+  },
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: "base-uri 'self'; frame-ancestors 'none'; object-src 'none'",
+          },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), geolocation=(), microphone=()",
+          },
+          {
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
+          },
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=31536000",
+          },
+          {
+            key: "X-Content-Type-Options",
+            value: "nosniff",
+          },
+          {
+            key: "X-Frame-Options",
+            value: "DENY",
+          },
+        ],
+      },
+    ];
   },
 };
 

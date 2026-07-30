@@ -10,6 +10,7 @@ const adminActionPath = new URL(
 const orderAdminPath = new URL("../lib/order-admin.ts", import.meta.url);
 const schemaPath = new URL("../prisma/schema.prisma", import.meta.url);
 const inventoryPath = new URL("../lib/order-inventory.ts", import.meta.url);
+const publicBoothPath = new URL("../app/s/[slug]/page.tsx", import.meta.url);
 
 test("public reservations enforce stock atomically and idempotently", async () => {
   const [source, inventory] = await Promise.all([
@@ -68,4 +69,13 @@ test("stock mutations synchronize the product sold-out state", async () => {
   ]);
   assert.match(publicSource, /synchronizeProductInventoryStatus\(/);
   assert.match(adminSource, /synchronizeProductInventoryStatus\(/);
+});
+
+test("legacy reservation redirects require a valid existing booth order", async () => {
+  const source = await readFile(publicBoothPath, "utf8");
+  assert.match(source, /parseReservationCode\(order\)/);
+  assert.match(source, /boothId_code/);
+  assert.match(source, /boothId: managed\.id/);
+  assert.match(source, /if \(legacyOrder\)/);
+  assert.match(source, /reservationPath\(slug, legacyOrder\.code\)/);
 });

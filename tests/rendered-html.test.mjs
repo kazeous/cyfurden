@@ -76,7 +76,6 @@ before(async () => {
     env: {
       ...process.env,
       NODE_ENV: "production",
-      CYFURDEN_RENDER_TEST: "1",
       PORT: String(port),
     },
     stdio: ["ignore", "pipe", "pipe"],
@@ -95,9 +94,9 @@ after(() => {
   nextServer?.kill();
 });
 
-async function render(pathname = "/") {
+async function render(pathname = "/", headers = {}) {
   return fetch(`${baseUrl}${pathname}`, {
-    headers: { accept: "text/html" },
+    headers: { accept: "text/html", ...headers },
   });
 }
 
@@ -121,6 +120,40 @@ test("server-renders the Cyfurden landing page", async () => {
   assert.match(renderedContent, /href="\/sign-in"/);
   assert.doesNotMatch(renderedContent, /lantern-and-loom|Lantern &amp; Loom/i);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
+});
+
+test("server-renders the selected document language", async () => {
+  const response = await render("/", {
+    cookie: "cyfurden:locale=vi",
+  });
+
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /<html lang="vi"/i);
+});
+
+test("applies the repository-controlled production security headers", async () => {
+  const response = await render();
+
+  assert.equal(response.headers.get("x-powered-by"), null);
+  assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+  assert.equal(
+    response.headers.get("referrer-policy"),
+    "strict-origin-when-cross-origin",
+  );
+  assert.equal(
+    response.headers.get("permissions-policy"),
+    "camera=(), geolocation=(), microphone=()",
+  );
+  assert.equal(
+    response.headers.get("strict-transport-security"),
+    "max-age=31536000",
+  );
+  assert.equal(response.headers.get("x-frame-options"), "DENY");
+  assert.match(
+    response.headers.get("content-security-policy") ?? "",
+    /frame-ancestors 'none'/,
+  );
 });
 
 test("uses one bundled display and body font system", async () => {
@@ -152,20 +185,16 @@ test("uses one bundled display and body font system", async () => {
   );
 });
 
-test("does not expose the removed Lantern & Loom demo booth", async () => {
-  const response = await render("/s/lantern-and-loom");
-
-  assert.equal(response.status, 404);
-  assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
-
-  const html = await response.text();
-  const renderedContent = html.replace(/<!--\s*-->/g, "");
-
-  assert.match(renderedContent, /This page could not be found/i);
-  assert.doesNotMatch(
-    renderedContent,
-    /Moonrise Makers Market|Midnight Garden|Lantern &amp; Loom/i,
+test("does not ship a removed Lantern & Loom storefront fallback", async () => {
+  const storefrontPage = await readFile(
+    new URL("../app/s/[slug]/page.tsx", import.meta.url),
+    "utf8",
   );
+
+  assert.match(storefrontPage, /where: \{ slug \}/);
+  assert.match(storefrontPage, /notFound\(\)/);
+  assert.doesNotMatch(storefrontPage, /lantern-and-loom|Lantern & Loom/i);
+  assert.doesNotMatch(storefrontPage, /CYFURDEN_RENDER_TEST/);
 });
 
 test("keeps Oracle images wired to managed storefront content", async () => {

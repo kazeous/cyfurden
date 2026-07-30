@@ -5,6 +5,7 @@ import { ManagedStorefront } from "@/components/storefront/managed-storefront";
 import { db } from "@/lib/db";
 import { createOrderPaymentSnapshot } from "@/lib/order-rules";
 import { resolveOracleImageUrl } from "@/lib/oracle-images";
+import { parseReservationCode, reservationPath } from "@/lib/reservation-code";
 import { readBoothSocialLinks, socialPlatforms } from "@/lib/shop-settings";
 import {
   readStorefrontDocument,
@@ -33,7 +34,6 @@ async function getManagedBooth(slug: string) {
     Sentry.captureException(error, {
       tags: { "cyfurden.operation": "public_storefront.load" },
     });
-    if (process.env.CYFURDEN_RENDER_TEST === "1") return null;
     throw error;
   }
 }
@@ -86,10 +86,20 @@ export default async function PublicBoothPage({
   ) {
     notFound();
   }
-  if (order) {
-    redirect(
-      `/s/${encodeURIComponent(slug)}/reservation/${encodeURIComponent(order)}`,
-    );
+  const legacyOrderCode = parseReservationCode(order);
+  if (legacyOrderCode) {
+    const legacyOrder = await db.order.findUnique({
+      where: {
+        boothId_code: {
+          boothId: managed.id,
+          code: legacyOrderCode,
+        },
+      },
+      select: { code: true },
+    });
+    if (legacyOrder) {
+      redirect(reservationPath(slug, legacyOrder.code));
+    }
   }
   const document = readStorefrontDocument(
     managed.storefront.publishedDocument,

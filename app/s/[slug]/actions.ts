@@ -72,6 +72,15 @@ export async function createPublicOrderAction(
   _previousState: PublicOrderState,
   formData: FormData,
 ): Promise<PublicOrderState> {
+  const submittedLines = readLines(formData);
+  if (submittedLines === null) {
+    return {
+      status: "error",
+      message:
+        "The bag data could not be read. Refresh the storefront and add the items again.",
+    };
+  }
+
   const parsed = submissionSchema.safeParse({
     boothId: String(formData.get("boothId") ?? ""),
     slug: String(formData.get("slug") ?? ""),
@@ -79,7 +88,7 @@ export async function createPublicOrderAction(
     customerName: String(formData.get("customerName") ?? ""),
     customerEmail: String(formData.get("customerEmail") ?? "").trim(),
     customerNote: String(formData.get("customerNote") ?? ""),
-    lines: readLines(formData),
+    lines: submittedLines,
   });
 
   if (!parsed.success) {

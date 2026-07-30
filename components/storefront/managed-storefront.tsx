@@ -191,12 +191,10 @@ function availabilityLabel(
 }
 
 function ProductQr({
-  label,
   url,
   centerLogoUrl,
   alt,
 }: {
-  label: string;
   url: string;
   centerLogoUrl?: string;
   alt: string;
@@ -398,12 +396,13 @@ export function ManagedStorefront({
   );
 
   const updateCart = (updater: (current: CartLine[]) => CartLine[]) => {
+    if (!hydrated) return;
     setCart((current) => updater(current));
     setIdempotencyKey(createIdempotencyKey());
   };
 
   const add = (product: ProductDto) => {
-    if (!canAcceptReservations) return;
+    if (!hydrated || !canAcceptReservations) return;
     const variant = product.variants.find((item) =>
       isPurchasableVariant(item.status, item.stockQuantity),
     );
@@ -437,7 +436,12 @@ export function ManagedStorefront({
   };
 
   const addDetailToCart = () => {
-    if (!detailProduct || !selectedDetailVariant || !canAcceptReservations) {
+    if (
+      !hydrated ||
+      !detailProduct ||
+      !selectedDetailVariant ||
+      !canAcceptReservations
+    ) {
       return;
     }
     const maximum = maximumPurchasableQuantity(
@@ -693,7 +697,10 @@ export function ManagedStorefront({
                     className={styles.addButton}
                     onClick={() => add(featuredProduct)}
                     disabled={
-                      !available || !canAcceptReservations || atStockLimit
+                      !hydrated ||
+                      !available ||
+                      !canAcceptReservations ||
+                      atStockLimit
                     }
                   >
                     {!canAcceptReservations
@@ -1024,6 +1031,7 @@ export function ManagedStorefront({
                               className={styles.addButton}
                               onClick={() => add(product)}
                               disabled={
+                                !hydrated ||
                                 !available ||
                                 !canAcceptReservations ||
                                 atStockLimit
@@ -1322,6 +1330,7 @@ export function ManagedStorefront({
                     className={styles.addButton}
                     onClick={addDetailToCart}
                     disabled={
+                      !hydrated ||
                       !selectedDetailVariant ||
                       !isPurchasableVariant(
                         selectedDetailVariant.status,
@@ -1409,7 +1418,6 @@ export function ManagedStorefront({
                       rel="noreferrer"
                     >
                       <ProductQr
-                        label={social.label}
                         url={social.url}
                         centerLogoUrl={identity.logoUrl}
                         alt={t.socialQrAlt(social.label)}

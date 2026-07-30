@@ -1,5 +1,3 @@
-import type { Locale } from "./locales";
-
 export type PublicBoothStrings = {
   boothInfoEyebrow: string;
   boothInfoTitle: string;

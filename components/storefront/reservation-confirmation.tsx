@@ -12,6 +12,7 @@ import {
   type Locale,
   type PublicReservationStrings,
 } from "@/lib/i18n";
+import { formatMoney } from "@/lib/i18n/intl";
 import type { StorefrontDocument } from "@/lib/storefront-document";
 import styles from "./reservation-confirmation.module.css";
 
@@ -64,14 +65,6 @@ const initialReferenceState: CustomerTransferReferenceState = {
   message: "",
 };
 
-function formatMoney(minorUnits: string, currency: string) {
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(BigInt(minorUnits) / BigInt(100));
-}
-
 export function ReservationConfirmation({
   boothSlug,
   document,
@@ -92,7 +85,11 @@ export function ReservationConfirmation({
     initialReferenceState,
   );
   const t = translate(locale, "publicReservation");
-  const total = formatMoney(reservation.totalMinorUnits, reservation.currency);
+  const total = formatMoney(
+    reservation.totalMinorUnits,
+    reservation.currency,
+    locale,
+  );
   const statusCopy = t.statusBlocks(reservation.status);
   const paymentRequired = reservation.status === "PENDING";
   const hasBankAccount = Boolean(
@@ -354,6 +351,7 @@ export function ReservationConfirmation({
                         BigInt(item.unitPriceMinorUnits) * BigInt(item.quantity)
                       ).toString(),
                       reservation.currency,
+                      locale,
                     )}
                   </strong>
                 </li>
