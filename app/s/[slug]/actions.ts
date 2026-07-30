@@ -19,6 +19,7 @@ import {
   renderTransferReference,
 } from "@/lib/order-rules";
 import { synchronizeProductInventoryStatus } from "@/lib/product-inventory";
+import { applyQuantityPromotions } from "@/lib/quantity-promotions";
 import { readStorefrontDocument } from "@/lib/storefront-document";
 
 const lineSchema = z.object({
@@ -133,6 +134,11 @@ export async function createPublicOrderAction(
               storefront: {
                 select: { publishedDocument: true },
               },
+              promotions: {
+                where: { active: true },
+                include: { products: true },
+                orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+              },
             },
           });
           if (!booth) {
@@ -229,10 +235,48 @@ export async function createPublicOrderAction(
             ),
           );
 
-          const totalCents = pricedLines.reduce(
-            (sum, line) => sum + line.unitPriceCents * BigInt(line.quantity),
-            BigInt(0),
+          const promotionPricing = applyQuantityPromotions(
+            pricedLines.map((line) => ({
+              lineId: line.productVariantId,
+              productId: line.productId,
+              quantity: line.quantity,
+              unitPriceMinorUnits: line.unitPriceCents,
+            })),
+            booth.promotions.map((promotion) => ({
+              id: promotion.id,
+              name: promotion.name,
+              buyQuantity: promotion.buyQuantity,
+              rewardQuantity: promotion.rewardQuantity,
+              repeatable: promotion.repeatable,
+              buyProductIds: promotion.products.flatMap((product) =>
+                product.role === "BUY" ? [product.productId] : [],
+              ),
+              rewardProductIds: promotion.products.flatMap((product) =>
+                product.role === "REWARD" ? [product.productId] : [],
+              ),
+            })),
           );
+          const pricedLineMap = new Map(
+            pricedLines.map((line) => [line.productVariantId, line]),
+          );
+          const orderLines = promotionPricing.lines.flatMap((line) => {
+            const source = pricedLineMap.get(line.lineId);
+            if (!source) return [];
+            return [
+              ...(line.paidQuantity
+                ? [{ ...source, quantity: line.paidQuantity }]
+                : []),
+              ...line.allocations.map((allocation) => ({
+                ...source,
+                unitPriceCents: BigInt(0),
+                originalUnitPriceCents: source.unitPriceCents,
+                promotionNameSnapshot: allocation.promotionName,
+                quantity: allocation.quantity,
+              })),
+            ];
+          });
+          const subtotalCents = promotionPricing.subtotalMinorUnits;
+          const totalCents = promotionPricing.totalMinorUnits;
           const code = `CYF-${randomBytes(10).toString("hex").toUpperCase()}`;
           const itemSummary =
             pricedLines.length === 1
@@ -255,14 +299,14 @@ export async function createPublicOrderAction(
               customerName: parsed.data.customerName,
               customerEmail: parsed.data.customerEmail,
               customerNote: parsed.data.customerNote || null,
-              subtotalCents: totalCents,
+              subtotalCents,
               totalCents,
               currency: booth.currency,
               transferReference,
               idempotencyKey,
               expiresAt: new Date(Date.now() + ORDER_RESERVATION_TTL_MS),
               paymentSnapshot,
-              items: { create: pricedLines },
+              items: { create: orderLines },
             },
             select: { code: true },
           });

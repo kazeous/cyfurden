@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireBoothSection } from "@/lib/authorization";
 import { db } from "@/lib/db";
+import { parseBilingual } from "@/lib/i18n";
 import { expireStaleOrders } from "@/lib/order-inventory";
 import { evaluateBoothChecklist } from "@/lib/orders-checklist";
 import { hoChiMinhTodayWindow, parseTodayQuery } from "@/lib/orders-today";
@@ -589,6 +590,8 @@ function OrderDetails({
       titleSnapshot: string;
       variantSnapshot: string | null;
       unitPriceCents: bigint;
+      originalUnitPriceCents: bigint | null;
+      promotionNameSnapshot: string | null;
       quantity: number;
     }>;
   };
@@ -605,6 +608,7 @@ function OrderDetails({
           {item.titleSnapshot}
           {item.variantSnapshot ? ` · ${item.variantSnapshot}` : ""} ×
           {item.quantity}
+          {item.promotionNameSnapshot ? " · promotion reward" : ""}
         </span>
       ))}
       {order.items.length > visibleItems.length ? (
@@ -677,6 +681,18 @@ function OrderDetails({
                       {item.variantSnapshot ?? "Standard"} · {item.quantity} ×{" "}
                       {formatMoney(item.unitPriceCents, order.currency)}
                     </span>
+                    {item.promotionNameSnapshot ? (
+                      <span className={styles.promotionReward}>
+                        Promotion reward ·{" "}
+                        {parseBilingual(item.promotionNameSnapshot, "en")}
+                        {item.originalUnitPriceCents !== null
+                          ? ` · regular price ${formatMoney(
+                              item.originalUnitPriceCents,
+                              order.currency,
+                            )}`
+                          : ""}
+                      </span>
+                    ) : null}
                   </div>
                   <strong>
                     {formatMoney(
@@ -701,6 +717,18 @@ function OrderDetails({
               <dt>Subtotal</dt>
               <dd>{formatMoney(order.subtotalCents, order.currency)}</dd>
             </div>
+            {order.subtotalCents > order.totalCents ? (
+              <div className={styles.promotionSavings}>
+                <dt>Promotion savings</dt>
+                <dd>
+                  −
+                  {formatMoney(
+                    order.subtotalCents - order.totalCents,
+                    order.currency,
+                  )}
+                </dd>
+              </div>
+            ) : null}
             <div>
               <dt>Order total</dt>
               <dd>{formatMoney(order.totalCents, order.currency)}</dd>

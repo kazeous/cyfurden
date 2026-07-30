@@ -364,9 +364,14 @@
 }
 
 .bankDetails .total,
-.summary dl > div:first-child dd {
+.summary .summaryTotal dd {
   font-family: var(--font-display);
   font-size: var(--text-lg);
+}
+
+.summary .promotionSavings dt,
+.summary .promotionSavings dd {
+  color: var(--color-success-ink);
 }
 
 .ownerNote,
@@ -494,8 +499,17 @@
 }
 
 .itemSummary span {
+  display: grid;
+  gap: var(--space-3xs);
   overflow-wrap: anywhere;
   min-width: 0;
+}
+
+.itemSummary small {
+  color: var(--color-success-ink);
+  font-size: var(--text-xs);
+  font-weight: 750;
+  line-height: 1.4;
 }
 
 .itemSummary strong {

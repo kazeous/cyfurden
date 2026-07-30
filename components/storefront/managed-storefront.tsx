@@ -19,6 +19,11 @@ import {
   removeLine as removeCartLine,
   type StorefrontCartLine,
 } from "@/lib/storefront-cart";
+import {
+  applyQuantityPromotions,
+  type PromotionProgress,
+  type QuantityPromotionRule,
+} from "@/lib/quantity-promotions";
 import { parseBilingual, translate, type Locale } from "@/lib/i18n";
 import {
   resolveStorefrontFeaturedProductIds,
@@ -255,6 +260,7 @@ export function ManagedStorefront({
   identity,
   document,
   products,
+  promotions = [],
   canAcceptReservations,
   locale = "en",
 }: {
@@ -265,6 +271,7 @@ export function ManagedStorefront({
   };
   document: StorefrontDocument;
   products: ProductDto[];
+  promotions?: QuantityPromotionRule[];
   canAcceptReservations: boolean;
   locale?: Locale;
 }) {
@@ -334,6 +341,14 @@ export function ManagedStorefront({
         })),
       })),
     [b, products],
+  );
+  const localizedPromotions = useMemo(
+    () =>
+      promotions.map((promotion) => ({
+        ...promotion,
+        name: b(promotion.name),
+      })),
+    [b, promotions],
   );
 
   useEffect(() => {
@@ -444,13 +459,55 @@ export function ManagedStorefront({
     return product && variant ? [{ line, product, variant }] : [];
   });
   const cartCount = cart.reduce((sum, line) => sum + line.quantity, 0);
-  const totalCents = cartDetails.reduce(
-    (sum, detail) =>
-      sum +
-      BigInt(detail.variant.priceCents ?? detail.product.priceCents) *
-        BigInt(detail.line.quantity),
-    BigInt(0),
+  const promotionPricing = applyQuantityPromotions(
+    cartDetails.map(({ line, product, variant }) => ({
+      lineId: variant.id,
+      productId: product.id,
+      quantity: line.quantity,
+      unitPriceMinorUnits: variant.priceCents ?? product.priceCents,
+    })),
+    localizedPromotions,
   );
+  const promotionLineMap = new Map(
+    promotionPricing.lines.map((line) => [line.lineId, line]),
+  );
+  const subtotalCents = promotionPricing.subtotalMinorUnits;
+  const promotionSavingsCents = promotionPricing.discountMinorUnits;
+  const totalCents = promotionPricing.totalMinorUnits;
+  const promotionMessage = (progress: PromotionProgress) => {
+    if (progress.unclaimedRewardQuantity > 0) {
+      const rewardReady = t.promotionRewardReady(
+        progress.promotionName,
+        progress.unclaimedRewardQuantity,
+      );
+      return progress.appliedRewardQuantity > 0
+        ? `${t.promotionApplied(
+            progress.promotionName,
+            progress.appliedRewardQuantity,
+            money(progress.savingsMinorUnits, locale),
+          )} ${rewardReady}`
+        : rewardReady;
+    }
+    if (progress.appliedRewardQuantity > 0) {
+      const savings = money(progress.savingsMinorUnits, locale);
+      return progress.repeatable
+        ? t.promotionAppliedRepeatable(
+            progress.promotionName,
+            progress.appliedRewardQuantity,
+            savings,
+            progress.remainingBuyQuantity,
+          )
+        : t.promotionApplied(
+            progress.promotionName,
+            progress.appliedRewardQuantity,
+            savings,
+          );
+    }
+    return t.promotionProgress(
+      progress.promotionName,
+      progress.remainingBuyQuantity,
+    );
+  };
 
   const updateCart = (updater: (current: CartLine[]) => CartLine[]) => {
     if (!hydrated) return;
@@ -1168,6 +1225,18 @@ export function ManagedStorefront({
                 ? t.cartReadyForReservation(money(totalCents, locale))
                 : t.cartEmptyHint}
             </p>
+            {cartCount && promotionPricing.progress.length ? (
+              <ul
+                className={styles.promotionNudges}
+                aria-label={t.cartPromotionSavingsLabel}
+              >
+                {promotionPricing.progress.map((progress) => (
+                  <li key={progress.promotionId}>
+                    {promotionMessage(progress)}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
             <button
               type="button"
               className={styles.addButton}
@@ -1585,75 +1654,119 @@ export function ManagedStorefront({
             {cartDetails.length ? (
               <>
                 <div className={styles.cartLines}>
-                  {cartDetails.map(({ line, product, variant }) => (
-                    <div className={styles.cartLine} key={variant.id}>
-                      <div>
-                        <strong>{product.name}</strong>
-                        <small>{variant.label}</small>
-                        {variant.stockQuantity !== null ? (
-                          <small>
-                            {t.cartLineAvailable(variant.stockQuantity)}
-                          </small>
-                        ) : null}
-                      </div>
-                      <div className={styles.quantity}>
-                        <button
-                          ref={(node) => {
-                            if (node) {
-                              cartLineControlRefs.current.set(variant.id, node);
-                            } else {
-                              cartLineControlRefs.current.delete(variant.id);
+                  {cartDetails.map(({ line, product, variant }) => {
+                    const pricedLine = promotionLineMap.get(variant.id);
+                    const lineSubtotal =
+                      pricedLine?.subtotalMinorUnits ??
+                      BigInt(variant.priceCents ?? product.priceCents) *
+                        BigInt(line.quantity);
+                    const lineTotal =
+                      pricedLine?.totalMinorUnits ?? lineSubtotal;
+                    return (
+                      <div className={styles.cartLine} key={variant.id}>
+                        <div>
+                          <strong>{product.name}</strong>
+                          <small>{variant.label}</small>
+                          {pricedLine?.freeQuantity ? (
+                            <small className={styles.promotionLineBadge}>
+                              {t.promotionFreeUnits(pricedLine.freeQuantity)}
+                            </small>
+                          ) : null}
+                          {variant.stockQuantity !== null ? (
+                            <small>
+                              {t.cartLineAvailable(variant.stockQuantity)}
+                            </small>
+                          ) : null}
+                        </div>
+                        <div className={styles.quantity}>
+                          <button
+                            ref={(node) => {
+                              if (node) {
+                                cartLineControlRefs.current.set(
+                                  variant.id,
+                                  node,
+                                );
+                              } else {
+                                cartLineControlRefs.current.delete(variant.id);
+                              }
+                            }}
+                            type="button"
+                            onClick={() => adjust(variant.id, -1)}
+                            aria-label={t.cartLineRemoveOne(product.name)}
+                            disabled={orderPending}
+                          >
+                            −
+                          </button>
+                          <span>{line.quantity}</span>
+                          <button
+                            type="button"
+                            onClick={() => adjust(variant.id, 1)}
+                            aria-label={t.cartLineAddOne(product.name)}
+                            disabled={
+                              orderPending ||
+                              line.quantity >=
+                                maximumPurchasableQuantity(
+                                  variant.stockQuantity,
+                                )
                             }
-                          }}
+                          >
+                            +
+                          </button>
+                        </div>
+                        <span className={styles.cartLinePrice}>
+                          {lineTotal < lineSubtotal ? (
+                            <del>{money(lineSubtotal, locale)}</del>
+                          ) : null}
+                          <strong>{money(lineTotal, locale)}</strong>
+                        </span>
+                        <button
                           type="button"
-                          onClick={() => adjust(variant.id, -1)}
-                          aria-label={t.cartLineRemoveOne(product.name)}
+                          className={styles.cartLineRemove}
+                          onClick={() =>
+                            removeLine(variant.id, product.name, variant.label)
+                          }
+                          aria-label={t.cartLineRemove(
+                            product.name,
+                            variant.label,
+                          )}
                           disabled={orderPending}
                         >
-                          −
-                        </button>
-                        <span>{line.quantity}</span>
-                        <button
-                          type="button"
-                          onClick={() => adjust(variant.id, 1)}
-                          aria-label={t.cartLineAddOne(product.name)}
-                          disabled={
-                            orderPending ||
-                            line.quantity >=
-                              maximumPurchasableQuantity(variant.stockQuantity)
-                          }
-                        >
-                          +
+                          <span aria-hidden="true">×</span>
                         </button>
                       </div>
-                      <strong>
-                        {money(
-                          BigInt(variant.priceCents ?? product.priceCents) *
-                            BigInt(line.quantity),
-                          locale,
-                        )}
-                      </strong>
-                      <button
-                        type="button"
-                        className={styles.cartLineRemove}
-                        onClick={() =>
-                          removeLine(variant.id, product.name, variant.label)
-                        }
-                        aria-label={t.cartLineRemove(
-                          product.name,
-                          variant.label,
-                        )}
-                        disabled={orderPending}
-                      >
-                        <span aria-hidden="true">×</span>
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
-                <div className={styles.total}>
-                  <span>{t.cartTotalLabel}</span>
-                  <strong>{money(totalCents, locale)}</strong>
-                </div>
+                {promotionPricing.progress.length ? (
+                  <ul
+                    className={styles.promotionNudges}
+                    aria-label={t.cartPromotionSavingsLabel}
+                  >
+                    {promotionPricing.progress.map((progress) => (
+                      <li key={progress.promotionId}>
+                        {promotionMessage(progress)}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                <dl className={styles.total}>
+                  {promotionSavingsCents > 0 ? (
+                    <>
+                      <div>
+                        <dt>{t.cartSubtotalLabel}</dt>
+                        <dd>{money(subtotalCents, locale)}</dd>
+                      </div>
+                      <div className={styles.promotionSavings}>
+                        <dt>{t.cartPromotionSavingsLabel}</dt>
+                        <dd>−{money(promotionSavingsCents, locale)}</dd>
+                      </div>
+                    </>
+                  ) : null}
+                  <div>
+                    <dt>{t.cartTotalLabel}</dt>
+                    <dd>{money(totalCents, locale)}</dd>
+                  </div>
+                </dl>
                 <form
                   action={orderAction}
                   className={styles.orderForm}

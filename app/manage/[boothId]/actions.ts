@@ -23,6 +23,7 @@ import {
 import { isBoothProductImageObjectKey } from "@/lib/oracle-presign-contract";
 import { PRODUCT_IMAGE_MAX_COUNT } from "@/lib/payment-qr";
 import { synchronizeProductInventoryStatus } from "@/lib/product-inventory";
+import { MAX_PROMOTION_QUANTITY } from "@/lib/quantity-promotions";
 import {
   acceptTeamInvitation,
   createTeamInvitation,
@@ -126,6 +127,35 @@ const productImageManifestSchema = z
     ]),
   )
   .max(PRODUCT_IMAGE_MAX_COUNT);
+
+const promotionSchema = z
+  .object({
+    promotionId: z.string().trim().min(1).max(100).nullable(),
+    name: z.string().trim().min(2).max(160),
+    buyQuantity: z.number().int().min(1).max(MAX_PROMOTION_QUANTITY),
+    rewardQuantity: z.number().int().min(1).max(MAX_PROMOTION_QUANTITY),
+    active: z.boolean(),
+    repeatable: z.boolean(),
+    buyProductIds: z.array(z.string().trim().min(1).max(100)).max(100),
+    rewardProductIds: z.array(z.string().trim().min(1).max(100)).max(100),
+  })
+  .superRefine((promotion, context) => {
+    if (!promotion.active) return;
+    if (!promotion.buyProductIds.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["buyProductIds"],
+        message: "Choose at least one qualifying product before going live.",
+      });
+    }
+    if (!promotion.rewardProductIds.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["rewardProductIds"],
+        message: "Choose at least one reward product before going live.",
+      });
+    }
+  });
 
 export type StorefrontSaveState = { error: string | null };
 
@@ -869,31 +899,146 @@ export async function hideProductAction(formData: FormData) {
   redirect(`/manage/${boothId}/products`);
 }
 
-export async function savePromotionAction(formData: FormData) {
+export type PromotionSaveState = { error: string | null };
+
+export async function savePromotionAction(
+  _previousState: PromotionSaveState,
+  formData: FormData,
+): Promise<PromotionSaveState> {
   const boothId = requiredText(formData, "boothId");
-  await requireBoothRole(boothId, editorRoles);
-  // Wired by Phase 9 (G-3 promotions end-to-end). Kept reachable from
-  // the action surface even though no UI invokes it today.
-  const promotionId = optionalText(formData, "promotionId");
-  const data = {
-    name: requiredText(formData, "name") || "Quantity promotion",
-    buyQuantity: Math.max(1, parseInteger(formData.get("buyQuantity"), 3)),
-    rewardQuantity: Math.max(
-      1,
-      parseInteger(formData.get("rewardQuantity"), 1),
-    ),
+  const { session, booth } = await requireBoothRole(boothId, editorRoles);
+  const parsed = promotionSchema.safeParse({
+    promotionId: optionalText(formData, "promotionId"),
+    name: requiredText(formData, "name"),
+    buyQuantity: parseInteger(formData.get("buyQuantity"), 0),
+    rewardQuantity: parseInteger(formData.get("rewardQuantity"), 0),
     active: booleanField(formData, "active"),
     repeatable: booleanField(formData, "repeatable"),
-  };
-  if (promotionId) {
-    await db.quantityPromotion.updateMany({
-      where: { id: promotionId, boothId },
-      data,
-    });
-  } else {
-    await db.quantityPromotion.create({ data: { boothId, ...data } });
+    buyProductIds: [...new Set(formData.getAll("buyProductIds").map(String))],
+    rewardProductIds: [
+      ...new Set(formData.getAll("rewardProductIds").map(String)),
+    ],
+  });
+  if (!parsed.success) {
+    return {
+      error:
+        parsed.error.issues[0]?.message ??
+        "Check the promotion fields and try again.",
+    };
   }
+
+  const selectedProductIds = [
+    ...new Set([...parsed.data.buyProductIds, ...parsed.data.rewardProductIds]),
+  ];
+
+  try {
+    await db.$transaction(async (transaction) => {
+      const [promotion, matchingProductCount] = await Promise.all([
+        parsed.data.promotionId
+          ? transaction.quantityPromotion.findFirst({
+              where: { id: parsed.data.promotionId, boothId },
+              select: { id: true },
+            })
+          : transaction.quantityPromotion.findFirst({
+              where: { boothId },
+              orderBy: { createdAt: "asc" },
+              select: { id: true },
+            }),
+        selectedProductIds.length
+          ? transaction.product.count({
+              where: { boothId, id: { in: selectedProductIds } },
+            })
+          : Promise.resolve(0),
+      ]);
+
+      if (matchingProductCount !== selectedProductIds.length) {
+        throw new Error("PROMOTION_PRODUCT_SCOPE");
+      }
+      if (parsed.data.promotionId && !promotion) {
+        throw new Error("PROMOTION_NOT_FOUND");
+      }
+
+      const savedPromotion = promotion
+        ? await transaction.quantityPromotion.update({
+            where: { id: promotion.id },
+            data: {
+              name: parsed.data.name,
+              buyQuantity: parsed.data.buyQuantity,
+              rewardQuantity: parsed.data.rewardQuantity,
+              active: parsed.data.active,
+              repeatable: parsed.data.repeatable,
+            },
+            select: { id: true },
+          })
+        : await transaction.quantityPromotion.create({
+            data: {
+              boothId,
+              name: parsed.data.name,
+              buyQuantity: parsed.data.buyQuantity,
+              rewardQuantity: parsed.data.rewardQuantity,
+              active: parsed.data.active,
+              repeatable: parsed.data.repeatable,
+            },
+            select: { id: true },
+          });
+
+      await transaction.promotionProduct.deleteMany({
+        where: { promotionId: savedPromotion.id },
+      });
+      const links = [
+        ...parsed.data.buyProductIds.map((productId) => ({
+          promotionId: savedPromotion.id,
+          productId,
+          role: "BUY" as const,
+        })),
+        ...parsed.data.rewardProductIds.map((productId) => ({
+          promotionId: savedPromotion.id,
+          productId,
+          role: "REWARD" as const,
+        })),
+      ];
+      if (links.length) {
+        await transaction.promotionProduct.createMany({ data: links });
+      }
+      await transaction.auditLog.create({
+        data: {
+          boothId,
+          actorUserId: session.user.id,
+          action: "promotion.saved",
+          entityType: "QuantityPromotion",
+          entityId: savedPromotion.id,
+          metadata: {
+            active: parsed.data.active,
+            repeatable: parsed.data.repeatable,
+            buyQuantity: parsed.data.buyQuantity,
+            rewardQuantity: parsed.data.rewardQuantity,
+            buyProductCount: parsed.data.buyProductIds.length,
+            rewardProductCount: parsed.data.rewardProductIds.length,
+          },
+        },
+      });
+    });
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message === "PROMOTION_PRODUCT_SCOPE" ||
+        error.message === "PROMOTION_NOT_FOUND")
+    ) {
+      return {
+        error:
+          "A selected product or promotion no longer belongs to this booth. Refresh and try again.",
+      };
+    }
+    Sentry.captureException(error, {
+      tags: { "cyfurden.operation": "promotion.save" },
+    });
+    console.error("Failed to save quantity promotion", error);
+    return { error: "We could not save the promotion. Try again." };
+  }
+
   revalidatePath(`/manage/${boothId}/products`);
+  revalidatePath(`/s/${booth.slug}`);
+  redirect(`/manage/${boothId}/products?promotionSaved=1`);
 }
 
 export type OrderStatusActionState = {

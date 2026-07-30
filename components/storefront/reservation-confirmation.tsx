@@ -32,6 +32,7 @@ type ReservationDetails = {
   code: string;
   status: "PENDING" | "CONFIRMED" | "CANCELLED" | "EXPIRED" | "FULFILLED";
   currency: string;
+  subtotalMinorUnits: string;
   totalMinorUnits: string;
   transferReference: string;
   customerTransferReference: string | null;
@@ -42,6 +43,8 @@ type ReservationDetails = {
     variant: string | null;
     quantity: number;
     unitPriceMinorUnits: string;
+    originalUnitPriceMinorUnits: string | null;
+    promotionName: string | null;
   }>;
 };
 
@@ -92,6 +95,14 @@ export function ReservationConfirmation({
     reservation.currency,
     locale,
   );
+  const subtotal = formatMoney(
+    reservation.subtotalMinorUnits,
+    reservation.currency,
+    locale,
+  );
+  const promotionSavings =
+    BigInt(reservation.subtotalMinorUnits) -
+    BigInt(reservation.totalMinorUnits);
   const statusCopy = t.statusBlocks(reservation.status);
   const paymentRequired = reservation.status === "PENDING";
   const hasBankAccount = Boolean(
@@ -327,7 +338,26 @@ export function ReservationConfirmation({
             <p className={styles.eyebrow}>{t.summaryEyebrow}</p>
             <h2 id="summary-heading">{t.summaryHeading}</h2>
             <dl>
-              <div>
+              {promotionSavings > 0 ? (
+                <>
+                  <div>
+                    <dt>{t.summarySubtotal}</dt>
+                    <dd>{subtotal}</dd>
+                  </div>
+                  <div className={styles.promotionSavings}>
+                    <dt>{t.summaryPromotionSavings}</dt>
+                    <dd>
+                      −
+                      {formatMoney(
+                        promotionSavings,
+                        reservation.currency,
+                        locale,
+                      )}
+                    </dd>
+                  </div>
+                </>
+              ) : null}
+              <div className={styles.summaryTotal}>
                 <dt>
                   {paymentRequired
                     ? t.summaryAmountDue
@@ -346,6 +376,20 @@ export function ReservationConfirmation({
                   <span>
                     {b(item.title)}
                     {item.variant ? ` · ${b(item.variant)}` : ""}
+                    {item.promotionName ? (
+                      <small>
+                        {t.promotionRewardLabel(b(item.promotionName))}
+                        {item.originalUnitPriceMinorUnits
+                          ? ` · ${t.promotionOriginalPriceLabel(
+                              formatMoney(
+                                item.originalUnitPriceMinorUnits,
+                                reservation.currency,
+                                locale,
+                              ),
+                            )}`
+                          : ""}
+                      </small>
+                    ) : null}
                   </span>
                   <strong>
                     ×{item.quantity} ·{" "}

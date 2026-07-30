@@ -76,6 +76,18 @@ export type PublicBoothStrings = {
   cartLineAddOne: (name: string) => string;
   cartLineAvailable: (n: number) => string;
   cartLineUnits: (n: number) => string;
+  promotionProgress: (name: string, remaining: number) => string;
+  promotionRewardReady: (name: string, quantity: number) => string;
+  promotionApplied: (name: string, quantity: number, savings: string) => string;
+  promotionAppliedRepeatable: (
+    name: string,
+    quantity: number,
+    savings: string,
+    remaining: number,
+  ) => string;
+  promotionFreeUnits: (quantity: number) => string;
+  cartSubtotalLabel: string;
+  cartPromotionSavingsLabel: string;
   cartTotalLabel: string;
   cartTotalUnits: string;
   cartClear: string;
@@ -192,8 +204,12 @@ export type PublicReservationStrings = {
   summaryHeading: string;
   summaryAmountDue: string;
   summaryReservationTotal: string;
+  summarySubtotal: string;
+  summaryPromotionSavings: string;
   summaryStatusLabel: string;
   itemsAriaLabel: string;
+  promotionRewardLabel: (name: string) => string;
+  promotionOriginalPriceLabel: (price: string) => string;
   summaryFooter: string;
 };
 

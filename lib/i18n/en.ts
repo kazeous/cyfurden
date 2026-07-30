@@ -87,6 +87,18 @@ export const enCatalogue: Catalogue = {
     cartLineAddOne: (name) => `Add one ${name}`,
     cartLineAvailable: (n) => `${n} available`,
     cartLineUnits: (n) => `${n} ${n === 1 ? "unit" : "units"} requested`,
+    promotionProgress: (name, remaining) =>
+      `${name}: add ${remaining} more qualifying ${remaining === 1 ? "item" : "items"} to unlock the reward.`,
+    promotionRewardReady: (name, quantity) =>
+      `${name} unlocked — add ${quantity} eligible reward ${quantity === 1 ? "item" : "items"}.`,
+    promotionApplied: (name, quantity, savings) =>
+      `${name}: ${quantity} ${quantity === 1 ? "reward is" : "rewards are"} free. You save ${savings}.`,
+    promotionAppliedRepeatable: (name, quantity, savings, remaining) =>
+      `${name}: ${quantity} ${quantity === 1 ? "reward is" : "rewards are"} free, saving ${savings}. Add ${remaining} more qualifying ${remaining === 1 ? "item" : "items"} toward the next reward.`,
+    promotionFreeUnits: (quantity) =>
+      `${quantity} ${quantity === 1 ? "unit" : "units"} free with offer`,
+    cartSubtotalLabel: "Subtotal",
+    cartPromotionSavingsLabel: "Promotion savings",
     cartTotalLabel: "Total",
     cartTotalUnits: "units requested",
     cartClear: "Clear bag",
@@ -257,8 +269,12 @@ export const enCatalogue: Catalogue = {
     summaryHeading: "Reservation details",
     summaryAmountDue: "Amount to transfer",
     summaryReservationTotal: "Reservation total",
+    summarySubtotal: "Subtotal before promotion",
+    summaryPromotionSavings: "Promotion savings",
     summaryStatusLabel: "Status",
     itemsAriaLabel: "Reservation items",
+    promotionRewardLabel: (name) => `Promotion reward · ${name}`,
+    promotionOriginalPriceLabel: (price) => `Regular price ${price}`,
     summaryFooter: "No automatic verification — staff confirms manually.",
   },
   publicLanding: {

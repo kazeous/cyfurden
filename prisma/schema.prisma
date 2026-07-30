@@ -379,18 +379,20 @@ model Order {
 }
 
 model OrderItem {
-  id               String          @id @default(cuid())
-  orderId          String
-  productId        String?
-  productVariantId String?
-  titleSnapshot    String
-  variantSnapshot  String?
-  unitPriceCents   BigInt
-  quantity         Int
-  inventoryDebited Boolean         @default(false)
-  order            Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product          Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
-  productVariant   ProductVariant? @relation(fields: [productVariantId], references: [id], onDelete: SetNull)
+  id                     String          @id @default(cuid())
+  orderId                String
+  productId              String?
+  productVariantId       String?
+  titleSnapshot          String
+  variantSnapshot        String?
+  unitPriceCents         BigInt
+  originalUnitPriceCents BigInt?
+  promotionNameSnapshot  String?
+  quantity               Int
+  inventoryDebited       Boolean         @default(false)
+  order                  Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product                Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productVariant         ProductVariant? @relation(fields: [productVariantId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
 }

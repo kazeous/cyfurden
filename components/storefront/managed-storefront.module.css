@@ -726,6 +726,25 @@
   line-height: 1.5;
 }
 
+.promotionNudges {
+  display: grid;
+  gap: 7px;
+  padding: 0;
+  margin: 0 0 14px;
+  list-style: none;
+}
+
+.promotionNudges li {
+  padding: 10px 12px;
+  border: 1px solid var(--color-success-line);
+  border-radius: 10px;
+  color: var(--color-success-ink);
+  background: var(--color-success-soft);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
 .cartSummary small {
   margin-top: 12px;
   color: #778398;
@@ -1412,7 +1431,7 @@
   .cartLine .quantity {
     grid-area: qty;
   }
-  .cartLine > strong {
+  .cartLine .cartLinePrice {
     grid-area: total;
     justify-self: end;
   }
@@ -1429,6 +1448,25 @@
   margin-top: 3px;
   color: #6d7a8f;
 }
+.cartLine .promotionLineBadge {
+  width: fit-content;
+  padding: 3px 7px;
+  border-radius: 999px;
+  color: var(--color-success-ink);
+  background: var(--color-success-soft);
+  font-size: 10px;
+  font-weight: 850;
+}
+.cartLinePrice {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  white-space: nowrap;
+}
+.cartLinePrice del {
+  color: #7b8798;
+  font-size: 11px;
+}
 .quantity {
   gap: 8px;
 }
@@ -1442,13 +1480,33 @@
   background: #f1eee8;
 }
 .total {
-  justify-content: space-between;
+  display: grid;
+  gap: 7px;
   padding: 18px 0;
+  margin: 0;
+  border-top: 1px solid #ebe5db;
   font-size: 16px;
 }
-.total strong {
+.total > div {
+  display: flex;
+  gap: 16px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.total dt,
+.total dd {
+  margin: 0;
+}
+.total dd {
+  font-weight: 800;
+}
+.total > div:last-child dd {
   font-family: var(--font-display);
   font-size: 24px;
+}
+.total .promotionSavings {
+  color: var(--color-success-ink);
+  font-size: 13px;
 }
 .orderForm {
   display: grid;

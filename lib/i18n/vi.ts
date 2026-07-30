@@ -89,6 +89,18 @@ export const viCatalogue: Catalogue = {
     cartLineAddOne: (name) => `Thêm một ${name}`,
     cartLineAvailable: (n) => `Còn ${n}`,
     cartLineUnits: (n) => `${n} sản phẩm đã chọn`,
+    promotionProgress: (name, remaining) =>
+      `${name}: thêm ${remaining} sản phẩm đủ điều kiện để mở khoá quà tặng.`,
+    promotionRewardReady: (name, quantity) =>
+      `${name} đã mở khoá — thêm ${quantity} sản phẩm quà tặng hợp lệ.`,
+    promotionApplied: (name, quantity, savings) =>
+      `${name}: miễn phí ${quantity} sản phẩm quà tặng. Bạn tiết kiệm ${savings}.`,
+    promotionAppliedRepeatable: (name, quantity, savings, remaining) =>
+      `${name}: miễn phí ${quantity} sản phẩm quà tặng, tiết kiệm ${savings}. Thêm ${remaining} sản phẩm đủ điều kiện cho lượt quà tiếp theo.`,
+    promotionFreeUnits: (quantity) =>
+      `${quantity} sản phẩm miễn phí theo ưu đãi`,
+    cartSubtotalLabel: "Tạm tính",
+    cartPromotionSavingsLabel: "Tiết kiệm từ ưu đãi",
     cartTotalLabel: "Tổng cộng",
     cartTotalUnits: "sản phẩm đã chọn",
     cartClear: "Xoá giỏ",
@@ -253,8 +265,12 @@ export const viCatalogue: Catalogue = {
     summaryHeading: "Chi tiết đặt trước",
     summaryAmountDue: "Số tiền cần chuyển",
     summaryReservationTotal: "Tổng đơn đặt trước",
+    summarySubtotal: "Tạm tính trước ưu đãi",
+    summaryPromotionSavings: "Tiết kiệm từ ưu đãi",
     summaryStatusLabel: "Trạng thái",
     itemsAriaLabel: "Danh sách món đã đặt",
+    promotionRewardLabel: (name) => `Quà tặng ưu đãi · ${name}`,
+    promotionOriginalPriceLabel: (price) => `Giá thường ${price}`,
     summaryFooter: "Không có xác minh tự động — booth sẽ xác nhận thủ công.",
   },
   publicLanding: {

@@ -478,9 +478,19 @@
 }
 
 .orderLines li span {
+  display: block;
   margin-top: 2px;
   color: var(--orders-muted);
   font-size: 0.74rem;
+}
+
+.orderLines li .promotionReward {
+  width: fit-content;
+  padding: 3px 7px;
+  border-radius: 999px;
+  color: var(--color-success-ink);
+  background: var(--color-success-soft);
+  font-weight: 800;
 }
 
 .orderLines li > strong {
@@ -512,6 +522,11 @@
 .orderTotals dd {
   margin: 0;
   font-weight: 800;
+}
+
+.orderTotals .promotionSavings dt,
+.orderTotals .promotionSavings dd {
+  color: var(--color-success-ink);
 }
 
 .numericCell {

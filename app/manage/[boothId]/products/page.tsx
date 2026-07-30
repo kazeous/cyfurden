@@ -6,6 +6,7 @@ import { resolveOracleImageUrl } from "@/lib/oracle-images";
 import { db } from "@/lib/db";
 import { productAttentionWhere } from "@/lib/product-inventory";
 import { ProductForm, type ProductEditorValue } from "./product-form";
+import { PromotionEditor } from "./promotion-editor";
 import styles from "./products.module.css";
 
 const productStatuses = ["DRAFT", "LIVE", "SOLD_OUT", "HIDDEN"] as const;
@@ -136,6 +137,7 @@ export default async function ProductsPage({
     status?: string;
     new?: string;
     saved?: string;
+    promotionSaved?: string;
   }>;
 }) {
   const { boothId } = await params;
@@ -176,7 +178,13 @@ export default async function ProductsPage({
     },
     orderBy: [{ status: "asc" }, { updatedAt: "desc" }],
   });
-  const [counts, attentionCount, requestedProduct] = await Promise.all([
+  const [
+    counts,
+    attentionCount,
+    requestedProduct,
+    promotion,
+    promotionProducts,
+  ] = await Promise.all([
     db.product.groupBy({
       by: ["status"],
       where: { boothId },
@@ -192,6 +200,16 @@ export default async function ProductsPage({
           },
         })
       : Promise.resolve(null),
+    db.quantityPromotion.findFirst({
+      where: { boothId },
+      include: { products: true },
+      orderBy: { createdAt: "asc" },
+    }),
+    db.product.findMany({
+      where: { boothId },
+      select: { id: true, name: true, sku: true, status: true },
+      orderBy: [{ status: "asc" }, { name: "asc" }],
+    }),
   ]);
   const selectedFromResults = filters.product
     ? (products.find((product) => product.id === filters.product) ?? null)
@@ -242,12 +260,39 @@ export default async function ProductsPage({
           and the booth has been published.
         </p>
       ) : null}
+      {filters.promotionSaved ? (
+        <p className={styles.notice} role="status">
+          Quantity promotion saved. Active offers now update the public cart and
+          new reservation totals.
+        </p>
+      ) : null}
       {!canEdit ? (
         <p className={styles.notice} role="status">
           You have read-only access. Ask an owner or admin to change catalogue
           data.
         </p>
       ) : null}
+
+      <PromotionEditor
+        boothId={boothId}
+        products={promotionProducts}
+        promotion={{
+          id: promotion?.id ?? null,
+          name: promotion?.name ?? "Buy 3, get 1",
+          buyQuantity: promotion?.buyQuantity ?? 3,
+          rewardQuantity: promotion?.rewardQuantity ?? 1,
+          active: promotion?.active ?? false,
+          repeatable: promotion?.repeatable ?? true,
+          buyProductIds:
+            promotion?.products.flatMap((product) =>
+              product.role === "BUY" ? [product.productId] : [],
+            ) ?? [],
+          rewardProductIds:
+            promotion?.products.flatMap((product) =>
+              product.role === "REWARD" ? [product.productId] : [],
+            ) ?? [],
+        }}
+      />
 
       <section
         className={styles.indexPanel}

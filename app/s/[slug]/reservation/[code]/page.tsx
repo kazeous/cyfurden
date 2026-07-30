@@ -94,6 +94,7 @@ export default async function ReservationPage({
           code: order.code,
           status: order.status,
           currency: order.currency,
+          subtotalMinorUnits: order.subtotalCents.toString(),
           totalMinorUnits: order.totalCents.toString(),
           transferReference: order.transferReference,
           customerTransferReference: order.customerTransferReference,
@@ -104,6 +105,9 @@ export default async function ReservationPage({
             variant: item.variantSnapshot,
             quantity: item.quantity,
             unitPriceMinorUnits: item.unitPriceCents.toString(),
+            originalUnitPriceMinorUnits:
+              item.originalUnitPriceCents?.toString() ?? null,
+            promotionName: item.promotionNameSnapshot,
           })),
         }}
         payment={

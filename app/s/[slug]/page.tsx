@@ -5,7 +5,10 @@ import { cache } from "react";
 import { ManagedStorefront } from "@/components/storefront/managed-storefront";
 import { db } from "@/lib/db";
 import { parseBilingual } from "@/lib/i18n";
-import { createOrderPaymentSnapshot } from "@/lib/order-rules";
+import {
+  createOrderPaymentSnapshot,
+  isPurchasableVariant,
+} from "@/lib/order-rules";
 import { resolveOracleImageUrl } from "@/lib/oracle-images";
 import { parseReservationCode, reservationPath } from "@/lib/reservation-code";
 import { readBoothSocialLinks, socialPlatforms } from "@/lib/shop-settings";
@@ -21,6 +24,11 @@ const getManagedBooth = cache(async (slug: string) => {
       include: {
         storefront: true,
         paymentInstructions: true,
+        promotions: {
+          where: { active: true },
+          include: { products: true },
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        },
         products: {
           where: { status: { in: ["LIVE", "SOLD_OUT"] } },
           include: {
@@ -152,6 +160,41 @@ export default async function PublicBoothPage({
       fulfillmentNote: variant.fulfillmentNote,
     })),
   }));
+  const purchasableProductIds = new Set(
+    managed.products.flatMap((product) =>
+      product.status === "LIVE" &&
+      product.variants.some((variant) =>
+        isPurchasableVariant(variant.status, variant.stockQuantity),
+      )
+        ? [product.id]
+        : [],
+    ),
+  );
+  const promotions = managed.promotions.flatMap((promotion) => {
+    const buyProductIds = promotion.products.flatMap((product) =>
+      product.role === "BUY" && purchasableProductIds.has(product.productId)
+        ? [product.productId]
+        : [],
+    );
+    const rewardProductIds = promotion.products.flatMap((product) =>
+      product.role === "REWARD" && purchasableProductIds.has(product.productId)
+        ? [product.productId]
+        : [],
+    );
+    return buyProductIds.length && rewardProductIds.length
+      ? [
+          {
+            id: promotion.id,
+            name: parseBilingual(promotion.name, document.locale),
+            buyQuantity: promotion.buyQuantity,
+            rewardQuantity: promotion.rewardQuantity,
+            repeatable: promotion.repeatable,
+            buyProductIds,
+            rewardProductIds,
+          },
+        ]
+      : [];
+  });
   const socialLinks = readBoothSocialLinks(managed.socialLinks);
   return (
     <ManagedStorefront
@@ -166,6 +209,7 @@ export default async function PublicBoothPage({
       }}
       document={document}
       products={products}
+      promotions={promotions}
       canAcceptReservations={Boolean(
         createOrderPaymentSnapshot(managed.paymentInstructions),
       )}

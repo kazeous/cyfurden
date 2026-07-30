@@ -41,6 +41,27 @@ function orderForm(input: {
   return form;
 }
 
+function multiLineOrderForm(input: {
+  boothId: string;
+  slug: string;
+  idempotencyKey: string;
+  lines: Array<{
+    productId: string;
+    variantId: string;
+    quantity: number;
+  }>;
+}) {
+  const form = new FormData();
+  form.set("boothId", input.boothId);
+  form.set("slug", input.slug);
+  form.set("idempotencyKey", input.idempotencyKey);
+  form.set("customerName", "Phase Nine Customer");
+  form.set("customerEmail", "phase9-customer@example.com");
+  form.set("customerNote", "Promotion acceptance");
+  form.set("lines", JSON.stringify(input.lines));
+  return form;
+}
+
 async function expectReservationRedirect(
   action: () => Promise<PublicOrderState>,
 ) {
@@ -237,6 +258,295 @@ test(
       if (keepFixture) {
         console.log(`PHASE4_FIXTURE_SLUG=${slug}`);
       }
+    } finally {
+      if (!keepFixture && boothId) {
+        await db.order.deleteMany({ where: { boothId } });
+        await db.booth.deleteMany({ where: { id: boothId } });
+      }
+      if (!keepFixture) {
+        await db.user.deleteMany({ where: { id: userId } });
+      }
+    }
+  },
+);
+
+test(
+  "Phase 9 applies qualifying rewards once while preserving totals, stock, and VietQR amount",
+  { skip: !enabled },
+  async () => {
+    const suffix = randomUUID().replaceAll("-", "");
+    const userId = `phase9-user-${suffix}`;
+    const slug = `phase9-${suffix.slice(0, 16)}`;
+    let boothId: string | null = null;
+
+    try {
+      await db.user.create({
+        data: {
+          id: userId,
+          name: "Phase Nine Owner",
+          email: `phase9-${suffix}@example.com`,
+          emailVerified: true,
+        },
+      });
+      const booth = await db.booth.create({
+        data: {
+          slug,
+          name: "Phase Nine Booth",
+          status: "PUBLISHED",
+          ownerId: userId,
+          memberships: {
+            create: { userId, role: "OWNER", status: "ACTIVE" },
+          },
+        },
+      });
+      boothId = booth.id;
+      const document = createDefaultStorefrontDocument(booth.name);
+      await db.storefrontConfig.create({
+        data: {
+          boothId,
+          draftDocument: document,
+          publishedDocument: document,
+          publishedAt: new Date(),
+          updatedById: userId,
+        },
+      });
+      await db.boothPaymentInstruction.create({
+        data: {
+          boothId,
+          bankName: "VietQR Test Bank",
+          bankCode: "970415",
+          accountName: "CYFURDEN STUDIO",
+          accountNumber: "0123456789",
+          paymentLabel: "Manual bank transfer",
+          transferReferenceTemplate: "{code}",
+          instructions: "Transfer the exact amount and keep the receipt.",
+          disclaimer:
+            "The booth reviews transfers manually; Cyfurden does not verify payment.",
+        },
+      });
+      const qualifyingProduct = await db.product.create({
+        data: {
+          boothId,
+          slug: "phase-nine-buyer",
+          sku: `PHASE9-B-${suffix.slice(0, 8)}`,
+          name: "Phase Nine Buyer",
+          description: "Qualifying promotion product.",
+          priceCents: BigInt(20_000_00),
+          status: "LIVE",
+          variants: {
+            create: {
+              sku: `PHASE9-BV-${suffix.slice(0, 8)}`,
+              label: "Standard",
+              status: "AVAILABLE",
+              stockQuantity: 10,
+            },
+          },
+        },
+        include: { variants: true },
+      });
+      const rewardProduct = await db.product.create({
+        data: {
+          boothId,
+          slug: "phase-nine-reward",
+          sku: `PHASE9-R-${suffix.slice(0, 8)}`,
+          name: "Phase Nine Reward",
+          description: "Promotion reward product.",
+          priceCents: BigInt(10_000_00),
+          status: "LIVE",
+          variants: {
+            create: {
+              sku: `PHASE9-RV-${suffix.slice(0, 8)}`,
+              label: "Standard",
+              status: "AVAILABLE",
+              stockQuantity: 5,
+            },
+          },
+        },
+        include: { variants: true },
+      });
+      await db.quantityPromotion.create({
+        data: {
+          boothId,
+          name: "Buy 3, get 1",
+          buyQuantity: 3,
+          rewardQuantity: 1,
+          active: true,
+          repeatable: true,
+          products: {
+            create: [
+              { productId: qualifyingProduct.id, role: "BUY" },
+              { productId: rewardProduct.id, role: "REWARD" },
+            ],
+          },
+        },
+      });
+      const qualifyingVariant = qualifyingProduct.variants[0];
+      const rewardVariant = rewardProduct.variants[0];
+      assert.ok(qualifyingVariant);
+      assert.ok(rewardVariant);
+
+      const qualifyingKey = randomUUID();
+      const qualifyingForm = multiLineOrderForm({
+        boothId,
+        slug,
+        idempotencyKey: qualifyingKey,
+        lines: [
+          {
+            productId: qualifyingProduct.id,
+            variantId: qualifyingVariant.id,
+            quantity: 3,
+          },
+          {
+            productId: rewardProduct.id,
+            variantId: rewardVariant.id,
+            quantity: 1,
+          },
+        ],
+      });
+      await expectReservationRedirect(() =>
+        createPublicOrderAction(
+          { status: "idle", message: "" },
+          qualifyingForm,
+        ),
+      );
+      const qualifyingOrder = await db.order.findUniqueOrThrow({
+        where: {
+          boothId_idempotencyKey: {
+            boothId: booth.id,
+            idempotencyKey: qualifyingKey,
+          },
+        },
+        include: { items: true },
+      });
+      assert.equal(qualifyingOrder.subtotalCents, BigInt(70_000_00));
+      assert.equal(qualifyingOrder.totalCents, BigInt(60_000_00));
+      assert.equal(qualifyingOrder.items.length, 2);
+      const freeReward = qualifyingOrder.items.find(
+        (item) => item.unitPriceCents === BigInt(0),
+      );
+      assert.ok(freeReward);
+      assert.equal(freeReward.productId, rewardProduct.id);
+      assert.equal(freeReward.quantity, 1);
+      assert.equal(freeReward.originalUnitPriceCents, BigInt(10_000_00));
+      assert.equal(freeReward.promotionNameSnapshot, "Buy 3, get 1");
+      assert.equal(freeReward.inventoryDebited, true);
+
+      const payload = buildVietQrPayload({
+        bankCode: "970415",
+        accountNumber: "0123456789",
+        accountName: "CYFURDEN STUDIO",
+        amountMinorUnits: qualifyingOrder.totalCents,
+        transferReference: qualifyingOrder.transferReference,
+      });
+      assert.match(payload, /540560000/);
+
+      assert.equal(
+        (
+          await db.productVariant.findUniqueOrThrow({
+            where: { id: qualifyingVariant.id },
+          })
+        ).stockQuantity,
+        7,
+      );
+      assert.equal(
+        (
+          await db.productVariant.findUniqueOrThrow({
+            where: { id: rewardVariant.id },
+          })
+        ).stockQuantity,
+        4,
+      );
+
+      await expectReservationRedirect(() =>
+        createPublicOrderAction(
+          { status: "idle", message: "" },
+          multiLineOrderForm({
+            boothId: booth.id,
+            slug,
+            idempotencyKey: qualifyingKey,
+            lines: [
+              {
+                productId: qualifyingProduct.id,
+                variantId: qualifyingVariant.id,
+                quantity: 3,
+              },
+              {
+                productId: rewardProduct.id,
+                variantId: rewardVariant.id,
+                quantity: 1,
+              },
+            ],
+          }),
+        ),
+      );
+      assert.equal(await db.order.count({ where: { boothId } }), 1);
+      assert.equal(
+        (
+          await db.productVariant.findUniqueOrThrow({
+            where: { id: rewardVariant.id },
+          })
+        ).stockQuantity,
+        4,
+      );
+
+      const nonQualifyingKey = randomUUID();
+      await expectReservationRedirect(() =>
+        createPublicOrderAction(
+          { status: "idle", message: "" },
+          multiLineOrderForm({
+            boothId: booth.id,
+            slug,
+            idempotencyKey: nonQualifyingKey,
+            lines: [
+              {
+                productId: qualifyingProduct.id,
+                variantId: qualifyingVariant.id,
+                quantity: 2,
+              },
+              {
+                productId: rewardProduct.id,
+                variantId: rewardVariant.id,
+                quantity: 1,
+              },
+            ],
+          }),
+        ),
+      );
+      const nonQualifyingOrder = await db.order.findUniqueOrThrow({
+        where: {
+          boothId_idempotencyKey: {
+            boothId,
+            idempotencyKey: nonQualifyingKey,
+          },
+        },
+        include: { items: true },
+      });
+      assert.equal(nonQualifyingOrder.subtotalCents, BigInt(50_000_00));
+      assert.equal(nonQualifyingOrder.totalCents, BigInt(50_000_00));
+      assert.equal(
+        nonQualifyingOrder.items.some(
+          (item) =>
+            item.promotionNameSnapshot !== null ||
+            item.originalUnitPriceCents !== null,
+        ),
+        false,
+      );
+      assert.equal(
+        (
+          await db.productVariant.findUniqueOrThrow({
+            where: { id: qualifyingVariant.id },
+          })
+        ).stockQuantity,
+        5,
+      );
+      assert.equal(
+        (
+          await db.productVariant.findUniqueOrThrow({
+            where: { id: rewardVariant.id },
+          })
+        ).stockQuantity,
+        3,
+      );
     } finally {
       if (!keepFixture && boothId) {
         await db.order.deleteMany({ where: { boothId } });
