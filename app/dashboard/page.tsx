@@ -122,9 +122,7 @@ export default async function DashboardPage({
               Choose a booth to update its storefront, products, and orders.
             </p>
             <p className={styles.boothCounter}>
-              <strong>
-                {ownedCount} of 5 booths used
-              </strong>
+              <strong>{ownedCount} of 5 booths used</strong>
               <small>
                 Joined booths do not count toward your cap.
                 {joinedCount > 0

@@ -9,9 +9,7 @@ export const socialQrOptions = {
 
 const CENTER_LOGO_RATIO = 0.18;
 
-async function loadImage(
-  src: string,
-): Promise<HTMLImageElement | null> {
+async function loadImage(src: string): Promise<HTMLImageElement | null> {
   if (typeof Image === "undefined") return null;
   return await new Promise((resolve) => {
     const image = new Image();

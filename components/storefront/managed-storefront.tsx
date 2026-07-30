@@ -174,7 +174,10 @@ function CatalogueIcon({ name }: { name: "grid" | "list" | "search" }) {
   );
 }
 
-function availabilityLabel(product: ProductDto, t: import("@/lib/i18n").PublicBoothStrings) {
+function availabilityLabel(
+  product: ProductDto,
+  t: import("@/lib/i18n").PublicBoothStrings,
+) {
   const available = product.variants.find((variant) =>
     isPurchasableVariant(variant.status, variant.stockQuantity),
   );
@@ -484,7 +487,9 @@ export function ManagedStorefront({
   };
 
   const removeLine = (variantId: string) => {
-    updateCart((current) => current.filter((line) => line.variantId !== variantId));
+    updateCart((current) =>
+      current.filter((line) => line.variantId !== variantId),
+    );
   };
 
   const clearCart = () => {
@@ -796,7 +801,10 @@ export function ManagedStorefront({
               <small>{b(document.creatorLocation)}</small>
             ) : null}
             {identity.socialLinks.length ? (
-              <nav className={styles.socialLinks} aria-label={t.creatorProfilesAria}>
+              <nav
+                className={styles.socialLinks}
+                aria-label={t.creatorProfilesAria}
+              >
                 {identity.socialLinks.map((social) => (
                   <a
                     href={social.url}
@@ -986,11 +994,16 @@ export function ManagedStorefront({
                           {product.name}
                         </button>
                         {product.sku ? (
-                          <span className={styles.skuChip}>SKU {product.sku}</span>
+                          <span className={styles.skuChip}>
+                            SKU {product.sku}
+                          </span>
                         ) : null}
                         <p>{product.shortDescription ?? product.description}</p>
                         {product.tags.length ? (
-                          <div className={styles.tagList} aria-label={t.tagAriaLabel}>
+                          <div
+                            className={styles.tagList}
+                            aria-label={t.tagAriaLabel}
+                          >
                             {product.tags.slice(0, 3).map((tag) => (
                               <span key={tag}>#{tag}</span>
                             ))}
@@ -1047,9 +1060,7 @@ export function ManagedStorefront({
               ▣
             </span>
             <h2>
-              {cartCount
-                ? t.cartTitleItems(cartCount)
-                : t.cartTitleEmpty}
+              {cartCount ? t.cartTitleItems(cartCount) : t.cartTitleEmpty}
             </h2>
             <p>
               {cartCount
@@ -1475,7 +1486,9 @@ export function ManagedStorefront({
                         <strong>{product.name}</strong>
                         <small>{variant.label}</small>
                         {variant.stockQuantity !== null ? (
-                          <small>{t.cartLineAvailable(variant.stockQuantity)}</small>
+                          <small>
+                            {t.cartLineAvailable(variant.stockQuantity)}
+                          </small>
                         ) : null}
                       </div>
                       <div className={styles.quantity}>

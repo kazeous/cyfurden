@@ -22,8 +22,9 @@ export async function generateMetadata({
     where: { slug },
     include: { storefront: true },
   });
-  const locale = (booth?.storefront?.publishedDocument as { locale?: Locale } | null)
-    ?.locale;
+  const locale = (
+    booth?.storefront?.publishedDocument as { locale?: Locale } | null
+  )?.locale;
   const strings = translate(locale, "publicReservation");
   return {
     title: strings.pageTitle,

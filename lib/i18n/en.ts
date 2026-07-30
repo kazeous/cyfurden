@@ -1,7 +1,6 @@
 import type { Catalogue } from "./catalogue";
 
-const pluralItems = (count: number) =>
-  `${count} item${count === 1 ? "" : "s"}`;
+const pluralItems = (count: number) => `${count} item${count === 1 ? "" : "s"}`;
 
 export const enCatalogue: Catalogue = {
   publicBooth: {
@@ -58,7 +57,8 @@ export const enCatalogue: Catalogue = {
     cartManualNote: "Manual bank transfer · no automatic verification",
     cartPausedNote:
       "Reservations are paused until payment instructions are ready",
-    cartDisclaimer: "Payment is manual bank transfer — no automatic verification.",
+    cartDisclaimer:
+      "Payment is manual bank transfer — no automatic verification.",
     topbarBag: "Bag",
     productDetailEyebrow: "Product detail",
     productDetailChooseOption: "Choose an option",
@@ -78,14 +78,15 @@ export const enCatalogue: Catalogue = {
     productDetailAddOne: "Add one",
     productDetailImagesAria: "Product images",
     productDetailShowImage: (n) => `Show image ${n}`,
-    productDetailDisclaimer: "Image colours may differ slightly from the actual piece.",
-    cartFooter: "You will receive manual bank-transfer instructions after submitting. Cyfurden does not verify payment automatically.",
+    productDetailDisclaimer:
+      "Image colours may differ slightly from the actual piece.",
+    cartFooter:
+      "You will receive manual bank-transfer instructions after submitting. Cyfurden does not verify payment automatically.",
     cartLineRemove: "Remove from bag",
     cartLineRemoveOne: (name) => `Remove one ${name}`,
     cartLineAddOne: (name) => `Add one ${name}`,
     cartLineAvailable: (n) => `${n} available`,
-    cartLineUnits: (n) =>
-      `${n} ${n === 1 ? "unit" : "units"} requested`,
+    cartLineUnits: (n) => `${n} ${n === 1 ? "unit" : "units"} requested`,
     cartTotalLabel: "Total",
     cartTotalUnits: "units requested",
     cartClear: "Clear bag",
@@ -115,8 +116,7 @@ export const enCatalogue: Catalogue = {
     reservationExpired: "Reservation expired",
     reservationReferenceLabel: "Reservation reference",
     reservationItemsHeading: "Items",
-    reservationItemLine: (title, qty, price) =>
-      `${title} · ${qty} × ${price}`,
+    reservationItemLine: (title, qty, price) => `${title} · ${qty} × ${price}`,
     reservationItemTotal: "Line total",
     reservationAmountLabel: "Amount to transfer",
     reservationAmountLabelValue: (amount) => `${amount}`,
@@ -197,7 +197,8 @@ export const enCatalogue: Catalogue = {
     },
     paymentLabelFallback: "Untitled reservation",
     paymentHeading: "Manual bank transfer",
-    paymentSubhead: "Send the amount and use this reference — staff will check manually.",
+    paymentSubhead:
+      "Send the amount and use this reference — staff will check manually.",
     paymentStep1: "Open your banking app",
     paymentStep2: "Scan the QR or enter the account details",
     paymentStep3: "Use the reference so staff can match your transfer",
@@ -211,12 +212,14 @@ export const enCatalogue: Catalogue = {
     transferReferenceLabel: "Transfer reference",
     boothInstructionsHeading: "Booth instructions",
     referenceFormHeading: "Already transferred?",
-    referenceFormBody: "Share what you wrote in the transfer message so staff can match it.",
+    referenceFormBody:
+      "Share what you wrote in the transfer message so staff can match it.",
     referenceFieldLabel: "Bank reference / transfer message",
     referenceSubmit: "Submit reference",
     referenceSubmitting: "Submitting…",
     paymentUnavailableHeading: "Payment not ready yet",
-    paymentUnavailableBody: "The booth is still setting up payment instructions. Check back soon.",
+    paymentUnavailableBody:
+      "The booth is still setting up payment instructions. Check back soon.",
     noTransferHeading: "No payment required",
     summaryEyebrow: "Reservation summary",
     summaryHeading: "Reservation details",
@@ -258,15 +261,18 @@ export const enCatalogue: Catalogue = {
     audienceItems: [
       {
         title: "Solo illustrators",
-        subtitle: "Sell zines, prints, pins, and oddities without a marketplace middleman.",
+        subtitle:
+          "Sell zines, prints, pins, and oddities without a marketplace middleman.",
       },
       {
         title: "Convention weekends",
-        subtitle: "Accept pre-orders before the event and hand off at the booth.",
+        subtitle:
+          "Accept pre-orders before the event and hand off at the booth.",
       },
       {
         title: "Small-batch crafters",
-        subtitle: "Run a focused catalogue and a manual bank-transfer checkout.",
+        subtitle:
+          "Run a focused catalogue and a manual bank-transfer checkout.",
       },
       {
         title: "Pop-up curators",
@@ -274,12 +280,12 @@ export const enCatalogue: Catalogue = {
       },
     ],
     workflowHeading: "From first scan to final handoff",
-    workflowIntro:
-      "Four steps. Each one manual, visible, and in your hands.",
+    workflowIntro: "Four steps. Each one manual, visible, and in your hands.",
     workflowSteps: [
       {
         title: "Set up the booth",
-        description: "Add pieces, prices, and payment details from the booth workspace.",
+        description:
+          "Add pieces, prices, and payment details from the booth workspace.",
         note: "Catalogue, payment label, and bank details live in one place.",
       },
       {
@@ -294,7 +300,8 @@ export const enCatalogue: Catalogue = {
       },
       {
         title: "Confirm and hand off",
-        description: "Staff reviews transfers manually and marks reservations fulfilled.",
+        description:
+          "Staff reviews transfers manually and marks reservations fulfilled.",
         note: "You decide when to confirm — Cyfurden never auto-verifies.",
       },
     ],
@@ -411,7 +418,8 @@ export const enCatalogue: Catalogue = {
     formBody: {
       signUp:
         "Publish a booth and start taking manual reservations from visitors.",
-      signIn: "Pick up where you left off — manage booths and review reservations.",
+      signIn:
+        "Pick up where you left off — manage booths and review reservations.",
     },
     dividerOrEmail: "or sign in with email",
     namePlaceholder: "Your display name",

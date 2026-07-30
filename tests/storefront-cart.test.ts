@@ -5,7 +5,7 @@ import {
   clearCart,
   removeLine,
   type StorefrontCartLine,
-} from "../lib/storefront-cart.ts";
+} from "../lib/storefront-cart";
 
 const base: StorefrontCartLine[] = [
   { productId: "p1", variantId: "v1", quantity: 2 },
@@ -14,9 +14,7 @@ const base: StorefrontCartLine[] = [
 
 test("removeLine drops the targeted variant line", () => {
   const next = removeLine(base, "v1");
-  assert.deepEqual(next, [
-    { productId: "p2", variantId: "v2", quantity: 3 },
-  ]);
+  assert.deepEqual(next, [{ productId: "p2", variantId: "v2", quantity: 3 }]);
 });
 
 test("removeLine returns the same lines when the variant is unknown", () => {

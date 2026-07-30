@@ -55,8 +55,7 @@ export default async function Home() {
             <p className={styles.heroNote}>{landing.heroNote}</p>
             <div className={styles.heroActions}>
               <Link className={styles.primaryLink} href="/sign-up">
-                {landing.heroActionPrimary}{" "}
-                <span aria-hidden="true">→</span>
+                {landing.heroActionPrimary} <span aria-hidden="true">→</span>
               </Link>
               <Link className={styles.secondaryLink} href="/sign-in">
                 {landing.heroActionSecondary}

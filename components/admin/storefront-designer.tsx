@@ -1083,9 +1083,7 @@ export function StorefrontDesigner({
                     label="Welcome copy (EN + VI)"
                     value={document.introduction}
                     required
-                    onChange={(value) =>
-                      updateDocument("introduction", value)
-                    }
+                    onChange={(value) => updateDocument("introduction", value)}
                   />
                   <p className={styles.panelNote}>
                     Saving updates the draft selection. Visitors see the new

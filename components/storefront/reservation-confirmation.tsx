@@ -7,7 +7,11 @@ import {
   submitCustomerTransferReferenceAction,
   type CustomerTransferReferenceState,
 } from "@/app/s/[slug]/reservation/[code]/actions";
-import { translate, type Locale, type PublicReservationStrings } from "@/lib/i18n";
+import {
+  translate,
+  type Locale,
+  type PublicReservationStrings,
+} from "@/lib/i18n";
 import type { StorefrontDocument } from "@/lib/storefront-document";
 import styles from "./reservation-confirmation.module.css";
 
@@ -260,9 +264,7 @@ export function ReservationConfirmation({
                           }
                           data-copied={copied === "reference"}
                         >
-                          {copied === "reference"
-                            ? t.copied
-                            : t.copyReference}
+                          {copied === "reference" ? t.copied : t.copyReference}
                         </button>
                       </dd>
                     </div>
@@ -289,7 +291,9 @@ export function ReservationConfirmation({
                     />
                   </label>
                   <button type="submit" disabled={referencePending}>
-                    {referencePending ? t.referenceSubmitting : t.referenceSubmit}
+                    {referencePending
+                      ? t.referenceSubmitting
+                      : t.referenceSubmit}
                   </button>
                   <p
                     className={
@@ -336,10 +340,7 @@ export function ReservationConfirmation({
                 <dd>{statusCopy.label}</dd>
               </div>
             </dl>
-            <ul
-              className={styles.itemSummary}
-              aria-label={t.itemsAriaLabel}
-            >
+            <ul className={styles.itemSummary} aria-label={t.itemsAriaLabel}>
               {reservation.items.map((item) => (
                 <li key={item.id}>
                   <span>

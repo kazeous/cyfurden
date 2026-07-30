@@ -59,7 +59,8 @@ export const viCatalogue: Catalogue = {
     cartManualNote: "Chuyển khoản thủ công · không xác minh tự động",
     cartPausedNote:
       "Tạm dừng nhận đặt trước cho đến khi cấu hình thanh toán xong",
-    cartDisclaimer: "Thanh toán bằng chuyển khoản thủ công — không xác minh tự động.",
+    cartDisclaimer:
+      "Thanh toán bằng chuyển khoản thủ công — không xác minh tự động.",
     topbarBag: "Giỏ",
     productDetailEyebrow: "Chi tiết sản phẩm",
     productDetailChooseOption: "Chọn một tuỳ chọn",
@@ -79,14 +80,15 @@ export const viCatalogue: Catalogue = {
     productDetailAddOne: "Thêm một",
     productDetailImagesAria: "Hình ảnh sản phẩm",
     productDetailShowImage: (n) => `Xem hình ${n}`,
-    productDetailDisclaimer: "Màu sắc thực tế có thể chênh lệch nhẹ so với hình.",
-    cartFooter: "Sau khi gửi, bạn sẽ nhận hướng dẫn chuyển khoản thủ công. Cyfurden không tự xác minh thanh toán.",
+    productDetailDisclaimer:
+      "Màu sắc thực tế có thể chênh lệch nhẹ so với hình.",
+    cartFooter:
+      "Sau khi gửi, bạn sẽ nhận hướng dẫn chuyển khoản thủ công. Cyfurden không tự xác minh thanh toán.",
     cartLineRemove: "Xoá khỏi giỏ",
     cartLineRemoveOne: (name) => `Bớt một ${name}`,
     cartLineAddOne: (name) => `Thêm một ${name}`,
     cartLineAvailable: (n) => `Còn ${n}`,
-    cartLineUnits: (n) =>
-      `${n} sản phẩm đã chọn`,
+    cartLineUnits: (n) => `${n} sản phẩm đã chọn`,
     cartTotalLabel: "Tổng cộng",
     cartTotalUnits: "sản phẩm đã chọn",
     cartClear: "Xoá giỏ",
@@ -107,8 +109,7 @@ export const viCatalogue: Catalogue = {
     cartSubmitErrorGeneric:
       "Chưa lưu được đặt trước. Vui lòng thử lại sau ít phút.",
     bagFootnote: "Chuyển khoản thủ công · không xác minh tự động",
-    publicFooterManual:
-      "Chuyển khoản thủ công · không xác minh tự động",
+    publicFooterManual: "Chuyển khoản thủ công · không xác minh tự động",
     reservationPending: "Đang chờ bạn chuyển khoản",
     reservationConfirmed: "Booth đã xác nhận chuyển khoản",
     reservationFulfilled: "Đã giao",
@@ -116,8 +117,7 @@ export const viCatalogue: Catalogue = {
     reservationExpired: "Đơn đặt trước đã hết hạn",
     reservationReferenceLabel: "Mã đặt trước",
     reservationItemsHeading: "Danh sách món",
-    reservationItemLine: (title, qty, price) =>
-      `${title} · ${qty} × ${price}`,
+    reservationItemLine: (title, qty, price) => `${title} · ${qty} × ${price}`,
     reservationItemTotal: "Thành tiền dòng",
     reservationAmountLabel: "Số tiền cần chuyển",
     reservationAmountLabelValue: (amount) => `${amount}`,
@@ -196,13 +196,15 @@ export const viCatalogue: Catalogue = {
     },
     paymentLabelFallback: "Đơn đặt trước chưa đặt tên",
     paymentHeading: "Chuyển khoản thủ công",
-    paymentSubhead: "Chuyển số tiền và ghi mã tham chiếu — booth sẽ kiểm tra thủ công.",
+    paymentSubhead:
+      "Chuyển số tiền và ghi mã tham chiếu — booth sẽ kiểm tra thủ công.",
     paymentStep1: "Mở app ngân hàng của bạn",
     paymentStep2: "Quét QR hoặc nhập thông tin tài khoản bên dưới",
     paymentStep3: "Ghi mã tham chiếu để booth đối chiếu được chuyển khoản",
     qrAlt: (accountName) => `Mã QR cho ${accountName}`,
     qrUnavailableHeading: "Chưa có mã QR",
-    qrUnavailableHint: "Dùng thông tin tài khoản bên dưới để chuyển khoản thủ công.",
+    qrUnavailableHint:
+      "Dùng thông tin tài khoản bên dưới để chuyển khoản thủ công.",
     bankLabel: "Ngân hàng nhận",
     accountNameLabel: "Tên tài khoản",
     accountNumberLabel: "Số tài khoản",
@@ -210,12 +212,14 @@ export const viCatalogue: Catalogue = {
     transferReferenceLabel: "Mã tham chiếu chuyển khoản",
     boothInstructionsHeading: "Hướng dẫn từ booth",
     referenceFormHeading: "Đã chuyển khoản rồi?",
-    referenceFormBody: "Ghi lại nội dung bạn đã nhập khi chuyển khoản để booth đối chiếu.",
+    referenceFormBody:
+      "Ghi lại nội dung bạn đã nhập khi chuyển khoản để booth đối chiếu.",
     referenceFieldLabel: "Mã tham chiếu / nội dung chuyển khoản",
     referenceSubmit: "Gửi mã tham chiếu",
     referenceSubmitting: "Đang gửi…",
     paymentUnavailableHeading: "Thanh toán chưa sẵn sàng",
-    paymentUnavailableBody: "Booth đang cấu hình hướng dẫn thanh toán. Quay lại sau nhé.",
+    paymentUnavailableBody:
+      "Booth đang cấu hình hướng dẫn thanh toán. Quay lại sau nhé.",
     noTransferHeading: "Không cần thanh toán",
     summaryEyebrow: "Tóm tắt đặt trước",
     summaryHeading: "Chi tiết đặt trước",
@@ -234,7 +238,8 @@ export const viCatalogue: Catalogue = {
     heroTitle: "Booth độc lập cho những ngày hội chợ",
     heroBody:
       "Một studio bỏ túi cho đồ handmade số lượng nhỏ, đặt trước ở hội chợ và nhận hàng không cần giấy tờ.",
-    heroNote: "Không có Stripe · không trung gian · bạn giữ quan hệ trực tiếp với khách",
+    heroNote:
+      "Không có Stripe · không trung gian · bạn giữ quan hệ trực tiếp với khách",
     heroActionPrimary: "Tạo booth",
     heroActionSecondary: "Đăng nhập",
     mockPreviewHeading: "Xem trước booth",
@@ -265,7 +270,8 @@ export const viCatalogue: Catalogue = {
       },
       {
         title: "Người làm thủ công số lượng nhỏ",
-        subtitle: "Vận hành một catalogue gọn và checkout chuyển khoản thủ công.",
+        subtitle:
+          "Vận hành một catalogue gọn và checkout chuyển khoản thủ công.",
       },
       {
         title: "Người dựng pop-up",
@@ -273,11 +279,13 @@ export const viCatalogue: Catalogue = {
       },
     ],
     workflowHeading: "Từ lần quét đầu đến trao tay cuối",
-    workflowIntro: "Bốn bước. Mỗi bước đều thủ công, minh bạch và trong tay bạn.",
+    workflowIntro:
+      "Bốn bước. Mỗi bước đều thủ công, minh bạch và trong tay bạn.",
     workflowSteps: [
       {
         title: "Dựng booth",
-        description: "Thêm sản phẩm, giá và thông tin thanh toán từ workspace booth.",
+        description:
+          "Thêm sản phẩm, giá và thông tin thanh toán từ workspace booth.",
         note: "Catalogue, nhãn thanh toán và thông tin ngân hàng ở cùng một nơi.",
       },
       {
@@ -292,36 +300,43 @@ export const viCatalogue: Catalogue = {
       },
       {
         title: "Xác nhận và giao",
-        description: "Booth duyệt chuyển khoản thủ công và đánh dấu đơn đã giao.",
+        description:
+          "Booth duyệt chuyển khoản thủ công và đánh dấu đơn đã giao.",
         note: "Bạn quyết khi nào xác nhận — Cyfurden không tự xác minh.",
       },
     ],
     functionHeading: "Bên trong Cyfurden có gì",
-    functionIntro: "Các tính năng dưới đây là toàn bộ bề mặt — gọn theo chủ đích.",
+    functionIntro:
+      "Các tính năng dưới đây là toàn bộ bề mặt — gọn theo chủ đích.",
     functionItems: [
       {
         title: "Workspace booth",
-        description: "Cập nhật catalogue, đổi nhãn thanh toán và duyệt đơn từ một trang.",
+        description:
+          "Cập nhật catalogue, đổi nhãn thanh toán và duyệt đơn từ một trang.",
         scope: "Quản trị",
       },
       {
         title: "Storefront công khai",
-        description: "Khách duyệt sản phẩm, đặt trước và thanh toán bằng chuyển khoản thủ công.",
+        description:
+          "Khách duyệt sản phẩm, đặt trước và thanh toán bằng chuyển khoản thủ công.",
         scope: "Công khai",
       },
       {
         title: "Hàng đợi đặt trước",
-        description: "Xem đơn chờ, đã xác nhận, đã giao và đã huỷ theo từng booth.",
+        description:
+          "Xem đơn chờ, đã xác nhận, đã giao và đã huỷ theo từng booth.",
         scope: "Quản trị",
       },
       {
         title: "Thanh toán chuyển khoản",
-        description: "Mỗi đơn có QR và thông tin tài khoản. Không Stripe, không trung gian.",
+        description:
+          "Mỗi đơn có QR và thông tin tài khoản. Không Stripe, không trung gian.",
         scope: "Công khai + Quản trị",
       },
       {
         title: "Mạng xã hội của booth",
-        description: "Ghim Instagram, Twitter và trang cá nhân để khách theo dõi.",
+        description:
+          "Ghim Instagram, Twitter và trang cá nhân để khách theo dõi.",
         scope: "Công khai + Quản trị",
       },
     ],
@@ -355,8 +370,7 @@ export const viCatalogue: Catalogue = {
   },
   publicAuth: {
     signInTitle: "Chào mừng bạn quay lại",
-    signInBody:
-      "Đăng nhập để quản lý booth và duyệt hàng đợi đặt trước.",
+    signInBody: "Đăng nhập để quản lý booth và duyệt hàng đợi đặt trước.",
     signInSubmit: "Đăng nhập",
     signInSwitch: "Chưa có tài khoản? Tạo tài khoản",
     signInEmailLabel: "Email",
@@ -367,8 +381,7 @@ export const viCatalogue: Catalogue = {
     signInGoogleUnavailable:
       "Đăng nhập Google chưa được cấu hình cho bản triển khai này.",
     signUpTitle: "Tạo tài khoản Cyfurden",
-    signUpBody:
-      "Tạo tài khoản để đăng booth và bắt đầu nhận đặt trước.",
+    signUpBody: "Tạo tài khoản để đăng booth và bắt đầu nhận đặt trước.",
     signUpSubmit: "Tạo tài khoản",
     signUpSwitch: "Đã có tài khoản? Đăng nhập",
     signUpNameLabel: "Tên của bạn",
@@ -376,10 +389,8 @@ export const viCatalogue: Catalogue = {
     signUpPasswordLabel: "Mật khẩu",
     signUpErrorRequired: "Cần nhập tên, email và mật khẩu.",
     signUpErrorPasswordShort: "Mật khẩu cần ít nhất 8 ký tự.",
-    signUpErrorPasswordWeak:
-      "Thêm chữ hoa, chữ thường và một chữ số.",
-    signUpErrorExists:
-      "Email này đã có tài khoản. Hãy thử đăng nhập.",
+    signUpErrorPasswordWeak: "Thêm chữ hoa, chữ thường và một chữ số.",
+    signUpErrorExists: "Email này đã có tài khoản. Hãy thử đăng nhập.",
     signUpErrorGeneric: "Chưa tạo được tài khoản. Thử lại nhé.",
     signUpGoogleButton: "Tiếp tục với Google",
     signUpGoogleUnavailable:
@@ -410,8 +421,7 @@ export const viCatalogue: Catalogue = {
       signUp: "Chọn mật khẩu (từ 8 ký tự)",
       signIn: "Mật khẩu của bạn",
     },
-    passwordHint:
-      "Dùng 8 ký tự trở lên, có chữ hoa, chữ thường và một chữ số.",
+    passwordHint: "Dùng 8 ký tự trở lên, có chữ hoa, chữ thường và một chữ số.",
     confirmPasswordLabel: "Nhập lại mật khẩu",
     confirmPasswordPlaceholder: "Gõ lại mật khẩu",
     submitPending: {

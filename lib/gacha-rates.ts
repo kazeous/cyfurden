@@ -26,7 +26,9 @@ export function readGachaRates(value: unknown): {
   let usedLegacyKeys = false;
 
   if (value && typeof value === "object") {
-    for (const [rawKey, rawValue] of Object.entries(value as Record<string, unknown>)) {
+    for (const [rawKey, rawValue] of Object.entries(
+      value as Record<string, unknown>,
+    )) {
       const canonical = KEY_ALIASES[rawKey];
       if (!canonical) continue;
       if (typeof rawValue !== "number" || !Number.isFinite(rawValue)) continue;
@@ -38,9 +40,9 @@ export function readGachaRates(value: unknown): {
   // Fall back entirely to defaults if the input is incomplete (any known key
   // missing) or if legacy uppercase keys were observed. This means partial or
   // legacy-shaped inputs are replaced wholesale rather than merged.
-  const keysPresent = (Object.keys(DEFAULT_GACHA_RATES) as (keyof typeof DEFAULT_GACHA_RATES)[]).every(
-    (k) => k in normalized,
-  );
+  const keysPresent = (
+    Object.keys(DEFAULT_GACHA_RATES) as (keyof typeof DEFAULT_GACHA_RATES)[]
+  ).every((k) => k in normalized);
   if (!keysPresent || usedLegacyKeys) {
     return { value: { ...DEFAULT_GACHA_RATES }, usedLegacyKeys };
   }

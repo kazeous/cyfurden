@@ -148,12 +148,7 @@ export type PublicReservationStrings = {
   copyError: string;
   copySuccess: (target: string) => string;
   statusBlocks: (
-    status:
-      | "PENDING"
-      | "CONFIRMED"
-      | "FULFILLED"
-      | "CANCELLED"
-      | "EXPIRED",
+    status: "PENDING" | "CONFIRMED" | "FULFILLED" | "CANCELLED" | "EXPIRED",
   ) => { heading: string; description: string; label: string };
   paymentLabelFallback: string;
   paymentHeading: string;

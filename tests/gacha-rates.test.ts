@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import {
-  DEFAULT_GACHA_RATES,
-  readGachaRates,
-} from "../lib/gacha-rates.ts";
+import { DEFAULT_GACHA_RATES, readGachaRates } from "../lib/gacha-rates";
 
 test("DEFAULT_GACHA_RATES uses the canonical lowercase 100-point shape", () => {
   assert.deepEqual(DEFAULT_GACHA_RATES, {

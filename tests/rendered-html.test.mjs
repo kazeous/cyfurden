@@ -225,10 +225,7 @@ test("keeps bank details behind a successful managed reservation", async () => {
   );
 
   assert.doesNotMatch(storefront, /paymentQrUrl|payment\.bankName|paymentQr/);
-  assert.match(
-    storefront,
-    /t\.cartFooter/,
-  );
+  assert.match(storefront, /t\.cartFooter/);
   assert.match(action, /\/reservation\/\$\{encodeURIComponent\(orderCode\)\}/);
   assert.doesNotMatch(action, /\?order=/);
 

@@ -18,7 +18,9 @@ export function formatMoney(
   const value =
     typeof minorUnits === "bigint"
       ? minorUnits
-      : BigInt(typeof minorUnits === "string" ? minorUnits : String(minorUnits));
+      : BigInt(
+          typeof minorUnits === "string" ? minorUnits : String(minorUnits),
+        );
   const tag = intlLocale(locale);
   return new Intl.NumberFormat(tag, {
     style: "currency",

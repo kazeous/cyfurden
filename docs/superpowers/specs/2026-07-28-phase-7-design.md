@@ -106,13 +106,13 @@ The existing drawer remains the detailed editing surface. The summary does not d
 
 A pure checklist evaluator uses already-authorized booth facts. It returns the following five items:
 
-| Item | Completion rule |
-| --- | --- |
-| Publish at least one product | At least one product is `LIVE` |
-| Configure payment details | Required payment fields are complete under the same predicate used by the reservation/payment handoff |
-| Provide a booth name | Published storefront `identity.name` is non-empty after trim |
-| Provide a booth description | Published storefront `identity.description` is non-empty after trim |
-| Provide event location and hours | Published `eventLocation` and `eventHours` are each non-empty after trim |
+| Item                             | Completion rule                                                                                       |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Publish at least one product     | At least one product is `LIVE`                                                                        |
+| Configure payment details        | Required payment fields are complete under the same predicate used by the reservation/payment handoff |
+| Provide a booth name             | Published storefront `identity.name` is non-empty after trim                                          |
+| Provide a booth description      | Published storefront `identity.description` is non-empty after trim                                   |
+| Provide event location and hours | Published `eventLocation` and `eventHours` are each non-empty after trim                              |
 
 Payment readiness must reuse the existing canonical predicate rather than duplicate or weaken it. The evaluator does not inspect images, variant count, or inventory quantity.
 

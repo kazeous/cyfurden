@@ -205,7 +205,11 @@ export default async function OrdersPage({
     "to be announced",
     "online and at selected conventions",
   ];
-  const DEFAULT_HOURS_TOKENS = ["hours to be announced", "tba", "to be announced"];
+  const DEFAULT_HOURS_TOKENS = [
+    "hours to be announced",
+    "tba",
+    "to be announced",
+  ];
 
   const checklistItems: Array<{
     key: string;
@@ -254,11 +258,12 @@ export default async function OrdersPage({
     if (locationMissing || hoursMissing) {
       checklistItems.push({
         key: "location-hours",
-        label: locationMissing && hoursMissing
-          ? "Add location and event hours"
-          : locationMissing
-            ? "Add a location"
-            : "Add event hours",
+        label:
+          locationMissing && hoursMissing
+            ? "Add location and event hours"
+            : locationMissing
+              ? "Add a location"
+              : "Add event hours",
         href: `/manage/${boothId}/storefront`,
       });
     }
