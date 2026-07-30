@@ -39,3 +39,7 @@ next-env.d.ts
 
 # Local hosting metadata (deployment documentation lives in local-docs/)
 /.openai/
+
+# Isolated git worktrees and SDD scratch space
+/.worktrees/
+/.superpowers/
