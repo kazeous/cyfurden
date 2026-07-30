@@ -8,6 +8,7 @@ import {
   type CustomerTransferReferenceState,
 } from "@/app/s/[slug]/reservation/[code]/actions";
 import {
+  parseBilingual,
   translate,
   type Locale,
   type PublicReservationStrings,
@@ -85,6 +86,7 @@ export function ReservationConfirmation({
     initialReferenceState,
   );
   const t = translate(locale, "publicReservation");
+  const b = (value: string | null | undefined) => parseBilingual(value, locale);
   const total = formatMoney(
     reservation.totalMinorUnits,
     reservation.currency,
@@ -133,9 +135,9 @@ export function ReservationConfirmation({
             C
           </span>
           <span>
-            <strong>{document.name}</strong>
+            <strong>{b(document.name)}</strong>
             <small>
-              {document.eventName} · {document.eventBoothLabel}
+              {b(document.eventName)} · {b(document.eventBoothLabel)}
             </small>
           </span>
         </a>
@@ -171,7 +173,7 @@ export function ReservationConfirmation({
           >
             <div className={styles.sectionHeading}>
               <p className={styles.eyebrow}>
-                {payment?.paymentLabel || t.paymentLabelFallback}
+                {b(payment?.paymentLabel) || t.paymentLabelFallback}
               </p>
               <h2 id="payment-heading">
                 {paymentRequired ? t.paymentHeading : statusCopy.heading}
@@ -270,13 +272,14 @@ export function ReservationConfirmation({
 
                 <div className={styles.ownerNote}>
                   <strong>{t.boothInstructionsHeading}</strong>
-                  <p>{payment.instructions}</p>
+                  <p>{b(payment.instructions)}</p>
                 </div>
                 <form action={referenceAction} className={styles.referenceForm}>
                   <strong>{t.referenceFormHeading}</strong>
                   <p>{t.referenceFormBody}</p>
                   <input type="hidden" name="slug" value={boothSlug} />
                   <input type="hidden" name="code" value={reservation.code} />
+                  <input type="hidden" name="locale" value={locale} />
                   <label>
                     {t.referenceFieldLabel}
                     <input
@@ -305,7 +308,7 @@ export function ReservationConfirmation({
                     {referenceState.message}
                   </p>
                 </form>
-                <p className={styles.disclaimer}>{payment.disclaimer}</p>
+                <p className={styles.disclaimer}>{b(payment.disclaimer)}</p>
               </>
             ) : paymentRequired ? (
               <div className={styles.paymentUnavailable}>
@@ -341,8 +344,8 @@ export function ReservationConfirmation({
               {reservation.items.map((item) => (
                 <li key={item.id}>
                   <span>
-                    {item.title}
-                    {item.variant ? ` · ${item.variant}` : ""}
+                    {b(item.title)}
+                    {item.variant ? ` · ${b(item.variant)}` : ""}
                   </span>
                   <strong>
                     ×{item.quantity} ·{" "}

@@ -132,6 +132,21 @@ test("server-renders the selected document language", async () => {
   assert.match(html, /<html lang="vi"/i);
 });
 
+test("server-renders Vietnamese auth chrome and form copy", async () => {
+  const response = await render("/sign-up", {
+    cookie: "cyfurden:locale=vi",
+  });
+
+  assert.equal(response.status, 200);
+  const html = (await response.text()).replace(/<!--\s*-->/g, "");
+  assert.match(html, /<html lang="vi"/i);
+  assert.match(html, /<title>Tạo tài khoản Cyfurden · Cyfurden<\/title>/i);
+  assert.match(html, /Dựng tài khoản Cyfurden của bạn/);
+  assert.match(html, /Tên của bạn/);
+  assert.match(html, /Vận hành booth — mà vẫn giữ quyền kiểm soát/);
+  assert.doesNotMatch(html, /Set up your Cyfurden account/);
+});
+
 test("applies the repository-controlled production security headers", async () => {
   const response = await render();
 

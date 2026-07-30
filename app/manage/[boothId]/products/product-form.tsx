@@ -337,6 +337,11 @@ export function ProductForm({
           aria-labelledby="basics-heading"
         >
           <h3 id="basics-heading">Basics</h3>
+          <p className={styles.helper}>
+            Public names and descriptions support{" "}
+            <code>[en]English[/en][vi]Tiếng Việt[/vi]</code>. Plain text appears
+            in both storefront languages.
+          </p>
           <div className={styles.formGrid}>
             <label className={styles.field}>
               Product name

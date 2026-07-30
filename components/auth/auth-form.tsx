@@ -109,9 +109,13 @@ export function AuthForm({
           });
 
       if (result.error) {
+        const errorCode = String(result.error.code ?? "").toUpperCase();
         setError(
-          result.error.message ??
-            (isSignUp ? t.signUpErrorGeneric : t.signInErrorInvalid),
+          isSignUp && errorCode.includes("USER_ALREADY_EXISTS")
+            ? t.signUpErrorExists
+            : isSignUp
+              ? t.signUpErrorGeneric
+              : t.signInErrorInvalid,
         );
         return;
       }
@@ -136,7 +140,7 @@ export function AuthForm({
       });
 
       if (result?.error) {
-        setError(result.error.message ?? t.errorGoogleUnavailable);
+        setError(t.errorGoogleUnavailable);
         setPending(false);
       }
     } catch {

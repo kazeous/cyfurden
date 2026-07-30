@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { saveCustomerTransferReference } from "@/lib/customer-transfer-reference";
+import { parseLocale, translate } from "@/lib/i18n";
 
 const referenceSchema = z.object({
   slug: z
@@ -23,6 +24,10 @@ export async function submitCustomerTransferReferenceAction(
   _previousState: CustomerTransferReferenceState,
   formData: FormData,
 ): Promise<CustomerTransferReferenceState> {
+  const strings = translate(
+    parseLocale(String(formData.get("locale") ?? "")),
+    "publicReservation",
+  );
   const parsed = referenceSchema.safeParse({
     slug: String(formData.get("slug") ?? ""),
     code: String(formData.get("code") ?? ""),
@@ -33,7 +38,7 @@ export async function submitCustomerTransferReferenceAction(
   if (!parsed.success) {
     return {
       status: "error",
-      message: "Enter the transfer reference shown by your bank receipt.",
+      message: strings.referenceInvalid,
     };
   }
 
@@ -44,14 +49,14 @@ export async function submitCustomerTransferReferenceAction(
     console.error("Failed to save customer transfer reference", error);
     return {
       status: "error",
-      message: "The transfer reference could not be saved. Try again.",
+      message: strings.referenceSaveFailed,
     };
   }
 
   if (!updated) {
     return {
       status: "error",
-      message: "This reservation is no longer accepting transfer details.",
+      message: strings.referenceClosed,
     };
   }
   revalidatePath(
@@ -59,7 +64,6 @@ export async function submitCustomerTransferReferenceAction(
   );
   return {
     status: "success",
-    message:
-      "Transfer reference submitted. The booth owner will review it manually.",
+    message: strings.referenceSaved,
   };
 }

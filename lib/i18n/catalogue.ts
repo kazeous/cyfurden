@@ -96,6 +96,17 @@ export type PublicBoothStrings = {
   cartSubmitErrorRequired: string;
   cartSubmitErrorInvalidEmail: string;
   cartSubmitErrorGeneric: string;
+  cartActionBagUnreadable: string;
+  cartActionInvalidSubmission: string;
+  cartActionInvalidQuantity: string;
+  cartActionStorefrontUnavailable: string;
+  cartActionPaymentUnavailable: string;
+  cartActionItemUnavailable: string;
+  cartActionItemNotFound: string;
+  cartActionStockUnavailable: (name: string, quantity: number) => string;
+  cartActionInvalidPrice: string;
+  cartActionSaveFailed: string;
+  cartActionStockChanged: string;
   cartDisclaimer: string;
   bagFootnote: string;
   publicFooterManual: string;
@@ -170,6 +181,10 @@ export type PublicReservationStrings = {
   referenceFieldLabel: string;
   referenceSubmit: string;
   referenceSubmitting: string;
+  referenceInvalid: string;
+  referenceSaveFailed: string;
+  referenceClosed: string;
+  referenceSaved: string;
   paymentUnavailableHeading: string;
   paymentUnavailableBody: string;
   noTransferHeading: string;
@@ -186,6 +201,7 @@ export type PublicLandingStrings = {
   skipLink: string;
   wordmarkAria: string;
   navAria: string;
+  languageToggleLabel: string;
   topbarSignIn: string;
   heroEyebrow: string;
   heroTitle: string;
@@ -234,6 +250,7 @@ export type PublicLandingStrings = {
 };
 
 export type PublicAuthStrings = {
+  languageToggleLabel: string;
   signInTitle: string;
   signInBody: string;
   signInSubmit: string;
@@ -281,8 +298,8 @@ export type PublicAuthStrings = {
   errorGeneric: string;
   errorGoogleUnavailable: string;
   pageBrandAria: string;
-  pageBrandSubline: { en: string; vi: string };
-  pageVisitStorefront: string;
+  pageBrandSubline: string;
+  pageBackHome: string;
   storyTag: string;
   storyHeading: string;
   storyBody: string;

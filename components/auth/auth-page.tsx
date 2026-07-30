@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { DocumentLocale } from "@/components/i18n/document-locale";
 import { LanguageToggle } from "@/components/landing/language-toggle";
-import type { Locale } from "@/lib/i18n";
+import { translate, type Locale } from "@/lib/i18n";
+import { safeReturnTo } from "@/lib/redirect";
 import { AuthForm } from "./auth-form";
 import styles from "./auth.module.css";
 
@@ -17,29 +19,31 @@ export function AuthPage({
   returnTo,
   locale = "en",
 }: AuthPageProps) {
-  const isVi = locale === "vi";
+  const t = translate(locale, "publicAuth");
+  const destination = safeReturnTo(returnTo, "/dashboard");
+  const currentPath = mode === "sign-up" ? "/sign-up" : "/sign-in";
+  const localizedRedirect = `${currentPath}?returnTo=${encodeURIComponent(destination)}`;
+
   return (
     <main className={styles.page}>
+      <DocumentLocale locale={locale} />
       <div className={styles.shell}>
         <header className={styles.topbar}>
-          <Link
-            className={styles.brand}
-            href="/"
-            aria-label="Cyfurden storefront"
-          >
+          <Link className={styles.brand} href="/" aria-label={t.pageBrandAria}>
             <span className={styles.brandMark} aria-hidden="true" />
             <span>
               <strong>Cyfurden</strong>
-              <small>
-                {isVi ? "Studio booth cho nghệ sĩ" : "Artist booth studio"}
-              </small>
+              <small>{t.pageBrandSubline}</small>
             </span>
           </Link>
           <div className={styles.headerActions}>
-            <LanguageToggle current={locale} redirectTo="/sign-in" />
+            <LanguageToggle
+              current={locale}
+              label={t.languageToggleLabel}
+              redirectTo={localizedRedirect}
+            />
             <Link className={styles.storefrontLink} href="/">
-              <span aria-hidden="true">←</span>{" "}
-              {isVi ? "Về trang chủ" : "Visit storefront"}
+              <span aria-hidden="true">←</span> {t.pageBackHome}
             </Link>
           </div>
         </header>
@@ -47,19 +51,9 @@ export function AuthPage({
         <section className={styles.card}>
           <aside className={styles.storyPanel}>
             <div className={styles.storyCopy}>
-              <span className={styles.storyTag}>
-                {isVi ? "Dành cho nghệ nhân nhỏ" : "Built for small makers"}
-              </span>
-              <h2>
-                {isVi
-                  ? "Một nơi yên tĩnh cho mỗi booth bận rộn."
-                  : "One quiet place for every busy booth."}
-              </h2>
-              <p>
-                {isVi
-                  ? "Gom các chi tiết trước khi cửa mở, chào đón từng đơn và giữ team vận hành cùng nhau."
-                  : "Gather the details before the doors open, welcome every order, and keep your team moving together."}
-              </p>
+              <span className={styles.storyTag}>{t.storyTag}</span>
+              <h2>{t.storyHeading}</h2>
+              <p>{t.storyBody}</p>
             </div>
 
             <div className={styles.artwork} aria-hidden="true">
@@ -74,15 +68,12 @@ export function AuthPage({
               <span className={styles.artPath} />
             </div>
 
-            <p className={styles.storyNote}>
-              {isVi
-                ? "Cửa hàng công khai luôn mở cho khách — không cần tài khoản."
-                : "Public storefronts stay open for visitors—no account required."}
-            </p>
+            <p className={styles.storyNote}>{t.storyNote}</p>
           </aside>
 
           <AuthForm
             googleEnabled={googleEnabled}
+            locale={locale}
             mode={mode}
             returnTo={returnTo}
           />

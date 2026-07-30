@@ -14,6 +14,7 @@ import {
   publishStorefrontAction,
   saveStorefrontAction,
 } from "@/app/manage/[boothId]/actions";
+import { parseBilingual } from "@/lib/i18n";
 import { BoothIdentityControls } from "./booth-identity-controls";
 import { resolveOracleImageUrl } from "@/lib/oracle-images";
 import { PAYMENT_QR_MAX_BYTES, paymentQrAccept } from "@/lib/payment-qr";
@@ -345,6 +346,8 @@ export function StorefrontDesigner({
   const [announcement, setAnnouncement] = useState(
     "Select a block in the preview to edit it.",
   );
+  const previewText = (value: string | null | undefined) =>
+    parseBilingual(value, document.locale);
 
   useEffect(
     () => () => {
@@ -595,8 +598,8 @@ export function StorefrontDesigner({
         return selectedFeaturedProducts[0] ? (
           <div className={styles.featuredPreview}>
             <div className={styles.featuredPreviewCopy}>
-              <p>{document.announcement}</p>
-              <h3>{selectedFeaturedProducts[0].name}</h3>
+              <p>{previewText(document.announcement)}</p>
+              <h3>{previewText(selectedFeaturedProducts[0].name)}</h3>
               <span>
                 {money(selectedFeaturedProducts[0].priceCents)} /{" "}
                 {selectedFeaturedProducts[0].status === "SOLD_OUT"
@@ -623,17 +626,20 @@ export function StorefrontDesigner({
               }
               role="img"
               aria-label={
-                selectedFeaturedProducts[0].image?.alt ||
-                selectedFeaturedProducts[0].name
+                previewText(selectedFeaturedProducts[0].image?.alt) ||
+                previewText(selectedFeaturedProducts[0].name)
               }
             >
-              <b>{selectedFeaturedProducts[0].eyebrow ?? "Featured release"}</b>
+              <b>
+                {previewText(selectedFeaturedProducts[0].eyebrow) ||
+                  "Featured release"}
+              </b>
             </div>
           </div>
         ) : (
           <EmptyPreview
             icon="F"
-            title={document.tagline}
+            title={previewText(document.tagline)}
             copy="Choose products in this block to build the slider."
           />
         );
@@ -641,10 +647,11 @@ export function StorefrontDesigner({
         return (
           <div className={styles.boothPreview}>
             <p>Booth guide</p>
-            <strong>{document.creatorName}</strong>
-            <span>{document.eventName || "Next convention"}</span>
+            <strong>{previewText(document.creatorName)}</strong>
+            <span>{previewText(document.eventName) || "Next convention"}</span>
             <small>
-              {document.eventVenue} / {document.eventBoothLabel}
+              {previewText(document.eventVenue)} /{" "}
+              {previewText(document.eventBoothLabel)}
             </small>
           </div>
         );
@@ -654,7 +661,7 @@ export function StorefrontDesigner({
             <div className={styles.browsePreviewCategories}>
               <span data-active>All</span>
               {previewCategories.map((category) => (
-                <span key={category.id}>{category.name}</span>
+                <span key={category.id}>{previewText(category.name)}</span>
               ))}
             </div>
             <div className={styles.browsePreviewTools}>
@@ -682,7 +689,7 @@ export function StorefrontDesigner({
               (_, index) => (
                 <span key={index}>
                   <i aria-hidden="true" />
-                  <b>{products[index].name}</b>
+                  <b>{previewText(products[index].name)}</b>
                 </span>
               ),
             )}
@@ -895,6 +902,11 @@ export function StorefrontDesigner({
                   {selectedMeta.icon}
                 </span>
               </div>
+              <p className={styles.panelNote}>
+                Public text accepts{" "}
+                <code>[en]English[/en][vi]Tiếng Việt[/vi]</code>. Plain text
+                appears in both storefront languages.
+              </p>
 
               {selectedSection === "featured" ? (
                 <div className={styles.controlStack}>
@@ -1595,8 +1607,8 @@ export function StorefrontDesigner({
                 C
               </span>
               <span>
-                <strong>{document.name}</strong>
-                <small>{document.eventStatusLabel}</small>
+                <strong>{previewText(document.name)}</strong>
+                <small>{previewText(document.eventStatusLabel)}</small>
               </span>
               <button type="button" onClick={() => selectSection("booth-info")}>
                 Edit info

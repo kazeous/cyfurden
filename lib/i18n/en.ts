@@ -109,6 +109,27 @@ export const enCatalogue: Catalogue = {
     cartSubmitErrorInvalidEmail: "That email address looks off — please check.",
     cartSubmitErrorGeneric:
       "We could not save your reservation. Try again in a moment.",
+    cartActionBagUnreadable:
+      "The bag data could not be read. Refresh the storefront and add the items again.",
+    cartActionInvalidSubmission:
+      "Check your contact details and bag quantities, then send the reservation again.",
+    cartActionInvalidQuantity: "The bag contains an invalid quantity.",
+    cartActionStorefrontUnavailable:
+      "This storefront is not accepting reservations right now.",
+    cartActionPaymentUnavailable:
+      "This booth has not finished its payment instructions, so reservations are temporarily unavailable.",
+    cartActionItemUnavailable:
+      "One of these items is no longer available. Refresh the booth and try again.",
+    cartActionItemNotFound:
+      "One of these items could not be found in this booth.",
+    cartActionStockUnavailable: (name, quantity) =>
+      `${name} no longer has ${quantity} available. Refresh the booth to see the latest stock.`,
+    cartActionInvalidPrice:
+      "One of these items has an invalid price and cannot be reserved.",
+    cartActionSaveFailed:
+      "The reservation could not be saved. Your bag is still here; wait a moment and try again.",
+    cartActionStockChanged:
+      "Stock changed while the reservation was being saved. Refresh the booth and try again.",
     bagFootnote: "Manual bank-transfer handoff · no automatic verification",
     publicFooterManual:
       "Manual bank-transfer handoff · no automatic verification",
@@ -220,6 +241,14 @@ export const enCatalogue: Catalogue = {
     referenceFieldLabel: "Bank reference / transfer message",
     referenceSubmit: "Submit reference",
     referenceSubmitting: "Submitting…",
+    referenceInvalid:
+      "Enter the transfer reference shown by your bank receipt.",
+    referenceSaveFailed:
+      "The transfer reference could not be saved. Try again.",
+    referenceClosed:
+      "This reservation is no longer accepting transfer details.",
+    referenceSaved:
+      "Transfer reference submitted. The booth owner will review it manually.",
     paymentUnavailableHeading: "Payment not ready yet",
     paymentUnavailableBody:
       "The booth is still setting up payment instructions. Check back soon.",
@@ -236,6 +265,7 @@ export const enCatalogue: Catalogue = {
     skipLink: "Skip to content",
     wordmarkAria: "Cyfurden home",
     navAria: "Primary navigation",
+    languageToggleLabel: "Language",
     topbarSignIn: "Sign in",
     heroEyebrow: "Cyfurden",
     heroTitle: "Independent booths for convention days",
@@ -372,6 +402,7 @@ export const enCatalogue: Catalogue = {
     footerLegal: "Cyfurden · An independent-artist booth studio",
   },
   publicAuth: {
+    languageToggleLabel: "Language",
     signInTitle: "Welcome back",
     signInBody:
       "Sign in to manage your booths and review the reservation queue.",
@@ -451,11 +482,8 @@ export const enCatalogue: Catalogue = {
     errorGoogleUnavailable:
       "Google sign-in is not configured for this deployment.",
     pageBrandAria: "Cyfurden home",
-    pageBrandSubline: {
-      en: "An independent-artist booth studio",
-      vi: "Studio booth dành cho nghệ sĩ độc lập",
-    },
-    pageVisitStorefront: "Visit a sample booth",
+    pageBrandSubline: "An independent-artist booth studio",
+    pageBackHome: "Back to home",
     storyTag: "Independent artist studio",
     storyHeading: "Run your booth — without giving up control",
     storyBody:

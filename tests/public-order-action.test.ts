@@ -7,7 +7,7 @@ import {
 
 const initialState: PublicOrderState = { status: "idle", message: "" };
 
-function orderForm(lines: string): FormData {
+function orderForm(lines: string, locale = "en"): FormData {
   const form = new FormData();
   form.set("boothId", "booth-1");
   form.set("slug", "artist-booth");
@@ -15,6 +15,7 @@ function orderForm(lines: string): FormData {
   form.set("customerName", "Test Customer");
   form.set("customerEmail", "customer@example.com");
   form.set("customerNote", "");
+  form.set("locale", locale);
   form.set("lines", lines);
   return form;
 }
@@ -26,6 +27,19 @@ test("malformed bag JSON receives a distinct recovery message", async () => {
     status: "error",
     message:
       "The bag data could not be read. Refresh the storefront and add the items again.",
+  });
+});
+
+test("malformed Vietnamese bag feedback follows the storefront locale", async () => {
+  const result = await createPublicOrderAction(
+    initialState,
+    orderForm("{", "vi"),
+  );
+
+  assert.deepEqual(result, {
+    status: "error",
+    message:
+      "Không đọc được dữ liệu trong giỏ. Hãy tải lại storefront và thêm lại sản phẩm.",
   });
 });
 

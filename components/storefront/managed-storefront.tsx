@@ -6,6 +6,7 @@ import {
   createPublicOrderAction,
   type PublicOrderState,
 } from "@/app/s/[slug]/actions";
+import { DocumentLocale } from "@/components/i18n/document-locale";
 import { resolveOracleImageUrl } from "@/lib/oracle-images";
 import {
   isPurchasableVariant,
@@ -303,6 +304,37 @@ export function ManagedStorefront({
     () => (value: string | null | undefined) => parseBilingual(value, locale),
     [locale],
   );
+  const localizedProducts = useMemo<ProductDto[]>(
+    () =>
+      products.map((product) => ({
+        ...product,
+        category: product.category
+          ? {
+              ...product.category,
+              name: b(product.category.name),
+            }
+          : null,
+        name: b(product.name),
+        eyebrow: product.eyebrow ? b(product.eyebrow) : null,
+        shortDescription: product.shortDescription
+          ? b(product.shortDescription)
+          : null,
+        description: b(product.description),
+        tags: product.tags.map((tag) => b(tag)).filter(Boolean),
+        images: product.images.map((image) => ({
+          ...image,
+          alt: b(image.alt),
+        })),
+        variants: product.variants.map((variant) => ({
+          ...variant,
+          label: b(variant.label),
+          fulfillmentNote: variant.fulfillmentNote
+            ? b(variant.fulfillmentNote)
+            : null,
+        })),
+      })),
+    [b, products],
+  );
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -310,7 +342,7 @@ export function ManagedStorefront({
       try {
         persisted = readPersistedCart(
           window.localStorage.getItem(storageKey),
-          products,
+          localizedProducts,
         );
       } catch {
         // Storage can be unavailable in hardened/private browsing contexts.
@@ -320,15 +352,7 @@ export function ManagedStorefront({
       setHydrated(true);
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [products, storageKey]);
-
-  useEffect(() => {
-    if (typeof globalThis.document === "undefined") return;
-    globalThis.document.documentElement.lang = locale;
-    return () => {
-      globalThis.document.documentElement.lang = "en";
-    };
-  }, [locale]);
+  }, [localizedProducts, storageKey]);
 
   useEffect(() => {
     if (!hydrated || !idempotencyKey) return;
@@ -371,19 +395,19 @@ export function ManagedStorefront({
 
   const categories = useMemo(
     () =>
-      products
+      localizedProducts
         .flatMap((product) => (product.category ? [product.category] : []))
         .filter(
           (category, index, all) =>
             all.findIndex((item) => item.slug === category.slug) === index,
         )
         .sort((left, right) => left.name.localeCompare(right.name)),
-    [products],
+    [localizedProducts],
   );
   const visibleProducts = useMemo(
     () =>
       filterAndSortCatalogue(
-        products.map((product) => ({
+        localizedProducts.map((product) => ({
           ...product,
           categorySlug: product.category?.slug ?? null,
         })),
@@ -393,25 +417,27 @@ export function ManagedStorefront({
           sort,
         },
       ),
-    [categorySlug, products, query, sort],
+    [categorySlug, localizedProducts, query, sort],
   );
   const featuredProducts = useMemo(() => {
     const featuredProductIds = resolveStorefrontFeaturedProductIds(
       document,
-      products,
+      localizedProducts,
     );
     return featuredProductIds.flatMap((productId) => {
-      const product = products.find((item) => item.id === productId);
+      const product = localizedProducts.find((item) => item.id === productId);
       return product ? [product] : [];
     });
-  }, [document, products]);
+  }, [document, localizedProducts]);
 
   const selectedDetailVariant = detailProduct?.variants.find(
     (variant) => variant.id === detailVariantId,
   );
   const detailImage = detailProduct?.images[detailImageIndex];
   const cartDetails = cart.flatMap((line) => {
-    const product = products.find((item) => item.id === line.productId);
+    const product = localizedProducts.find(
+      (item) => item.id === line.productId,
+    );
     const variant = product?.variants.find(
       (item) => item.id === line.variantId,
     );
@@ -934,7 +960,7 @@ export function ManagedStorefront({
                 </button>
               ))}
               <span className={styles.resultsCount} aria-live="polite">
-                {visibleProducts.length} / {products.length}
+                {visibleProducts.length} / {localizedProducts.length}
               </span>
             </div>
             <div className={styles.catalogueControls}>
@@ -1168,6 +1194,7 @@ export function ManagedStorefront({
         } as React.CSSProperties
       }
     >
+      <DocumentLocale locale={locale} />
       <header className={styles.topbar}>
         <div className={styles.brand}>
           <span className={styles.brandMark} aria-hidden="true">
@@ -1634,6 +1661,7 @@ export function ManagedStorefront({
                 >
                   <input type="hidden" name="boothId" value={booth.id} />
                   <input type="hidden" name="slug" value={booth.slug} />
+                  <input type="hidden" name="locale" value={locale} />
                   <input
                     type="hidden"
                     name="idempotencyKey"

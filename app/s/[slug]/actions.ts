@@ -5,6 +5,7 @@ import * as Sentry from "@sentry/nextjs";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { parseBilingual, parseLocale, translate } from "@/lib/i18n";
 import {
   expireStaleOrdersInTransaction,
   ORDER_RESERVATION_TTL_MS,
@@ -18,6 +19,7 @@ import {
   renderTransferReference,
 } from "@/lib/order-rules";
 import { synchronizeProductInventoryStatus } from "@/lib/product-inventory";
+import { readStorefrontDocument } from "@/lib/storefront-document";
 
 const lineSchema = z.object({
   productId: z.string().min(1).max(100),
@@ -72,12 +74,13 @@ export async function createPublicOrderAction(
   _previousState: PublicOrderState,
   formData: FormData,
 ): Promise<PublicOrderState> {
+  let actionLocale = parseLocale(String(formData.get("locale") ?? ""));
+  let strings = translate(actionLocale, "publicBooth");
   const submittedLines = readLines(formData);
   if (submittedLines === null) {
     return {
       status: "error",
-      message:
-        "The bag data could not be read. Refresh the storefront and add the items again.",
+      message: strings.cartActionBagUnreadable,
     };
   }
 
@@ -94,21 +97,17 @@ export async function createPublicOrderAction(
   if (!parsed.success) {
     return {
       status: "error",
-      message:
-        "Check your contact details and bag quantities, then send the reservation again.",
+      message: strings.cartActionInvalidSubmission,
     };
   }
 
   let lines;
   try {
     lines = aggregateSubmittedOrderLines(parsed.data.lines);
-  } catch (error) {
+  } catch {
     return {
       status: "error",
-      message:
-        error instanceof Error
-          ? error.message
-          : "The bag contains an invalid quantity.",
+      message: strings.cartActionInvalidQuantity,
     };
   }
 
@@ -129,21 +128,30 @@ export async function createPublicOrderAction(
 
           const booth = await transaction.booth.findFirst({
             where: { id: boothId, slug, status: "PUBLISHED" },
-            include: { paymentInstructions: true },
+            include: {
+              paymentInstructions: true,
+              storefront: {
+                select: { publishedDocument: true },
+              },
+            },
           });
           if (!booth) {
-            throw new PublicOrderError(
-              "This storefront is not accepting reservations right now.",
+            throw new PublicOrderError(strings.cartActionStorefrontUnavailable);
+          }
+          if (booth.storefront?.publishedDocument) {
+            const document = readStorefrontDocument(
+              booth.storefront.publishedDocument,
+              booth.name,
             );
+            actionLocale = document.locale;
+            strings = translate(actionLocale, "publicBooth");
           }
 
           const paymentSnapshot = createOrderPaymentSnapshot(
             booth.paymentInstructions,
           );
           if (!paymentSnapshot) {
-            throw new PublicOrderError(
-              "This booth has not finished its payment instructions, so reservations are temporarily unavailable.",
-            );
+            throw new PublicOrderError(strings.cartActionPaymentUnavailable);
           }
 
           await expireStaleOrdersInTransaction(
@@ -165,18 +173,14 @@ export async function createPublicOrderAction(
             variants.map((variant) => [variant.id, variant]),
           );
           if (variants.length !== lines.length) {
-            throw new PublicOrderError(
-              "One of these items is no longer available. Refresh the booth and try again.",
-            );
+            throw new PublicOrderError(strings.cartActionItemUnavailable);
           }
 
           const pricedLines = [];
           for (const line of lines) {
             const variant = variantMap.get(line.variantId);
             if (!variant || variant.productId !== line.productId) {
-              throw new PublicOrderError(
-                "One of these items could not be found in this booth.",
-              );
+              throw new PublicOrderError(strings.cartActionItemNotFound);
             }
 
             const tracksInventory = variant.stockQuantity !== null;
@@ -193,7 +197,10 @@ export async function createPublicOrderAction(
               });
               if (!reserved.count) {
                 throw new PublicOrderError(
-                  `${variant.product.name} no longer has ${line.quantity} available. Refresh the booth to see the latest stock.`,
+                  strings.cartActionStockUnavailable(
+                    parseBilingual(variant.product.name, actionLocale),
+                    line.quantity,
+                  ),
                 );
               }
             }
@@ -201,9 +208,7 @@ export async function createPublicOrderAction(
             const unitPriceCents =
               variant.priceCents ?? variant.product.priceCents;
             if (unitPriceCents < BigInt(0)) {
-              throw new PublicOrderError(
-                "One of these items has an invalid price and cannot be reserved.",
-              );
+              throw new PublicOrderError(strings.cartActionInvalidPrice);
             }
 
             pricedLines.push({
@@ -231,8 +236,11 @@ export async function createPublicOrderAction(
           const code = `CYF-${randomBytes(10).toString("hex").toUpperCase()}`;
           const itemSummary =
             pricedLines.length === 1
-              ? pricedLines[0].titleSnapshot
-              : `${pricedLines[0].titleSnapshot} +${pricedLines.length - 1}`;
+              ? parseBilingual(pricedLines[0].titleSnapshot, actionLocale)
+              : `${parseBilingual(
+                  pricedLines[0].titleSnapshot,
+                  actionLocale,
+                )} +${pricedLines.length - 1}`;
           const transferReference = renderTransferReference(
             booth.paymentInstructions?.transferReferenceTemplate ?? "{code}",
             code,
@@ -283,8 +291,7 @@ export async function createPublicOrderAction(
       console.error("Public order creation failed", error);
       return {
         status: "error",
-        message:
-          "The reservation could not be saved. Your bag is still here; wait a moment and try again.",
+        message: strings.cartActionSaveFailed,
       };
     }
   }
@@ -292,8 +299,7 @@ export async function createPublicOrderAction(
   if (!orderCode) {
     return {
       status: "error",
-      message:
-        "Stock changed while the reservation was being saved. Refresh the booth and try again.",
+      message: strings.cartActionStockChanged,
     };
   }
 

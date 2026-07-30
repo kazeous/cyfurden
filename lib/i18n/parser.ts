@@ -11,7 +11,8 @@ const TAG_PATTERN = /\[(en|vi)\]([\s\S]*?)\[\/\1\]/gi;
  * same value for every locale so legacy content keeps rendering unchanged.
  *
  * Gracefully degrades:
- * - When the locale tag is missing, the value is the plain text.
+ * - When the requested locale tag is missing, the first complete
+ *   translation serves both languages.
  * - When the closing tag is missing, any unclosed `[en]` / `[vi]` tag is
  *   stripped so the remainder reads as plain text.
  * - When the tags appear nested, only the first complete pair wins.
@@ -30,16 +31,17 @@ export function parseBilingual(
   const partialHasCloser = /\[(en|vi)\][\s\S]*?\[\/\1\]/i.test(safe);
   if (!partialHasCloser) return partialStripped.trim();
 
-  const fallback: Record<Locale, string> = { en: safe, vi: safe };
-  let hasMatch = false;
+  const localized: Partial<Record<Locale, string>> = {};
+  let firstMatch = "";
   for (const match of safe.matchAll(TAG_PATTERN)) {
     const [, tag, content] = match;
     if (!tag || content === undefined) continue;
     const key = tag.toLowerCase();
     if (key !== "en" && key !== "vi") continue;
-    hasMatch = true;
-    fallback[key] = content.trim();
+    const text = content.trim();
+    if (!firstMatch && text) firstMatch = text;
+    localized[key] = text;
   }
-  if (!hasMatch) return partialStripped.trim();
-  return fallback[target] || fallback[defaultLocale] || safe;
+  if (!Object.keys(localized).length) return partialStripped.trim();
+  return localized[target] || localized[defaultLocale] || firstMatch || safe;
 }

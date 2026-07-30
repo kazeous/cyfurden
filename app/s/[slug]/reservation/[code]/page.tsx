@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { DocumentLocale } from "@/components/i18n/document-locale";
 import { ReservationConfirmation } from "@/components/storefront/reservation-confirmation";
 import { db } from "@/lib/db";
 import { translate } from "@/lib/i18n";
@@ -10,7 +11,6 @@ import {
 import { resolveOracleImageUrl } from "@/lib/oracle-images";
 import { readStorefrontDocument } from "@/lib/storefront-document";
 import { generateVietQrDataUrl } from "@/lib/vietqr";
-import { LangSetter } from "./LangSetter";
 
 export async function generateMetadata({
   params,
@@ -85,7 +85,7 @@ export default async function ReservationPage({
 
   return (
     <>
-      <LangSetter locale={document.locale} />
+      <DocumentLocale locale={document.locale} />
       <ReservationConfirmation
         boothSlug={order.booth.slug}
         document={document}

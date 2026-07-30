@@ -29,7 +29,7 @@ test("parseBilingual falls back to plain text when only one tag is closed", () =
 test("parseBilingual returns the other locale when only one tag pair exists", () => {
   const value = "[en]Only English[/en]";
   assert.equal(parseBilingual(value, "en"), "Only English");
-  assert.equal(parseBilingual(value, "vi"), "[en]Only English[/en]");
+  assert.equal(parseBilingual(value, "vi"), "Only English");
 });
 
 test("parseBilingual accepts the tag pair in either order", () => {

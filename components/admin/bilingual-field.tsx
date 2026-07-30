@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import styles from "./bilingual-field.module.css";
 import { parseBilingual } from "@/lib/i18n/parser";
 
@@ -31,10 +32,13 @@ export function BilingualField({
   placeholder,
   required,
 }: BilingualFieldProps) {
+  const inputId = useId();
+
   return (
     <div className={styles.field}>
-      <label>{label}</label>
+      <label htmlFor={inputId}>{label}</label>
       <textarea
+        id={inputId}
         value={value}
         required={required}
         rows={rows}

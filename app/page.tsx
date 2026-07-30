@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { DocumentLocale } from "@/components/i18n/document-locale";
 import { LanguageToggle } from "@/components/landing/language-toggle";
 import { readLocaleCookie } from "@/lib/i18n/server-locale";
 import { translate, type Locale } from "@/lib/i18n";
@@ -23,6 +24,7 @@ export default async function Home() {
   const landing = translate(locale, "publicLanding");
   return (
     <div className={styles.page}>
+      <DocumentLocale locale={locale} />
       <a className={styles.skipLink} href="#main-content">
         {landing.skipLink}
       </a>
@@ -39,7 +41,11 @@ export default async function Home() {
           <span>Cyfurden</span>
         </Link>
         <nav aria-label={landing.navAria}>
-          <LanguageToggle current={locale} redirectTo="/" />
+          <LanguageToggle
+            current={locale}
+            label={landing.languageToggleLabel}
+            redirectTo="/"
+          />
           <Link className={styles.signInLink} href="/sign-in">
             {landing.topbarSignIn}
           </Link>

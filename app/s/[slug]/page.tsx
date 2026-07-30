@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import * as Sentry from "@sentry/nextjs";
 import { notFound, redirect } from "next/navigation";
+import { cache } from "react";
 import { ManagedStorefront } from "@/components/storefront/managed-storefront";
 import { db } from "@/lib/db";
+import { parseBilingual } from "@/lib/i18n";
 import { createOrderPaymentSnapshot } from "@/lib/order-rules";
 import { resolveOracleImageUrl } from "@/lib/oracle-images";
 import { parseReservationCode, reservationPath } from "@/lib/reservation-code";
@@ -12,7 +14,7 @@ import {
   resolveStorefrontFeaturedProductIds,
 } from "@/lib/storefront-document";
 
-async function getManagedBooth(slug: string) {
+const getManagedBooth = cache(async (slug: string) => {
   try {
     return await db.booth.findUnique({
       where: { slug },
@@ -36,7 +38,7 @@ async function getManagedBooth(slug: string) {
     });
     throw error;
   }
-}
+});
 
 export async function generateMetadata({
   params,
@@ -59,12 +61,19 @@ export async function generateMetadata({
     managed.storefront.publishedDocument,
     managed.name,
   );
+  const title = parseBilingual(document.name, document.locale);
+  const description = parseBilingual(document.tagline, document.locale);
+  const introduction = parseBilingual(document.introduction, document.locale);
   return {
-    title: document.name,
-    description: document.tagline,
+    title,
+    description,
     openGraph: {
-      title: document.name,
-      description: document.introduction,
+      title,
+      description: introduction,
+    },
+    twitter: {
+      title,
+      description,
     },
   };
 }

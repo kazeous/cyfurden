@@ -111,6 +111,26 @@ export const viCatalogue: Catalogue = {
     cartSubmitErrorInvalidEmail: "Email chưa đúng định dạng, kiểm tra lại nhé.",
     cartSubmitErrorGeneric:
       "Chưa lưu được đặt trước. Vui lòng thử lại sau ít phút.",
+    cartActionBagUnreadable:
+      "Không đọc được dữ liệu trong giỏ. Hãy tải lại storefront và thêm lại sản phẩm.",
+    cartActionInvalidSubmission:
+      "Kiểm tra thông tin liên hệ và số lượng trong giỏ, rồi gửi lại đặt trước.",
+    cartActionInvalidQuantity: "Giỏ có số lượng sản phẩm không hợp lệ.",
+    cartActionStorefrontUnavailable:
+      "Storefront này hiện không nhận đặt trước.",
+    cartActionPaymentUnavailable:
+      "Booth chưa hoàn tất hướng dẫn thanh toán nên tạm thời chưa thể nhận đặt trước.",
+    cartActionItemUnavailable:
+      "Một sản phẩm không còn khả dụng. Hãy tải lại booth và thử lại.",
+    cartActionItemNotFound: "Không tìm thấy một sản phẩm trong booth này.",
+    cartActionStockUnavailable: (name, quantity) =>
+      `${name} không còn đủ ${quantity} sản phẩm. Hãy tải lại booth để xem tồn kho mới nhất.`,
+    cartActionInvalidPrice:
+      "Một sản phẩm có giá không hợp lệ nên chưa thể đặt trước.",
+    cartActionSaveFailed:
+      "Chưa lưu được đặt trước. Giỏ hàng vẫn còn đây; đợi một chút rồi thử lại.",
+    cartActionStockChanged:
+      "Tồn kho đã thay đổi trong lúc lưu đặt trước. Hãy tải lại booth và thử lại.",
     bagFootnote: "Chuyển khoản thủ công · không xác minh tự động",
     publicFooterManual: "Chuyển khoản thủ công · không xác minh tự động",
     reservationPending: "Đang chờ bạn chuyển khoản",
@@ -220,6 +240,11 @@ export const viCatalogue: Catalogue = {
     referenceFieldLabel: "Mã tham chiếu / nội dung chuyển khoản",
     referenceSubmit: "Gửi mã tham chiếu",
     referenceSubmitting: "Đang gửi…",
+    referenceInvalid: "Nhập mã tham chiếu hiển thị trên biên nhận ngân hàng.",
+    referenceSaveFailed: "Chưa lưu được mã tham chiếu. Vui lòng thử lại.",
+    referenceClosed:
+      "Đơn đặt trước này không còn nhận thêm thông tin chuyển khoản.",
+    referenceSaved: "Đã gửi mã tham chiếu. Chủ booth sẽ đối chiếu thủ công.",
     paymentUnavailableHeading: "Thanh toán chưa sẵn sàng",
     paymentUnavailableBody:
       "Booth đang cấu hình hướng dẫn thanh toán. Quay lại sau nhé.",
@@ -236,6 +261,7 @@ export const viCatalogue: Catalogue = {
     skipLink: "Bỏ qua đến nội dung",
     wordmarkAria: "Trang chủ Cyfurden",
     navAria: "Điều hướng chính",
+    languageToggleLabel: "Ngôn ngữ",
     topbarSignIn: "Đăng nhập",
     heroEyebrow: "Cyfurden",
     heroTitle: "Booth độc lập cho những ngày hội chợ",
@@ -372,6 +398,7 @@ export const viCatalogue: Catalogue = {
     footerLegal: "Cyfurden · Studio booth cho nghệ sĩ độc lập",
   },
   publicAuth: {
+    languageToggleLabel: "Ngôn ngữ",
     signInTitle: "Chào mừng bạn quay lại",
     signInBody: "Đăng nhập để quản lý booth và duyệt hàng đợi đặt trước.",
     signInSubmit: "Đăng nhập",
@@ -444,11 +471,8 @@ export const viCatalogue: Catalogue = {
     errorGoogleUnavailable:
       "Đăng nhập Google chưa được cấu hình cho bản triển khai này.",
     pageBrandAria: "Trang chủ Cyfurden",
-    pageBrandSubline: {
-      en: "Studio booth cho nghệ sĩ độc lập",
-      vi: "Studio booth dành cho nghệ sĩ độc lập",
-    },
-    pageVisitStorefront: "Xem một booth mẫu",
+    pageBrandSubline: "Studio booth dành cho nghệ sĩ độc lập",
+    pageBackHome: "Về trang chủ",
     storyTag: "Studio nghệ sĩ độc lập",
     storyHeading: "Vận hành booth — mà vẫn giữ quyền kiểm soát",
     storyBody:
