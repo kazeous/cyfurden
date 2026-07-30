@@ -13,6 +13,11 @@ import {
 } from "@/lib/order-rules";
 import { filterAndSortCatalogue, type CatalogueSort } from "@/lib/catalogue";
 import { createSocialQrDataUrl } from "@/lib/social-qr";
+import {
+  clearCart as clearCartLines,
+  removeLine as removeCartLine,
+  type StorefrontCartLine,
+} from "@/lib/storefront-cart";
 import { parseBilingual, translate, type Locale } from "@/lib/i18n";
 import {
   resolveStorefrontFeaturedProductIds,
@@ -45,7 +50,7 @@ type ProductDto = {
   }[];
 };
 
-type CartLine = { productId: string; variantId: string; quantity: number };
+type CartLine = StorefrontCartLine;
 
 const initialOrderState: PublicOrderState = { status: "idle", message: "" };
 
@@ -203,7 +208,7 @@ function ProductQr({
 
   useEffect(() => {
     let active = true;
-    createSocialQrDataUrl(url, { centerLogoUrl })
+    createSocialQrDataUrl(url)
       .then((value) => {
         if (active) setQrUrl(value);
       })
@@ -216,14 +221,27 @@ function ProductQr({
   }, [url, centerLogoUrl]);
 
   return qrUrl ? (
-    <Image
-      className={styles.infoQr}
-      src={qrUrl}
-      alt={alt}
-      width={62}
-      height={62}
-      unoptimized
-    />
+    <span className={styles.infoQrFrame}>
+      <Image
+        className={styles.infoQr}
+        src={qrUrl}
+        alt={alt}
+        width={62}
+        height={62}
+        unoptimized
+      />
+      {centerLogoUrl ? (
+        <Image
+          className={styles.infoQrLogo}
+          src={centerLogoUrl}
+          alt=""
+          aria-hidden="true"
+          width={16}
+          height={16}
+          unoptimized
+        />
+      ) : null}
+    </span>
   ) : (
     <span className={styles.infoQrFallback} aria-hidden="true">
       QR
@@ -263,6 +281,7 @@ export function ManagedStorefront({
   const [infoOpen, setInfoOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [idempotencyKey, setIdempotencyKey] = useState("");
+  const [cartAnnouncement, setCartAnnouncement] = useState("");
   const [orderState, orderAction, orderPending] = useActionState(
     createPublicOrderAction,
     initialOrderState,
@@ -274,6 +293,9 @@ export function ManagedStorefront({
   const detailPanelRef = useRef<HTMLDivElement>(null);
   const infoPanelRef = useRef<HTMLDivElement>(null);
   const orderErrorRef = useRef<HTMLParagraphElement>(null);
+  const emptyCartRef = useRef<HTMLDivElement>(null);
+  const cartLineControlRefs = useRef(new Map<string, HTMLButtonElement>());
+  const pendingCartFocusRef = useRef<string | null | undefined>(undefined);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const storageKey = `cyfurden:cart:${booth.slug}`;
   const t = useMemo(() => translate(locale, "publicBooth"), [locale]);
@@ -338,6 +360,15 @@ export function ManagedStorefront({
   useEffect(() => {
     if (orderState.status === "error") orderErrorRef.current?.focus();
   }, [orderState]);
+
+  useEffect(() => {
+    const focusTarget = pendingCartFocusRef.current;
+    if (focusTarget === undefined) return;
+    pendingCartFocusRef.current = undefined;
+    if (focusTarget === null) emptyCartRef.current?.focus();
+    else cartLineControlRefs.current.get(focusTarget)?.focus();
+  }, [cart]);
+
   const categories = useMemo(
     () =>
       products
@@ -474,7 +505,25 @@ export function ManagedStorefront({
     setCartOpen(true);
   };
 
+  const prepareFocusAfterRemoval = (variantId: string) => {
+    const index = cartDetails.findIndex(
+      (entry) => entry.variant.id === variantId,
+    );
+    const next = cartDetails[index + 1] ?? cartDetails[index - 1];
+    pendingCartFocusRef.current = next?.variant.id ?? null;
+  };
+
   const adjust = (variantId: string, delta: number) => {
+    const detail = cartDetails.find((entry) => entry.variant.id === variantId);
+    if (delta < 0 && detail?.line.quantity === 1) {
+      prepareFocusAfterRemoval(variantId);
+      setCartAnnouncement(
+        t.cartLineRemovedAnnouncement(
+          detail.product.name,
+          detail.variant.label,
+        ),
+      );
+    }
     updateCart((current) =>
       current.flatMap((line) => {
         if (line.variantId !== variantId) return [line];
@@ -490,20 +539,33 @@ export function ManagedStorefront({
     );
   };
 
-  const removeLine = (variantId: string) => {
-    updateCart((current) =>
-      current.filter((line) => line.variantId !== variantId),
+  const removeLine = (
+    variantId: string,
+    productName: string,
+    variantLabel: string,
+  ) => {
+    prepareFocusAfterRemoval(variantId);
+    setCartAnnouncement(
+      t.cartLineRemovedAnnouncement(productName, variantLabel),
     );
+    updateCart((current) => removeCartLine(current, variantId));
   };
 
   const clearCart = () => {
-    updateCart(() => []);
+    pendingCartFocusRef.current = null;
+    setCartAnnouncement(t.cartClearedAnnouncement);
+    updateCart(clearCartLines);
+  };
+
+  const closeCart = () => {
+    setCartAnnouncement("");
+    setCartOpen(false);
   };
 
   const handleCartKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Escape") {
       event.preventDefault();
-      setCartOpen(false);
+      closeCart();
       return;
     }
     if (event.key !== "Tab") return;
@@ -680,6 +742,11 @@ export function ManagedStorefront({
                   {featuredProduct.eyebrow ?? t.featuredProductEyebrow}
                 </p>
                 <h1>{featuredProduct.name}</h1>
+                {featuredProduct.sku ? (
+                  <span className={styles.skuChip}>
+                    SKU {featuredProduct.sku}
+                  </span>
+                ) : null}
                 <p className={styles.featuredDescription}>
                   {featuredProduct.shortDescription ??
                     featuredProduct.description}
@@ -1449,7 +1516,7 @@ export function ManagedStorefront({
           }
           onMouseDown={(event) => {
             if (event.target === event.currentTarget && !orderPending) {
-              setCartOpen(false);
+              closeCart();
             }
           }}
         >
@@ -1477,7 +1544,7 @@ export function ManagedStorefront({
                   ref={closeButtonRef}
                   type="button"
                   className={styles.close}
-                  onClick={() => setCartOpen(false)}
+                  onClick={closeCart}
                   aria-label={t.cartClose}
                   disabled={orderPending}
                 >
@@ -1485,6 +1552,9 @@ export function ManagedStorefront({
                 </button>
               </div>
             </div>
+            <p className={styles.srOnly} aria-live="polite" aria-atomic="true">
+              {cartAnnouncement}
+            </p>
             {cartDetails.length ? (
               <>
                 <div className={styles.cartLines}>
@@ -1501,6 +1571,13 @@ export function ManagedStorefront({
                       </div>
                       <div className={styles.quantity}>
                         <button
+                          ref={(node) => {
+                            if (node) {
+                              cartLineControlRefs.current.set(variant.id, node);
+                            } else {
+                              cartLineControlRefs.current.delete(variant.id);
+                            }
+                          }}
                           type="button"
                           onClick={() => adjust(variant.id, -1)}
                           aria-label={t.cartLineRemoveOne(product.name)}
@@ -1532,8 +1609,13 @@ export function ManagedStorefront({
                       <button
                         type="button"
                         className={styles.cartLineRemove}
-                        onClick={() => removeLine(variant.id)}
-                        aria-label={t.cartLineRemove}
+                        onClick={() =>
+                          removeLine(variant.id, product.name, variant.label)
+                        }
+                        aria-label={t.cartLineRemove(
+                          product.name,
+                          variant.label,
+                        )}
                         disabled={orderPending}
                       >
                         <span aria-hidden="true">×</span>
@@ -1618,7 +1700,7 @@ export function ManagedStorefront({
                 </form>
               </>
             ) : (
-              <div className={styles.empty}>
+              <div className={styles.empty} ref={emptyCartRef} tabIndex={-1}>
                 <h3>{t.cartTitleEmpty}</h3>
                 <p>{t.cartEmptyHint}</p>
               </div>

@@ -193,7 +193,7 @@ export default async function GachaPage({
           </div>
           <Link
             className={admin.buttonPrimary}
-            href={`/manage/${boothId}/gacha`}
+            href={`/manage/${boothId}/gacha?new=1`}
           >
             Add banner
           </Link>
@@ -396,7 +396,7 @@ export default async function GachaPage({
                         </p>
                         <Link
                           className={admin.button}
-                          href={`/manage/${boothId}/products`}
+                          href={`/manage/${boothId}/products?new=1`}
                         >
                           Add product
                         </Link>
@@ -423,7 +423,7 @@ export default async function GachaPage({
                 </p>
                 <Link
                   className={admin.buttonPrimary}
-                  href={`/manage/${boothId}/gacha`}
+                  href={`/manage/${boothId}/gacha?new=1`}
                 >
                   Create banner
                 </Link>

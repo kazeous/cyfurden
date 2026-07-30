@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireBoothRole, requireUser } from "@/lib/authorization";
 import { db } from "@/lib/db";
+import { DEFAULT_GACHA_RATES } from "@/lib/gacha-rates";
 import { transitionOrderStatus } from "@/lib/order-admin";
 import {
   discardUploadedPaymentQr,
@@ -986,7 +987,7 @@ export async function saveGachaAction(formData: FormData) {
         gameTheme: requiredText(formData, "gameTheme") || "anemo",
         pityEnabled: booleanField(formData, "pityEnabled"),
         guaranteedAt,
-        rates: { common: 70, rare: 24, epic: 5, legendary: 1 },
+        rates: { ...DEFAULT_GACHA_RATES },
       },
       update: {
         enabled: booleanField(formData, "enabled"),

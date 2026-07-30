@@ -702,7 +702,7 @@
 @media (min-width: 900px) {
   .cartSummary {
     position: sticky;
-    top: 24px;
+    top: 96px;
     align-self: start;
   }
 }
@@ -1308,6 +1308,13 @@
 .infoSocial small {
   color: #66738a;
 }
+.infoSocial > .infoQrFrame {
+  position: relative;
+  display: block;
+  width: 62px;
+  height: 62px;
+  flex: 0 0 62px;
+}
 .infoQr,
 .infoQrFallback {
   display: block;
@@ -1316,6 +1323,18 @@
   flex: 0 0 62px;
   border-radius: 8px;
   background: #fff;
+}
+.infoQrLogo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  padding: 2px;
+  border-radius: 4px;
+  background: #fff;
+  object-fit: cover;
+  transform: translate(-50%, -50%);
 }
 .infoQrFallback {
   display: grid;
@@ -1474,6 +1493,12 @@
   line-height: 1.45;
 }
 @media (max-width: 860px) {
+  .cartSummary {
+    position: static;
+    top: auto;
+    max-height: none;
+    overflow: visible;
+  }
   .sectionFlow {
     grid-auto-flow: row;
     grid-template-columns: 1fr;
@@ -1651,8 +1676,9 @@
 }
 
 .clearButton {
+  min-height: 44px;
   align-self: center;
-  padding: 6px 10px;
+  padding: 6px 12px;
   border: 1px solid #d6d0c4;
   border-radius: 999px;
   color: #5a6577;
@@ -1684,8 +1710,8 @@
 
 .cartLineRemove {
   display: grid;
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   align-self: flex-start;
   padding: 0;
@@ -1728,4 +1754,16 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   width: max-content;
+}
+
+.srOnly {
+  position: absolute;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  border: 0;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
 }

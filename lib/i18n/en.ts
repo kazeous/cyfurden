@@ -82,7 +82,7 @@ export const enCatalogue: Catalogue = {
       "Image colours may differ slightly from the actual piece.",
     cartFooter:
       "You will receive manual bank-transfer instructions after submitting. Cyfurden does not verify payment automatically.",
-    cartLineRemove: "Remove from bag",
+    cartLineRemove: (name, variant) => `Remove ${name}, ${variant}, from bag`,
     cartLineRemoveOne: (name) => `Remove one ${name}`,
     cartLineAddOne: (name) => `Add one ${name}`,
     cartLineAvailable: (n) => `${n} available`,
@@ -90,6 +90,9 @@ export const enCatalogue: Catalogue = {
     cartTotalLabel: "Total",
     cartTotalUnits: "units requested",
     cartClear: "Clear bag",
+    cartClearedAnnouncement: "Bag cleared.",
+    cartLineRemovedAnnouncement: (name, variant) =>
+      `${name}, ${variant}, removed from bag.`,
     cartClose: "Close bag",
     bagHeading: "Your bag",
     cartSubmit: "Reserve these pieces",

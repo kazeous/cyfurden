@@ -2,6 +2,8 @@ import Link from "next/link";
 import { requireBoothSection } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { expireStaleOrders } from "@/lib/order-inventory";
+import { evaluateBoothChecklist } from "@/lib/orders-checklist";
+import { hoChiMinhTodayWindow, parseTodayQuery } from "@/lib/orders-today";
 import { readStorefrontDocument } from "@/lib/storefront-document";
 import { OrderStatusForm } from "./order-status-form";
 import styles from "./orders.module.css";
@@ -16,7 +18,7 @@ const orderStatuses = [
 
 type OrderStatus = (typeof orderStatuses)[number];
 type StatusFilter = OrderStatus | "ALL";
-type DateRange = "today" | "7" | "30" | "90" | "all";
+type DateRange = "7" | "30" | "90" | "all";
 
 const statusFilters: Array<{ value: StatusFilter; label: string }> = [
   { value: "ALL", label: "All" },
@@ -28,7 +30,6 @@ const statusFilters: Array<{ value: StatusFilter; label: string }> = [
 ];
 
 const dateRanges: Array<{ value: DateRange; label: string }> = [
-  { value: "today", label: "Today" },
   { value: "7", label: "7 days" },
   { value: "30", label: "30 days" },
   { value: "90", label: "90 days" },
@@ -70,13 +71,6 @@ const parseDateRange = (value: string | undefined): DateRange =>
 
 const getDateCutoff = (range: DateRange) => {
   if (range === "all") return undefined;
-  if (range === "today") {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 1);
-    return { gte: start, lt: end };
-  }
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - Number(range));
   return cutoff;
@@ -87,8 +81,11 @@ const buildOrdersHref = (
   status: StatusFilter,
   date: DateRange,
   page?: number,
+  today = false,
 ) => {
-  const query = new URLSearchParams({ status, date });
+  const query = new URLSearchParams({ status });
+  if (today) query.set("today", "1");
+  else query.set("date", date);
   if (page && page > 1) query.set("page", String(page));
   return `/manage/${boothId}/orders?${query.toString()}`;
 };
@@ -104,6 +101,7 @@ export default async function OrdersPage({
   searchParams: Promise<{
     status?: string | string[];
     date?: string | string[];
+    today?: string | string[];
     page?: string | string[];
   }>;
 }) {
@@ -114,11 +112,14 @@ export default async function OrdersPage({
 
   const selectedStatus = parseStatus(firstValue(query.status));
   const selectedDate = parseDateRange(firstValue(query.date));
+  const selectedToday = parseTodayQuery(query.today);
   const requestedPage = Math.max(
     1,
     Number.parseInt(firstValue(query.page) ?? "1", 10) || 1,
   );
-  const cutoff = getDateCutoff(selectedDate);
+  const cutoff = selectedToday
+    ? hoChiMinhTodayWindow()
+    : getDateCutoff(selectedDate);
   const dateWhere =
     cutoff instanceof Date
       ? { placedAt: { gte: cutoff } }
@@ -142,7 +143,6 @@ export default async function OrdersPage({
         where: {
           boothId,
           status: "LIVE",
-          variants: { some: { stockQuantity: { gt: 0 } } },
         },
       }),
     ]);
@@ -200,76 +200,15 @@ export default async function OrdersPage({
       )
     : null;
 
-  const DEFAULT_LOCATION_TOKENS = [
-    "details coming soon",
-    "to be announced",
-    "online and at selected conventions",
-  ];
-  const DEFAULT_HOURS_TOKENS = [
-    "hours to be announced",
-    "tba",
-    "to be announced",
-  ];
-
-  const checklistItems: Array<{
-    key: string;
-    label: string;
-    href: string;
-  }> = [];
-
-  if (liveProductCount === 0) {
-    checklistItems.push({
-      key: "live-product",
-      label: "Add at least one live product",
-      href: `/manage/${boothId}/products`,
-    });
-  }
-  if (!payment?.bankCode || !payment?.accountNumber) {
-    checklistItems.push({
-      key: "payment",
-      label: "Set payment details (bank + account)",
-      href: `/manage/${boothId}/storefront`,
-    });
-  }
-  const introText = storefrontDoc?.introduction?.trim() ?? "";
-  if (!storefrontDoc || introText.length < 10) {
-    checklistItems.push({
-      key: "introduction",
-      label: "Name and describe your booth",
-      href: `/manage/${boothId}/storefront`,
-    });
-  } else {
-    const normalizedLocation = (storefrontDoc.creatorLocation ?? "")
-      .trim()
-      .toLowerCase();
-    const normalizedVenue = (storefrontDoc.eventVenue ?? "")
-      .trim()
-      .toLowerCase();
-    const normalizedHours = (storefrontDoc.eventHours ?? "")
-      .trim()
-      .toLowerCase();
-    const locationMissing =
-      !normalizedLocation ||
-      DEFAULT_LOCATION_TOKENS.includes(normalizedLocation) ||
-      normalizedLocation === normalizedVenue;
-    const hoursMissing =
-      !normalizedHours ||
-      DEFAULT_HOURS_TOKENS.some((token) => normalizedHours.includes(token));
-    if (locationMissing || hoursMissing) {
-      checklistItems.push({
-        key: "location-hours",
-        label:
-          locationMissing && hoursMissing
-            ? "Add location and event hours"
-            : locationMissing
-              ? "Add a location"
-              : "Add event hours",
-        href: `/manage/${boothId}/storefront`,
-      });
-    }
-  }
-
-  const hasChecklist = checklistItems.length > 0;
+  const checklistItems = evaluateBoothChecklist({
+    hasLiveProduct: liveProductCount > 0,
+    payment,
+    storefront: storefrontDoc,
+  });
+  const incompleteChecklistCount = checklistItems.filter(
+    (item) => !item.complete,
+  ).length;
+  const hasChecklist = incompleteChecklistCount > 0;
 
   return (
     <div className={styles.ordersPage}>
@@ -308,14 +247,23 @@ export default async function OrdersPage({
             </span>
             <strong>Attention needed</strong>
             <span className={styles.checklistCount}>
-              {checklistItems.length}{" "}
-              {checklistItems.length === 1 ? "item" : "items"}
+              {incompleteChecklistCount}{" "}
+              {incompleteChecklistCount === 1 ? "item" : "items"} remaining
             </span>
           </header>
           <ul>
             {checklistItems.map((item) => (
-              <li key={item.key}>
-                <Link href={item.href}>{item.label}</Link>
+              <li key={item.key} data-complete={item.complete}>
+                <span className={styles.checklistMark} aria-hidden="true">
+                  {item.complete ? "✓" : "○"}
+                </span>
+                {item.complete ? (
+                  <span>{item.label}</span>
+                ) : (
+                  <Link href={`/manage/${boothId}/${item.destination}`}>
+                    {item.label}
+                  </Link>
+                )}
               </li>
             ))}
           </ul>
@@ -345,7 +293,13 @@ export default async function OrdersPage({
               return (
                 <Link
                   key={filter.value}
-                  href={buildOrdersHref(boothId, filter.value, selectedDate)}
+                  href={buildOrdersHref(
+                    boothId,
+                    filter.value,
+                    selectedDate,
+                    undefined,
+                    selectedToday,
+                  )}
                   className={styles.statusFilter}
                   aria-current={selected ? "page" : undefined}
                 >
@@ -360,8 +314,21 @@ export default async function OrdersPage({
         <div className={styles.filterGroup}>
           <span className={styles.filterLabel}>Placed</span>
           <nav className={styles.dateFilters} aria-label="Order date range">
+            <Link
+              href={buildOrdersHref(
+                boothId,
+                selectedStatus,
+                selectedDate,
+                undefined,
+                true,
+              )}
+              className={styles.dateFilter}
+              aria-current={selectedToday ? "page" : undefined}
+            >
+              Today
+            </Link>
             {dateRanges.map((range) => {
-              const selected = range.value === selectedDate;
+              const selected = !selectedToday && range.value === selectedDate;
               return (
                 <Link
                   key={range.value}
@@ -543,6 +510,7 @@ export default async function OrdersPage({
                     selectedStatus,
                     selectedDate,
                     currentPage - 1,
+                    selectedToday,
                   )}
                 >
                   Previous
@@ -560,6 +528,7 @@ export default async function OrdersPage({
                     selectedStatus,
                     selectedDate,
                     currentPage + 1,
+                    selectedToday,
                   )}
                 >
                   Next

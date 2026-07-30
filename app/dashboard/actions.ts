@@ -9,6 +9,7 @@ import {
   OWNED_BOOTH_LIMIT_MESSAGE,
 } from "@/lib/booth-limit";
 import { db } from "@/lib/db";
+import { DEFAULT_GACHA_RATES } from "@/lib/gacha-rates";
 import { createDefaultStorefrontDocument } from "@/lib/storefront-document";
 
 const boothSchema = z.object({
@@ -113,12 +114,7 @@ export async function createBooth(
                 data: {
                   boothId: booth.id,
                   enabled: false,
-                  rates: {
-                    COMMON: 80,
-                    RARE: 15,
-                    EPIC: 4,
-                    LEGENDARY: 1,
-                  },
+                  rates: { ...DEFAULT_GACHA_RATES },
                 },
               }),
               transaction.quantityPromotion.create({
@@ -171,5 +167,5 @@ export async function createBooth(
     };
   }
 
-  redirect(`/manage/${boothId}/storefront?new=1`);
+  redirect(`/manage/${boothId}/storefront`);
 }

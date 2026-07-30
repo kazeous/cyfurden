@@ -71,7 +71,7 @@ export type PublicBoothStrings = {
   productDetailShowImage: (n: number) => string;
   productDetailDisclaimer: string;
   cartFooter: string;
-  cartLineRemove: string;
+  cartLineRemove: (name: string, variant: string) => string;
   cartLineRemoveOne: (name: string) => string;
   cartLineAddOne: (name: string) => string;
   cartLineAvailable: (n: number) => string;
@@ -79,6 +79,8 @@ export type PublicBoothStrings = {
   cartTotalLabel: string;
   cartTotalUnits: string;
   cartClear: string;
+  cartClearedAnnouncement: string;
+  cartLineRemovedAnnouncement: (name: string, variant: string) => string;
   cartClose: string;
   bagHeading: string;
   cartSubmit: string;

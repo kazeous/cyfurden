@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { requireUser } from "@/lib/authorization";
 import { getDefaultBoothSection } from "@/lib/booth-sections";
+import { countOwnedBooths } from "@/lib/booth-limit";
 import { db } from "@/lib/db";
 import { resolveOracleImageUrl } from "@/lib/oracle-images";
 import { SignOutButton } from "./sign-out-button";
@@ -78,9 +79,10 @@ export default async function DashboardPage({
     },
   });
 
-  const ownedCount = memberships.filter(
-    (membership) => membership.role === "OWNER",
-  ).length;
+  const ownedCount = countOwnedBooths(
+    session.user.id,
+    memberships.map((membership) => membership.booth),
+  );
   const joinedCount = memberships.length - ownedCount;
 
   return (

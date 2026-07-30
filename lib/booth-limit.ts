@@ -6,3 +6,10 @@ export const OWNED_BOOTH_LIMIT_MESSAGE =
 export function canOwnAnotherBooth(ownedBoothCount: number) {
   return ownedBoothCount < MAX_OWNED_BOOTHS;
 }
+
+export function countOwnedBooths(
+  userId: string,
+  booths: ReadonlyArray<{ ownerId: string }>,
+) {
+  return booths.filter((booth) => booth.ownerId === userId).length;
+}

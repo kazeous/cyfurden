@@ -84,7 +84,7 @@ export const viCatalogue: Catalogue = {
       "Màu sắc thực tế có thể chênh lệch nhẹ so với hình.",
     cartFooter:
       "Sau khi gửi, bạn sẽ nhận hướng dẫn chuyển khoản thủ công. Cyfurden không tự xác minh thanh toán.",
-    cartLineRemove: "Xoá khỏi giỏ",
+    cartLineRemove: (name, variant) => `Xoá ${name}, ${variant}, khỏi giỏ`,
     cartLineRemoveOne: (name) => `Bớt một ${name}`,
     cartLineAddOne: (name) => `Thêm một ${name}`,
     cartLineAvailable: (n) => `Còn ${n}`,
@@ -92,6 +92,9 @@ export const viCatalogue: Catalogue = {
     cartTotalLabel: "Tổng cộng",
     cartTotalUnits: "sản phẩm đã chọn",
     cartClear: "Xoá giỏ",
+    cartClearedAnnouncement: "Đã xoá toàn bộ giỏ.",
+    cartLineRemovedAnnouncement: (name, variant) =>
+      `Đã xoá ${name}, ${variant}, khỏi giỏ.`,
     cartClose: "Đóng giỏ",
     bagHeading: "Giỏ của bạn",
     cartSubmit: "Đặt trước các món này",

@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   canOwnAnotherBooth,
+  countOwnedBooths,
   MAX_OWNED_BOOTHS,
   OWNED_BOOTH_LIMIT_MESSAGE,
 } from "../lib/booth-limit";
@@ -22,6 +23,17 @@ test("an owner can create booths until reaching the five-booth cap", () => {
 
 test("the ownership limit has a clear user-facing message", () => {
   assert.match(OWNED_BOOTH_LIMIT_MESSAGE, /up to 5 booths/i);
+});
+
+test("dashboard ownership is derived from the booth owner, not membership role", () => {
+  assert.equal(
+    countOwnedBooths("user-1", [
+      { ownerId: "user-1" },
+      { ownerId: "user-2" },
+      { ownerId: "user-1" },
+    ]),
+    2,
+  );
 });
 
 test("booth creation enforces the cap in a retried serializable transaction", async () => {

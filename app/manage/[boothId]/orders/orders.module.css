@@ -959,10 +959,37 @@
 }
 
 .setupChecklist li {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 10px;
   padding: 8px 12px;
   border: 1px solid #ead7b1;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.7);
+}
+
+.setupChecklist li[data-complete="true"] {
+  border-color: #c8dbc4;
+  color: #496245;
+  background: #f4faf2;
+}
+
+.checklistMark {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  color: #6c4b21;
+  background: rgba(184, 124, 24, 0.12);
+  font-weight: 800;
+}
+
+li[data-complete="true"] .checklistMark {
+  color: #31592e;
+  background: #dcebd8;
 }
 
 .setupChecklist li a {
