@@ -43,3 +43,4 @@ next-env.d.ts
 # Isolated git worktrees and SDD scratch space
 /.worktrees/
 /.superpowers/
+.idea/.name
