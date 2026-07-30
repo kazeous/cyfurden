@@ -22,10 +22,9 @@ test("public reservations enforce stock atomically and idempotently", async () =
   assert.match(source, /stockQuantity: \{ decrement: line\.quantity \}/);
   assert.match(source, /isolationLevel: "Serializable"/);
   assert.match(source, /inventoryDebited: tracksInventory/);
-  assert.match(
-    source,
-    /expiresAt: new Date\(Date\.now\(\) \+ ORDER_RESERVATION_TTL_MS\)/,
-  );
+  assert.match(source, /const placedAt = new Date\(\)/);
+  assert.match(source, /placedAt,/);
+  assert.match(source, /placedAt\.getTime\(\) \+ ORDER_RESERVATION_TTL_MS/);
   assert.match(inventory, /expireStaleOrdersInTransaction/);
   assert.match(inventory, /status: "EXPIRED"/);
   assert.doesNotMatch(source, /product: \{ boothId, status: \{ in:/);

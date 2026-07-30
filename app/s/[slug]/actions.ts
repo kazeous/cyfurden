@@ -160,11 +160,17 @@ export async function createPublicOrderAction(
             throw new PublicOrderError(strings.cartActionPaymentUnavailable);
           }
 
-          await expireStaleOrdersInTransaction(
-            transaction,
-            boothId,
-            new Date(),
-          );
+          const placedAt = new Date();
+          await expireStaleOrdersInTransaction(transaction, boothId, placedAt);
+          const currentEvent = await transaction.event.findFirst({
+            where: {
+              boothId,
+              startsAt: { lte: placedAt },
+              endsAt: { gt: placedAt },
+            },
+            orderBy: [{ startsAt: "desc" }, { id: "asc" }],
+            select: { id: true },
+          });
 
           const requestedVariantIds = lines.map((line) => line.variantId);
           const variants = await transaction.productVariant.findMany({
@@ -294,6 +300,7 @@ export async function createPublicOrderAction(
           const order = await transaction.order.create({
             data: {
               boothId,
+              eventId: currentEvent?.id,
               code,
               status: "PENDING",
               customerName: parsed.data.customerName,
@@ -304,7 +311,10 @@ export async function createPublicOrderAction(
               currency: booth.currency,
               transferReference,
               idempotencyKey,
-              expiresAt: new Date(Date.now() + ORDER_RESERVATION_TTL_MS),
+              placedAt,
+              expiresAt: new Date(
+                placedAt.getTime() + ORDER_RESERVATION_TTL_MS,
+              ),
               paymentSnapshot,
               items: { create: orderLines },
             },

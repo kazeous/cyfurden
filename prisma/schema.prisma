@@ -161,6 +161,7 @@ model Booth {
   categories          Category[]
   products            Product[]
   promotions          QuantityPromotion[]
+  events              Event[]
   orders              Order[]
   gacha               GachaConfig?
   gachaBanners        GachaBanner[]
@@ -347,9 +348,25 @@ model PromotionProduct {
   @@id([promotionId, productId, role])
 }
 
+model Event {
+  id        String   @id @default(cuid())
+  boothId   String
+  name      String
+  startsAt  DateTime
+  endsAt    DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  booth     Booth    @relation(fields: [boothId], references: [id], onDelete: Cascade)
+  orders    Order[]
+
+  @@unique([id, boothId])
+  @@index([boothId, startsAt, endsAt])
+}
+
 model Order {
   id                        String      @id @default(cuid())
   boothId                   String
+  eventId                   String?
   code                      String
   status                    OrderStatus @default(PENDING)
   customerName              String
@@ -370,12 +387,14 @@ model Order {
   fulfilledAt               DateTime?
   updatedAt                 DateTime    @updatedAt
   booth                     Booth       @relation(fields: [boothId], references: [id], onDelete: Restrict)
+  event                     Event?      @relation(fields: [eventId, boothId], references: [id, boothId], onDelete: Restrict, onUpdate: Cascade)
   confirmedBy               User?       @relation("OrderConfirmer", fields: [confirmedById], references: [id], onDelete: SetNull)
   items                     OrderItem[]
 
   @@unique([boothId, code])
   @@unique([boothId, idempotencyKey])
   @@index([boothId, status, placedAt])
+  @@index([boothId, eventId, placedAt])
 }
 
 model OrderItem {

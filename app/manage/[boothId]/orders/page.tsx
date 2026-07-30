@@ -2,10 +2,21 @@ import Link from "next/link";
 import { requireBoothSection } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { parseBilingual } from "@/lib/i18n";
+import {
+  eventDateInput,
+  eventPeriod,
+  orderEventWhere,
+  parseOrderViewMode,
+  resolveEventSelection,
+  type EventSelection,
+  type OrderViewMode,
+} from "@/lib/order-events";
 import { expireStaleOrders } from "@/lib/order-inventory";
 import { evaluateBoothChecklist } from "@/lib/orders-checklist";
 import { hoChiMinhTodayWindow, parseTodayQuery } from "@/lib/orders-today";
 import { readStorefrontDocument } from "@/lib/storefront-document";
+import { EventEditor } from "./event-editor";
+import { OrdersLiveRefresh } from "./live-refresh";
 import { OrderStatusForm } from "./order-status-form";
 import styles from "./orders.module.css";
 
@@ -83,9 +94,14 @@ const buildOrdersHref = (
   date: DateRange,
   page?: number,
   today = false,
+  mode: OrderViewMode = "queue",
+  event: EventSelection = "ALL",
 ) => {
   const query = new URLSearchParams({ status });
-  if (today) query.set("today", "1");
+  if (mode === "events") {
+    query.set("mode", "events");
+    query.set("event", event);
+  } else if (today) query.set("today", "1");
   else query.set("date", date);
   if (page && page > 1) query.set("page", String(page));
   return `/manage/${boothId}/orders?${query.toString()}`;
@@ -93,6 +109,18 @@ const buildOrdersHref = (
 
 const statusLabel = (status: OrderStatus) =>
   statusFilters.find((filter) => filter.value === status)?.label ?? status;
+
+const formatEventRange = (startsAt: Date, endsAt: Date) => {
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "Asia/Ho_Chi_Minh",
+  });
+  return `${formatter.format(startsAt)} – ${formatter.format(
+    new Date(endsAt.getTime() - 1),
+  )}`;
+};
 
 export default async function OrdersPage({
   params,
@@ -104,13 +132,16 @@ export default async function OrdersPage({
     date?: string | string[];
     today?: string | string[];
     page?: string | string[];
+    mode?: string | string[];
+    event?: string | string[];
   }>;
 }) {
   const { boothId } = await params;
   const query = await searchParams;
-  await requireBoothSection(boothId, "orders");
+  const { membership } = await requireBoothSection(boothId, "orders");
   await expireStaleOrders(boothId);
 
+  const selectedMode = parseOrderViewMode(query.mode);
   const selectedStatus = parseStatus(firstValue(query.status));
   const selectedDate = parseDateRange(firstValue(query.date));
   const selectedToday = parseTodayQuery(query.today);
@@ -118,21 +149,35 @@ export default async function OrdersPage({
     1,
     Number.parseInt(firstValue(query.page) ?? "1", 10) || 1,
   );
-  const cutoff = selectedToday
-    ? hoChiMinhTodayWindow()
-    : getDateCutoff(selectedDate);
+  const events = await db.event.findMany({
+    where: { boothId },
+    include: { _count: { select: { orders: true } } },
+    orderBy: [{ startsAt: "desc" }, { id: "asc" }],
+  });
+  const selectedEvent = resolveEventSelection(
+    query.event,
+    events.map((event) => event.id),
+  );
+  const cutoff =
+    selectedMode === "events"
+      ? undefined
+      : selectedToday
+        ? hoChiMinhTodayWindow()
+        : getDateCutoff(selectedDate);
   const dateWhere =
     cutoff instanceof Date
       ? { placedAt: { gte: cutoff } }
       : cutoff
         ? { placedAt: cutoff }
         : {};
+  const eventWhere = orderEventWhere(selectedMode, selectedEvent);
+  const scopedWhere = { boothId, ...eventWhere, ...dateWhere };
 
   const [grouped, totalOrderCount, boothWithSettings, liveProductCount] =
     await Promise.all([
       db.order.groupBy({
         by: ["status"],
-        where: { boothId, ...dateWhere },
+        where: scopedWhere,
         _count: true,
       }),
       db.order.count({ where: { boothId } }),
@@ -160,14 +205,13 @@ export default async function OrdersPage({
   const totalPages = Math.max(1, Math.ceil(filteredOrderCount / PAGE_SIZE));
   const currentPage = Math.min(requestedPage, totalPages);
   const filteredWhere = {
-    boothId,
-    ...dateWhere,
+    ...scopedWhere,
     ...(selectedStatus === "ALL" ? {} : { status: selectedStatus }),
   };
 
   const orders = await db.order.findMany({
     where: filteredWhere,
-    include: { items: true },
+    include: { event: { select: { id: true, name: true } }, items: true },
     orderBy: { placedAt: "desc" },
     skip: (currentPage - 1) * PAGE_SIZE,
     take: PAGE_SIZE,
@@ -189,6 +233,8 @@ export default async function OrdersPage({
   const hasPreviousPage = currentPage > 1;
   const hasNextPage = currentPage < totalPages;
   const isFirstUse = totalOrderCount === 0;
+  const canManageEvents =
+    membership.role === "OWNER" || membership.role === "ADMIN";
   const activeStatusLabel =
     statusFilters.find((filter) => filter.value === selectedStatus)?.label ??
     "orders";
@@ -222,6 +268,7 @@ export default async function OrdersPage({
             fulfilment.
           </p>
         </div>
+        <OrdersLiveRefresh />
       </header>
 
       <aside className={styles.manualNotice} aria-label="Payment review policy">
@@ -271,16 +318,176 @@ export default async function OrdersPage({
         </aside>
       ) : null}
 
+      <nav className={styles.orderModes} aria-label="Orders view">
+        <Link
+          href={buildOrdersHref(boothId, selectedStatus, selectedDate)}
+          aria-current={selectedMode === "queue" ? "page" : undefined}
+        >
+          Queue
+          <span>{totalOrderCount}</span>
+        </Link>
+        <Link
+          href={buildOrdersHref(
+            boothId,
+            selectedStatus,
+            "all",
+            undefined,
+            false,
+            "events",
+            "ALL",
+          )}
+          aria-current={selectedMode === "events" ? "page" : undefined}
+        >
+          Events
+          <span>{events.length}</span>
+        </Link>
+      </nav>
+
+      {selectedMode === "events" ? (
+        <section
+          className={styles.eventWorkspace}
+          aria-labelledby="events-title"
+        >
+          <header className={styles.eventWorkspaceHeader}>
+            <div>
+              <p className={styles.eyebrow}>Event mode</p>
+              <h2 id="events-title">Booth events</h2>
+              <p>
+                Reservations are attributed when they are placed. Existing
+                attribution stays attached when an event is edited.
+              </p>
+            </div>
+            <span>
+              {events.length} {events.length === 1 ? "event" : "events"}
+            </span>
+          </header>
+
+          {events.length ? (
+            <div className={styles.eventCards}>
+              {events.map((event) => {
+                const period = eventPeriod(event);
+                return (
+                  <article className={styles.eventCard} key={event.id}>
+                    <div className={styles.eventCardSummary}>
+                      <div>
+                        <span
+                          className={styles.eventPeriod}
+                          data-period={period}
+                        >
+                          {period}
+                        </span>
+                        <h3>{event.name}</h3>
+                        <p>{formatEventRange(event.startsAt, event.endsAt)}</p>
+                      </div>
+                      <strong>
+                        {event._count.orders}{" "}
+                        {event._count.orders === 1 ? "order" : "orders"}
+                      </strong>
+                    </div>
+                    {canManageEvents ? (
+                      <details className={styles.eventEdit}>
+                        <summary>Edit event</summary>
+                        <EventEditor
+                          boothId={boothId}
+                          event={{
+                            id: event.id,
+                            name: event.name,
+                            startDate: eventDateInput(event.startsAt),
+                            endDate: eventDateInput(event.endsAt, true),
+                          }}
+                        />
+                      </details>
+                    ) : null}
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <p className={styles.noEvents}>
+              No events are defined yet. Reservations will remain available in
+              Queue without an event attribution.
+            </p>
+          )}
+
+          {canManageEvents ? (
+            <details className={styles.createEvent} open={!events.length}>
+              <summary>Create an event</summary>
+              <EventEditor boothId={boothId} />
+            </details>
+          ) : (
+            <p className={styles.eventReadOnly}>
+              Event dates are managed by booth owners and admins.
+            </p>
+          )}
+        </section>
+      ) : null}
+
       <section className={styles.filters} aria-labelledby="order-filters-title">
         <div className={styles.filterHeader}>
           <div>
-            <h2 id="order-filters-title">Order queue</h2>
-            <p>Narrow the queue by status and reservation date.</p>
+            <h2 id="order-filters-title">
+              {selectedMode === "events" ? "Event orders" : "Order queue"}
+            </h2>
+            <p>
+              {selectedMode === "events"
+                ? "Choose an event and narrow its orders by status."
+                : "Narrow the queue by status and reservation date."}
+            </p>
           </div>
           <span className={styles.resultCount} aria-live="polite">
             {filteredOrderCount} {filteredOrderCount === 1 ? "order" : "orders"}
           </span>
         </div>
+
+        {selectedMode === "events" ? (
+          <div className={styles.filterGroup}>
+            <span className={styles.filterLabel}>Event</span>
+            <nav className={styles.eventFilters} aria-label="Order event">
+              <Link
+                href={buildOrdersHref(
+                  boothId,
+                  selectedStatus,
+                  "all",
+                  undefined,
+                  false,
+                  "events",
+                  "ALL",
+                )}
+                className={styles.eventFilter}
+                aria-current={selectedEvent === "ALL" ? "page" : undefined}
+              >
+                <span>All events</span>
+                <span className={styles.filterCount}>
+                  {events.reduce(
+                    (total, event) => total + event._count.orders,
+                    0,
+                  )}
+                </span>
+              </Link>
+              {events.map((event) => (
+                <Link
+                  key={event.id}
+                  href={buildOrdersHref(
+                    boothId,
+                    selectedStatus,
+                    "all",
+                    undefined,
+                    false,
+                    "events",
+                    event.id,
+                  )}
+                  className={styles.eventFilter}
+                  aria-current={selectedEvent === event.id ? "page" : undefined}
+                >
+                  <span>{event.name}</span>
+                  <span className={styles.filterCount}>
+                    {event._count.orders}
+                  </span>
+                </Link>
+              ))}
+            </nav>
+          </div>
+        ) : null}
 
         <div className={styles.filterGroup}>
           <span className={styles.filterLabel}>Status</span>
@@ -300,6 +507,8 @@ export default async function OrdersPage({
                     selectedDate,
                     undefined,
                     selectedToday,
+                    selectedMode,
+                    selectedEvent,
                   )}
                   className={styles.statusFilter}
                   aria-current={selected ? "page" : undefined}
@@ -312,37 +521,39 @@ export default async function OrdersPage({
           </nav>
         </div>
 
-        <div className={styles.filterGroup}>
-          <span className={styles.filterLabel}>Placed</span>
-          <nav className={styles.dateFilters} aria-label="Order date range">
-            <Link
-              href={buildOrdersHref(
-                boothId,
-                selectedStatus,
-                selectedDate,
-                undefined,
-                true,
-              )}
-              className={styles.dateFilter}
-              aria-current={selectedToday ? "page" : undefined}
-            >
-              Today
-            </Link>
-            {dateRanges.map((range) => {
-              const selected = !selectedToday && range.value === selectedDate;
-              return (
-                <Link
-                  key={range.value}
-                  href={buildOrdersHref(boothId, selectedStatus, range.value)}
-                  className={styles.dateFilter}
-                  aria-current={selected ? "page" : undefined}
-                >
-                  {range.label}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
+        {selectedMode === "queue" ? (
+          <div className={styles.filterGroup}>
+            <span className={styles.filterLabel}>Placed</span>
+            <nav className={styles.dateFilters} aria-label="Order date range">
+              <Link
+                href={buildOrdersHref(
+                  boothId,
+                  selectedStatus,
+                  selectedDate,
+                  undefined,
+                  true,
+                )}
+                className={styles.dateFilter}
+                aria-current={selectedToday ? "page" : undefined}
+              >
+                Today
+              </Link>
+              {dateRanges.map((range) => {
+                const selected = !selectedToday && range.value === selectedDate;
+                return (
+                  <Link
+                    key={range.value}
+                    href={buildOrdersHref(boothId, selectedStatus, range.value)}
+                    className={styles.dateFilter}
+                    aria-current={selected ? "page" : undefined}
+                  >
+                    {range.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        ) : null}
       </section>
 
       {filteredOrderCount > 0 ? (
@@ -385,7 +596,10 @@ export default async function OrdersPage({
           <div className={styles.tableWrap}>
             <table className={styles.orderTable}>
               <caption className={styles.srOnly}>
-                Orders matching the selected status and date range
+                Orders matching the selected{" "}
+                {selectedMode === "events"
+                  ? "event and status"
+                  : "status and date range"}
               </caption>
               <thead>
                 <tr>
@@ -407,6 +621,11 @@ export default async function OrdersPage({
                       <span className={styles.customerName}>
                         {order.customerName}
                       </span>
+                      {order.event ? (
+                        <span className={styles.eventAttribution}>
+                          {order.event.name}
+                        </span>
+                      ) : null}
                       <a href={`mailto:${order.customerEmail}`}>
                         {order.customerEmail}
                       </a>
@@ -456,6 +675,11 @@ export default async function OrdersPage({
                   <div>
                     <span className={styles.orderCode}>{order.code}</span>
                     <strong>{order.customerName}</strong>
+                    {order.event ? (
+                      <span className={styles.eventAttribution}>
+                        {order.event.name}
+                      </span>
+                    ) : null}
                   </div>
                   <span
                     className={styles.statusBadge}
@@ -512,6 +736,8 @@ export default async function OrdersPage({
                     selectedDate,
                     currentPage - 1,
                     selectedToday,
+                    selectedMode,
+                    selectedEvent,
                   )}
                 >
                   Previous
@@ -530,6 +756,8 @@ export default async function OrdersPage({
                     selectedDate,
                     currentPage + 1,
                     selectedToday,
+                    selectedMode,
+                    selectedEvent,
                   )}
                 >
                   Next
@@ -550,12 +778,28 @@ export default async function OrdersPage({
             <p>
               {isFirstUse
                 ? "Reservations from the public storefront will appear here. Payment remains pending until booth staff reviews the bank transfer manually."
-                : "Try a different status or a wider date range to find the order you need."}
+                : selectedMode === "events"
+                  ? events.length
+                    ? "Try a different event or status. Reservations placed outside an event remain available in Queue."
+                    : "Create an event to begin attributing new reservations. Existing reservations remain available in Queue."
+                  : "Try a different status or a wider date range to find the order you need."}
             </p>
             {isFirstUse ? null : (
               <Link
                 className={styles.emptyAction}
-                href={buildOrdersHref(boothId, "ALL", "all")}
+                href={
+                  selectedMode === "events"
+                    ? buildOrdersHref(
+                        boothId,
+                        "ALL",
+                        "all",
+                        undefined,
+                        false,
+                        "events",
+                        "ALL",
+                      )
+                    : buildOrdersHref(boothId, "ALL", "all")
+                }
               >
                 Clear filters
               </Link>

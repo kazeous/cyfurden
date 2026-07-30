@@ -8,6 +8,7 @@ import { requireBoothRole, requireUser } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { DEFAULT_GACHA_RATES } from "@/lib/gacha-rates";
 import { transitionOrderStatus } from "@/lib/order-admin";
+import { parseEventDateRange } from "@/lib/order-events";
 import {
   discardUploadedPaymentQr,
   discardUploadedProductImage,
@@ -1045,6 +1046,148 @@ export type OrderStatusActionState = {
   status: "idle" | "success" | "error";
   message: string;
 };
+
+export type OrderEventActionState = {
+  status: "idle" | "success" | "error";
+  message: string;
+};
+
+const orderEventSchema = z.object({
+  boothId: z.string().trim().min(1).max(100),
+  eventId: z.string().trim().max(100),
+  name: z.string().trim().min(2).max(100),
+  startDate: z.string().trim(),
+  endDate: z.string().trim(),
+});
+
+export async function saveOrderEventAction(
+  _previousState: OrderEventActionState,
+  formData: FormData,
+): Promise<OrderEventActionState> {
+  const parsed = orderEventSchema.safeParse({
+    boothId: requiredText(formData, "boothId"),
+    eventId: requiredText(formData, "eventId"),
+    name: requiredText(formData, "name"),
+    startDate: requiredText(formData, "startDate"),
+    endDate: requiredText(formData, "endDate"),
+  });
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: "Enter an event name and a valid start and end date.",
+    };
+  }
+
+  const range = parseEventDateRange(parsed.data.startDate, parsed.data.endDate);
+  if (!range) {
+    return {
+      status: "error",
+      message: "The end date must be on or after the start date.",
+    };
+  }
+
+  const { boothId, eventId, name } = parsed.data;
+  try {
+    const { session } = await requireBoothRole(boothId, editorRoles);
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const result = await db.$transaction(
+          async (transaction) => {
+            if (eventId) {
+              const existing = await transaction.event.findFirst({
+                where: { id: eventId, boothId },
+                select: { id: true },
+              });
+              if (!existing) return { kind: "missing" as const };
+            }
+
+            const overlap = await transaction.event.findFirst({
+              where: {
+                boothId,
+                ...(eventId ? { id: { not: eventId } } : {}),
+                startsAt: { lt: range.endsAt },
+                endsAt: { gt: range.startsAt },
+              },
+              orderBy: [{ startsAt: "asc" }, { id: "asc" }],
+              select: { name: true },
+            });
+            if (overlap) {
+              return {
+                kind: "overlap" as const,
+                eventName: overlap.name,
+              };
+            }
+
+            const saved = eventId
+              ? await transaction.event.update({
+                  where: { id_boothId: { id: eventId, boothId } },
+                  data: { name, ...range },
+                  select: { id: true },
+                })
+              : await transaction.event.create({
+                  data: { boothId, name, ...range },
+                  select: { id: true },
+                });
+
+            await transaction.auditLog.create({
+              data: {
+                boothId,
+                actorUserId: session.user.id,
+                action: eventId ? "order_event.updated" : "order_event.created",
+                entityType: "Event",
+                entityId: saved.id,
+                metadata: {
+                  name,
+                  startsAt: range.startsAt.toISOString(),
+                  endsAt: range.endsAt.toISOString(),
+                },
+              },
+            });
+            return { kind: "saved" as const };
+          },
+          { isolationLevel: "Serializable" },
+        );
+
+        if (result.kind === "missing") {
+          return {
+            status: "error",
+            message: "This event no longer belongs to the active booth.",
+          };
+        }
+        if (result.kind === "overlap") {
+          return {
+            status: "error",
+            message: `These dates overlap ${result.eventName}. Events for one booth cannot overlap.`,
+          };
+        }
+
+        revalidatePath(`/manage/${boothId}/orders`);
+        return {
+          status: "success",
+          message: eventId ? "Event updated." : "Event created.",
+        };
+      } catch (error) {
+        const code =
+          typeof error === "object" && error !== null && "code" in error
+            ? String((error as { code?: unknown }).code)
+            : "";
+        if (code === "P2034" && attempt < 2) continue;
+        throw error;
+      }
+    }
+  } catch (error) {
+    Sentry.captureException(error, {
+      tags: { "cyfurden.operation": "order_event.save" },
+    });
+    console.error("Order event save failed", error);
+  }
+
+  return {
+    status: "error",
+    message: "The event could not be saved. Try again.",
+  };
+}
 
 export async function updateOrderStatusAction(
   _previousState: OrderStatusActionState,
