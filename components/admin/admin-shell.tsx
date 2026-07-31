@@ -1,15 +1,11 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { getDefaultBoothSection } from "@/lib/booth-sections";
+import type { Locale } from "@/lib/i18n";
+import { getAdminShellStrings } from "@/lib/i18n/admin-shell";
 import { AdminNav } from "./admin-nav";
+import { AdminOverflowMenu } from "./admin-overflow-menu";
 import styles from "./admin.module.css";
-
-function ArrowLeftIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d="M19 12H5m7 7-7-7 7-7" />
-    </svg>
-  );
-}
 
 function GridIcon() {
   return (
@@ -27,103 +23,222 @@ function ExternalIcon() {
   );
 }
 
-function BoothIdentity({
+function CheckIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="m5 12 4 4L19 6" />
+    </svg>
+  );
+}
+
+function ChevronIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="m7 9 5 5 5-5" />
+    </svg>
+  );
+}
+
+export type AdminBoothOption = {
+  id: string;
+  name: string;
+  role: string;
+  slug: string;
+  status: string;
+};
+
+function BoothSwitcher({
   booth,
+  booths,
+  locale,
   role,
 }: {
-  booth: { slug: string; name: string };
+  booth: { id: string; slug: string; name: string };
+  booths: AdminBoothOption[];
+  locale: Locale;
   role: string;
 }) {
+  const strings = getAdminShellStrings(locale);
+
   return (
-    <div className={styles.boothSelector}>
-      <span className={styles.boothMark} aria-hidden="true">
-        {booth.name.trim().slice(0, 1).toUpperCase() || "C"}
-      </span>
-      <span>
-        <strong>{booth.name}</strong>
-        <small>Active booth · {role.toLowerCase()}</small>
-      </span>
-    </div>
+    <details className={styles.boothSwitcher}>
+      <summary
+        className={styles.boothSelector}
+        aria-label={`${strings.switchBooth}: ${booth.name}`}
+      >
+        <span className={styles.boothMark} aria-hidden="true">
+          {booth.name.trim().slice(0, 1).toUpperCase() || "C"}
+        </span>
+        <span>
+          <strong>{booth.name}</strong>
+          <small>{strings.activeBooth(role)}</small>
+        </span>
+        <span className={styles.switcherChevron}>
+          <ChevronIcon />
+        </span>
+      </summary>
+
+      <div className={styles.boothSwitcherPanel}>
+        <p>{strings.switchBooth}</p>
+        <div className={styles.boothSwitcherList}>
+          {booths.map((option) => {
+            const current = option.id === booth.id;
+            const section = getDefaultBoothSection(option.role, option.status);
+            return (
+              <Link
+                href={`/manage/${option.id}/${section}`}
+                key={option.id}
+                aria-current={current ? "page" : undefined}
+              >
+                <span className={styles.switcherBoothMark} aria-hidden="true">
+                  {option.name.trim().slice(0, 1).toUpperCase() || "C"}
+                </span>
+                <span>
+                  <strong>{option.name}</strong>
+                  <small>
+                    {current
+                      ? strings.currentBooth
+                      : strings.roleWorkspace(option.role)}
+                  </small>
+                </span>
+                {current ? (
+                  <span className={styles.switcherCheck}>
+                    <CheckIcon />
+                  </span>
+                ) : null}
+              </Link>
+            );
+          })}
+        </div>
+        <div className={styles.boothSwitcherActions}>
+          <Link href="/dashboard">
+            <GridIcon />
+            {strings.allBooths}
+          </Link>
+          <Link href="/dashboard/new">
+            <span aria-hidden="true">+</span>
+            {strings.createBooth}
+          </Link>
+        </div>
+      </div>
+    </details>
   );
 }
 
 export function AdminShell({
   booth,
+  booths,
+  locale,
+  productCount,
   role,
   children,
 }: {
   booth: { id: string; slug: string; name: string };
+  booths: AdminBoothOption[];
+  locale: Locale;
+  productCount: number;
   role: string;
   children: ReactNode;
 }) {
+  const strings = getAdminShellStrings(locale);
+  const canManageSettings = role === "OWNER" || role === "ADMIN";
+
   return (
     <div className={styles.adminApp}>
-      <aside className={styles.adminSidebar} aria-label="Booth workspace">
+      <aside
+        className={styles.adminSidebar}
+        aria-label={strings.boothWorkspaceAria}
+      >
         <Link className={styles.sidebarBrand} href="/dashboard">
           <span className={styles.brandMark} aria-hidden="true">
             C
           </span>
           <span>
             <strong>Cyfurden</strong>
-            <small>Artist booth studio</small>
+            <small>{strings.brandSubline}</small>
           </span>
         </Link>
 
-        <BoothIdentity booth={booth} role={role} />
+        <div className={styles.sidebarWorkspaceControls}>
+          <BoothSwitcher
+            booth={booth}
+            booths={booths}
+            locale={locale}
+            role={role}
+          />
+          <AdminOverflowMenu
+            boothId={booth.id}
+            canManageSettings={canManageSettings}
+            locale={locale}
+          />
+        </div>
 
-        <p className={styles.sidebarLabel}>Workspace</p>
-        <nav className={styles.sectionNav} aria-label="Booth management">
-          <AdminNav boothId={booth.id} role={role} />
+        <p className={styles.sidebarLabel}>{strings.workspaceLabel}</p>
+        <nav
+          className={styles.sectionNav}
+          aria-label={strings.boothManagementAria}
+        >
+          <AdminNav
+            boothId={booth.id}
+            locale={locale}
+            productCount={productCount}
+            role={role}
+          />
         </nav>
 
         <div className={styles.sidebarLinks}>
           <Link className={styles.sidebarLink} href={`/s/${booth.slug}`}>
             <ExternalIcon />
-            <span>View storefront</span>
+            <span>{strings.viewStorefront}</span>
           </Link>
           <Link className={styles.sidebarLink} href="/dashboard">
             <GridIcon />
-            <span>All booths</span>
+            <span>{strings.allBooths}</span>
           </Link>
         </div>
 
-        <p className={styles.sidebarHint}>
-          Changes stay private until you publish the storefront.
-        </p>
+        <p className={styles.sidebarHint}>{strings.privateChangesHint}</p>
       </aside>
 
       <div className={styles.adminWorkspace}>
         <header className={styles.adminTopbar}>
           <div className={styles.mobileWorkspaceIdentity}>
-            <Link
-              className={styles.iconLink}
-              href="/dashboard"
-              aria-label="Back to all booths"
-              title="Back to all booths"
-            >
-              <ArrowLeftIcon />
-            </Link>
-            <div className={styles.mobileBoothCopy}>
-              <strong>{booth.name}</strong>
-              <small>{role.toLowerCase()} workspace</small>
-            </div>
+            <BoothSwitcher
+              booth={booth}
+              booths={booths}
+              locale={locale}
+              role={role}
+            />
           </div>
           <div className={styles.mobileTopbarActions}>
             <Link
               className={styles.iconLink}
               href={`/s/${booth.slug}`}
-              aria-label="View public storefront"
-              title="View public storefront"
+              aria-label={strings.viewStorefront}
+              title={strings.viewStorefront}
             >
               <ExternalIcon />
             </Link>
+            <AdminOverflowMenu
+              boothId={booth.id}
+              canManageSettings={canManageSettings}
+              locale={locale}
+            />
           </div>
         </header>
 
         <main className={styles.adminMain}>{children}</main>
 
-        <nav className={styles.mobileBottomNav} aria-label="Booth management">
-          <AdminNav boothId={booth.id} role={role} />
+        <nav
+          className={styles.mobileBottomNav}
+          aria-label={strings.boothManagementAria}
+        >
+          <AdminNav
+            boothId={booth.id}
+            locale={locale}
+            productCount={productCount}
+            role={role}
+          />
         </nav>
       </div>
     </div>

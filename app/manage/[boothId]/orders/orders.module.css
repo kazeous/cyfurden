@@ -100,6 +100,72 @@
   box-shadow: none;
 }
 
+.orderAlertToast {
+  position: fixed;
+  z-index: 100;
+  top: 20px;
+  right: 20px;
+  display: grid;
+  width: min(380px, calc(100vw - 32px));
+  grid-template-columns: 38px minmax(0, 1fr) 36px;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--color-success-line);
+  border-radius: 13px;
+  color: var(--orders-ink);
+  background: var(--color-panel);
+  box-shadow: 0 18px 46px var(--color-shadow-medium);
+}
+
+.orderAlertMark {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 11px;
+  color: var(--color-success-ink);
+  background: var(--color-success-soft);
+  font-family: var(--font-display);
+  font-weight: 900;
+}
+
+.orderAlertToast > span:nth-child(2) {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.orderAlertToast strong {
+  font-size: 0.8rem;
+}
+
+.orderAlertToast small {
+  color: var(--orders-muted);
+  font-size: 0.69rem;
+  line-height: 1.35;
+}
+
+.orderAlertToast button {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  color: var(--orders-muted);
+  background: var(--orders-subtle);
+  font: inherit;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.orderAlertToast button:hover,
+.orderAlertToast button:focus-visible {
+  color: var(--orders-ink);
+  background: var(--color-accent-soft);
+}
+
 .manualNotice {
   display: flex;
   gap: 12px;
@@ -1170,6 +1236,13 @@
     align-self: stretch;
     justify-content: center;
     border-radius: 10px;
+  }
+
+  .orderAlertToast {
+    top: 74px;
+    right: 12px;
+    left: 12px;
+    width: auto;
   }
 
   .orderModes {

@@ -173,25 +173,40 @@ export default async function OrdersPage({
   const eventWhere = orderEventWhere(selectedMode, selectedEvent);
   const scopedWhere = { boothId, ...eventWhere, ...dateWhere };
 
-  const [grouped, totalOrderCount, boothWithSettings, liveProductCount] =
-    await Promise.all([
-      db.order.groupBy({
-        by: ["status"],
-        where: scopedWhere,
-        _count: true,
-      }),
-      db.order.count({ where: { boothId } }),
-      db.booth.findUnique({
-        where: { id: boothId },
-        include: { paymentInstructions: true, storefront: true },
-      }),
-      db.product.count({
-        where: {
-          boothId,
-          status: "LIVE",
-        },
-      }),
-    ]);
+  const [
+    grouped,
+    totalOrderCount,
+    boothWithSettings,
+    liveProductCount,
+    latestOrder,
+  ] = await Promise.all([
+    db.order.groupBy({
+      by: ["status"],
+      where: scopedWhere,
+      _count: true,
+    }),
+    db.order.count({ where: { boothId } }),
+    db.booth.findUnique({
+      where: { id: boothId },
+      include: { paymentInstructions: true, storefront: true },
+    }),
+    db.product.count({
+      where: {
+        boothId,
+        status: "LIVE",
+      },
+    }),
+    db.order.findFirst({
+      where: { boothId },
+      select: {
+        id: true,
+        code: true,
+        placedAt: true,
+        status: true,
+      },
+      orderBy: [{ placedAt: "desc" }, { id: "desc" }],
+    }),
+  ]);
 
   const counts = new Map(grouped.map((entry) => [entry.status, entry._count]));
   const scopedOrderCount = grouped.reduce(
@@ -268,7 +283,18 @@ export default async function OrdersPage({
             fulfilment.
           </p>
         </div>
-        <OrdersLiveRefresh />
+        <OrdersLiveRefresh
+          boothId={boothId}
+          boothName={boothWithSettings?.name ?? "this booth"}
+          latestOrder={
+            latestOrder
+              ? {
+                  ...latestOrder,
+                  placedAt: latestOrder.placedAt.toISOString(),
+                }
+              : null
+          }
+        />
       </header>
 
       <aside className={styles.manualNotice} aria-label="Payment review policy">

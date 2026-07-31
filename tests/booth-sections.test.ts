@@ -11,6 +11,7 @@ test("staff can access Orders and no other booth-management section", () => {
     canAccessBoothSection("STAFF", section),
   );
   assert.deepEqual(staffSections, ["orders"]);
+  assert.equal(canAccessBoothSection("STAFF", "settings"), false);
 });
 
 test("owners and admins retain every booth-management section", () => {
@@ -19,6 +20,7 @@ test("owners and admins retain every booth-management section", () => {
       boothSectionIds.filter((section) => canAccessBoothSection(role, section)),
       [...boothSectionIds],
     );
+    assert.equal(canAccessBoothSection(role, "settings"), true);
   }
 });
 

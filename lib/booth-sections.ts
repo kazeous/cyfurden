@@ -4,6 +4,7 @@ export const boothSectionIds = [
   "products",
   "gacha",
   "team",
+  "settings",
 ] as const;
 
 export type BoothSectionId = (typeof boothSectionIds)[number];

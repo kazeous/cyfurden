@@ -33,6 +33,8 @@ import {
   updateTeamMemberAccess,
 } from "@/lib/team-access";
 import {
+  createDefaultStorefrontDocument,
+  readStorefrontDocument,
   storefrontDocumentSchema,
   storefrontSectionIds,
 } from "@/lib/storefront-document";
@@ -159,6 +161,207 @@ const promotionSchema = z
   });
 
 export type StorefrontSaveState = { error: string | null };
+export type BoothSettingsSaveState = { error: string | null };
+
+export async function saveBoothSettingsAction(
+  _previousState: BoothSettingsSaveState,
+  formData: FormData,
+): Promise<BoothSettingsSaveState> {
+  const boothId = requiredText(formData, "boothId");
+  const { session, booth } = await requireBoothRole(boothId, editorRoles);
+  const boothNameResult = z
+    .string()
+    .trim()
+    .min(2, "Give this booth a name with at least 2 characters.")
+    .max(80, "Keep the booth name to 80 characters or fewer.")
+    .safeParse(requiredText(formData, "boothName"));
+  if (!boothNameResult.success) {
+    return { error: boothNameResult.error.issues[0]?.message };
+  }
+
+  const selectedBank = findVietQrBank(requiredText(formData, "bankCode"));
+  if (!selectedBank) {
+    return {
+      error: "Select a supported bank for the receiving account.",
+    };
+  }
+  const paymentResult = paymentDraftSchema.safeParse({
+    bankName: selectedBank.shortName,
+    bankCode: selectedBank.bin,
+    accountName: requiredText(formData, "accountName"),
+    accountNumber: requiredText(formData, "accountNumber"),
+    paymentLabel: requiredText(formData, "paymentLabel"),
+    transferReferenceTemplate: requiredText(
+      formData,
+      "transferReferenceTemplate",
+    ),
+    instructions: requiredText(formData, "paymentInstructions"),
+    disclaimer: requiredText(formData, "paymentDisclaimer"),
+  });
+  if (!paymentResult.success) {
+    return {
+      error:
+        paymentResult.error.issues[0]?.message ??
+        "Check the payment instruction fields and try again.",
+    };
+  }
+
+  const socialResult = boothSocialLinksSchema.safeParse(
+    Object.fromEntries(
+      socialPlatforms.map(({ id }) => [
+        id,
+        requiredText(formData, `social-${id}`),
+      ]),
+    ),
+  );
+  if (!socialResult.success) {
+    return {
+      error:
+        socialResult.error.issues[0]?.message ??
+        "Check the social links and try again.",
+    };
+  }
+
+  const logoObjectKey = requiredText(formData, "logoObjectKey");
+  if (logoObjectKey && !isBoothLogoObjectKey(boothId, logoObjectKey)) {
+    return {
+      error:
+        "The selected logo does not belong to this booth. Upload it again.",
+    };
+  }
+  if (logoObjectKey && logoObjectKey !== booth.logoObjectKey) {
+    try {
+      await verifyBoothLogoUpload({ boothId, objectKey: logoObjectKey });
+    } catch (error) {
+      if (error instanceof OracleLogoVerificationError) {
+        return { error: error.message };
+      }
+      throw error;
+    }
+  }
+
+  const [existingPayment, existingStorefront] = await Promise.all([
+    db.boothPaymentInstruction.findUnique({
+      where: { boothId },
+      select: { qrObjectKey: true },
+    }),
+    db.storefrontConfig.findUnique({
+      where: { boothId },
+      select: { draftDocument: true },
+    }),
+  ]);
+  const qrImage = formData.get("qrImage");
+  let qrObjectKey = booleanField(formData, "removeQr")
+    ? null
+    : (existingPayment?.qrObjectKey ?? null);
+  let uploadedQrObjectKey: string | null = null;
+
+  if (qrImage instanceof File && qrImage.size > 0) {
+    try {
+      uploadedQrObjectKey = await uploadPaymentQr({ boothId, file: qrImage });
+      qrObjectKey = uploadedQrObjectKey;
+    } catch (error) {
+      if (error instanceof OracleQrUploadError) {
+        return { error: error.message };
+      }
+      throw error;
+    }
+  }
+
+  const currentDocument = existingStorefront
+    ? readStorefrontDocument(existingStorefront.draftDocument, booth.name)
+    : createDefaultStorefrontDocument(booth.name);
+  const nextDocument = {
+    ...currentDocument,
+    name: boothNameResult.data,
+  };
+  const payment = paymentResult.data;
+
+  try {
+    await db.$transaction(async (transaction) => {
+      await transaction.storefrontConfig.upsert({
+        where: { boothId },
+        create: {
+          boothId,
+          draftDocument: nextDocument,
+          updatedById: session.user.id,
+        },
+        update: {
+          draftDocument: nextDocument,
+          editVersion: { increment: 1 },
+          updatedById: session.user.id,
+        },
+      });
+      await transaction.boothPaymentInstruction.upsert({
+        where: { boothId },
+        create: {
+          boothId,
+          bankName: payment.bankName,
+          bankCode: payment.bankCode || null,
+          accountName: payment.accountName,
+          accountNumber: payment.accountNumber,
+          paymentLabel: payment.paymentLabel,
+          qrObjectKey,
+          transferReferenceTemplate:
+            payment.transferReferenceTemplate || "{code}",
+          instructions: payment.instructions,
+          disclaimer:
+            payment.disclaimer ||
+            "Bank transfers are reviewed manually. This storefront does not verify payment automatically.",
+        },
+        update: {
+          bankName: payment.bankName,
+          bankCode: payment.bankCode || null,
+          accountName: payment.accountName,
+          accountNumber: payment.accountNumber,
+          paymentLabel: payment.paymentLabel,
+          qrObjectKey,
+          transferReferenceTemplate:
+            payment.transferReferenceTemplate || "{code}",
+          instructions: payment.instructions,
+          disclaimer:
+            payment.disclaimer ||
+            "Bank transfers are reviewed manually. This storefront does not verify payment automatically.",
+        },
+      });
+      await transaction.booth.update({
+        where: { id: boothId },
+        data: {
+          name: boothNameResult.data,
+          logoObjectKey: logoObjectKey || null,
+          socialLinks: compactBoothSocialLinks(socialResult.data),
+        },
+      });
+      await transaction.auditLog.create({
+        data: {
+          boothId,
+          actorUserId: session.user.id,
+          action: "booth.settings_updated",
+          entityType: "Booth",
+          entityId: boothId,
+          metadata: {
+            paymentQr: uploadedQrObjectKey
+              ? "uploaded"
+              : booleanField(formData, "removeQr")
+                ? "removed"
+                : "unchanged",
+          },
+        },
+      });
+    });
+  } catch (error) {
+    if (uploadedQrObjectKey) {
+      await discardUploadedPaymentQr(uploadedQrObjectKey);
+    }
+    throw error;
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath(`/manage/${boothId}`, "layout");
+  revalidatePath(`/manage/${boothId}/settings`);
+  revalidatePath(`/manage/${boothId}/storefront`);
+  redirect(`/manage/${boothId}/settings?saved=1`);
+}
 
 export async function saveStorefrontAction(
   _previousState: StorefrontSaveState,

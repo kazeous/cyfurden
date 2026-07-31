@@ -1,5 +1,4 @@
 import { StorefrontDesigner } from "@/components/admin/storefront-designer";
-import { BoothDangerZone } from "@/components/admin/booth-danger-zone";
 import {
   PageHeading,
   adminStyles as styles,
@@ -125,11 +124,6 @@ export default async function StorefrontPage({
           category: product.category,
           image: product.images[0] ?? null,
         }))}
-      />
-      <BoothDangerZone
-        boothId={booth.id}
-        boothName={booth.name}
-        boothSlug={booth.slug}
       />
     </>
   );

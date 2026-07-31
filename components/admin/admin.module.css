@@ -117,8 +117,38 @@
   background: var(--color-panel);
 }
 
+.sidebarWorkspaceControls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  gap: 8px;
+  align-items: start;
+}
+
+.boothSwitcher,
+.overflowMenu {
+  position: relative;
+  min-width: 0;
+}
+
+.boothSelector {
+  width: 100%;
+  cursor: pointer;
+  list-style: none;
+}
+
+.boothSelector::-webkit-details-marker,
+.iconButton::-webkit-details-marker {
+  display: none;
+}
+
 .boothSelector > span:last-child {
   overflow: hidden;
+}
+
+.boothSelector > span:nth-child(2) {
+  display: grid;
+  min-width: 0;
+  flex: 1;
 }
 
 .boothSelector strong,
@@ -128,6 +158,343 @@
   font-size: 0.82rem;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.switcherChevron {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto !important;
+  place-items: center;
+  overflow: visible !important;
+  color: var(--admin-muted);
+  transition: transform 140ms ease;
+}
+
+.boothSwitcher[open] .switcherChevron {
+  transform: rotate(180deg);
+}
+
+.switcherChevron svg,
+.switcherCheck svg,
+.boothSwitcherActions svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.boothSwitcherPanel,
+.overflowPanel {
+  position: absolute;
+  z-index: 80;
+  top: calc(100% + 8px);
+  border: 1px solid var(--admin-line);
+  border-radius: 14px;
+  background: var(--color-panel);
+  box-shadow: 0 18px 44px var(--color-shadow-medium);
+}
+
+.boothSwitcherPanel {
+  left: 0;
+  width: min(340px, calc(100vw - 32px));
+  padding: 10px;
+}
+
+.boothSwitcherPanel > p {
+  margin: 2px 8px 8px;
+  color: var(--color-muted-2);
+  font-size: 0.67rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.boothSwitcherList {
+  display: grid;
+  gap: 3px;
+  max-height: min(360px, 56vh);
+  overflow-y: auto;
+}
+
+.boothSwitcherList > a {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 24px;
+  gap: 10px;
+  align-items: center;
+  min-height: 54px;
+  padding: 7px 8px;
+  border-radius: 10px;
+  color: var(--admin-ink);
+  text-decoration: none;
+}
+
+.boothSwitcherList > a:hover,
+.boothSwitcherList > a:focus-visible,
+.boothSwitcherList > a[aria-current="page"] {
+  background: var(--color-paper-3);
+}
+
+.boothSwitcherList > a > span:nth-child(2) {
+  display: grid;
+  min-width: 0;
+}
+
+.boothSwitcherList strong,
+.boothSwitcherList small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.boothSwitcherList strong {
+  font-size: 0.78rem;
+}
+
+.boothSwitcherList small {
+  margin-top: 3px;
+  color: var(--admin-muted);
+  font-size: 0.67rem;
+}
+
+.switcherBoothMark {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--color-accent-ink);
+  background: var(--admin-accent);
+  font-family: var(--font-display);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.switcherCheck {
+  display: grid;
+  place-items: center;
+  color: var(--color-success-ink);
+}
+
+.boothSwitcherActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding-top: 9px;
+  margin-top: 8px;
+  border-top: 1px solid var(--admin-line);
+}
+
+.boothSwitcherActions a {
+  display: flex;
+  min-height: 44px;
+  gap: 7px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 9px;
+  border-radius: 9px;
+  color: var(--admin-muted);
+  font-size: 0.69rem;
+  font-weight: 800;
+  text-align: center;
+  text-decoration: none;
+}
+
+.boothSwitcherActions a:hover,
+.boothSwitcherActions a:focus-visible {
+  color: var(--admin-ink);
+  background: var(--color-paper-3);
+}
+
+.iconButton {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid var(--admin-line);
+  border-radius: 11px;
+  color: var(--admin-ink);
+  background: var(--color-panel);
+  cursor: pointer;
+  list-style: none;
+}
+
+.iconButton:hover,
+.iconButton:focus-visible,
+.overflowMenu[open] .iconButton {
+  border-color: color-mix(in oklch, var(--color-accent) 34%, var(--color-rule));
+  color: var(--color-error);
+  background: var(--color-accent-soft);
+}
+
+.iconButton svg {
+  width: 19px;
+  height: 19px;
+  fill: currentColor;
+}
+
+.overflowPanel {
+  right: 0;
+  width: min(312px, calc(100vw - 32px));
+  padding: 8px;
+}
+
+.sidebarWorkspaceControls > .overflowMenu .overflowPanel {
+  right: auto;
+  left: 0;
+}
+
+.languageMenu {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 8px 9px 12px;
+  border-bottom: 1px solid var(--admin-line);
+}
+
+.languageMenu > span {
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.languageMenu form {
+  display: flex;
+  gap: 4px;
+}
+
+.languageMenu button {
+  min-width: 42px;
+  min-height: 36px;
+  border: 1px solid var(--admin-line);
+  border-radius: 8px;
+  color: var(--admin-muted);
+  background: var(--color-panel);
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.languageMenu button[data-active="true"] {
+  border-color: color-mix(in oklch, var(--admin-accent) 40%, var(--admin-line));
+  color: var(--color-error);
+  background: var(--color-accent-soft);
+}
+
+.menuLink,
+.alertToggle,
+.signOutMenuButton {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 58px;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 10px;
+  color: var(--admin-ink);
+  background: var(--color-transparent);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+}
+
+.menuLink:hover,
+.menuLink:focus-visible,
+.alertToggle:hover,
+.alertToggle:focus-visible,
+.signOutMenuButton:hover,
+.signOutMenuButton:focus-visible {
+  background: var(--color-paper-3);
+}
+
+.alertToggle,
+.signOutMenuButton {
+  cursor: pointer;
+}
+
+.menuLink > span:nth-child(2),
+.alertToggle > span:nth-child(2),
+.signOutMenuButton > span:nth-child(2) {
+  display: grid;
+  min-width: 0;
+}
+
+.menuLink strong,
+.alertToggle strong,
+.signOutMenuButton strong {
+  font-size: 0.75rem;
+}
+
+.menuLink small,
+.alertToggle small,
+.signOutMenuButton small {
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--admin-muted);
+  font-size: 0.65rem;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menuItemIcon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 9px;
+  color: var(--admin-muted);
+  background: var(--color-paper-3);
+}
+
+.menuItemIcon svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.alertSwitch {
+  display: flex;
+  width: 34px;
+  height: 20px;
+  align-items: center;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--color-rule-strong);
+  transition: background 140ms ease;
+}
+
+.alertSwitch span {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-panel);
+  box-shadow: 0 1px 3px var(--color-shadow-medium);
+  transition: transform 140ms ease;
+}
+
+.alertSwitch[data-enabled="true"] {
+  background: var(--admin-green);
+}
+
+.alertSwitch[data-enabled="true"] span {
+  transform: translateX(14px);
+}
+
+.signOutMenuButton:disabled {
+  cursor: wait;
+  opacity: 0.58;
 }
 
 .sidebarLabel {
@@ -216,10 +583,33 @@
 }
 
 .sectionLinkCopy strong {
+  display: flex;
+  gap: 7px;
+  align-items: center;
   overflow: hidden;
   font-size: 0.8125rem;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.navCount {
+  display: inline-flex;
+  min-width: 22px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  border-radius: 999px;
+  color: var(--color-muted);
+  background: var(--color-paper-3);
+  font-size: 0.62rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.sectionLink[data-active="true"] .navCount {
+  color: var(--color-error);
+  background: color-mix(in oklch, var(--color-accent) 16%, var(--color-panel));
 }
 
 .sidebarLinks {
@@ -930,6 +1320,35 @@
     backdrop-filter: blur(12px);
   }
 
+  .mobileWorkspaceIdentity {
+    flex: 1;
+    overflow: visible;
+  }
+
+  .mobileWorkspaceIdentity .boothSwitcher {
+    width: min(260px, 100%);
+  }
+
+  .mobileWorkspaceIdentity .boothSelector {
+    padding: 7px 9px;
+    border: 0;
+    background: var(--color-transparent);
+  }
+
+  .mobileWorkspaceIdentity .boothMark {
+    width: 38px;
+    height: 38px;
+  }
+
+  .mobileWorkspaceIdentity .boothSwitcherPanel,
+  .mobileTopbarActions .overflowPanel {
+    position: fixed;
+    top: 64px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+  }
+
   .adminMain {
     width: 100%;
     min-height: 0;
@@ -957,6 +1376,10 @@
     gap: 4px;
   }
 
+  .mobileBottomNav .adminNavList:has(> :only-child) {
+    grid-template-columns: 1fr;
+  }
+
   .mobileBottomNav .sectionLink {
     min-height: 52px;
     flex-direction: column;
@@ -980,6 +1403,16 @@
     font-size: 0.61rem;
     font-weight: 800;
     text-align: center;
+  }
+
+  .mobileBottomNav .navCount {
+    position: absolute;
+    top: 3px;
+    right: max(8px, calc(50% - 24px));
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    font-size: 0.56rem;
   }
 
   .mobileBottomNav .fullNavLabel {
@@ -1091,7 +1524,10 @@
 
 @media (prefers-reduced-motion: reduce) {
   .sectionLink,
-  .iconLink {
+  .iconLink,
+  .switcherChevron,
+  .alertSwitch,
+  .alertSwitch span {
     transition: none;
   }
 }

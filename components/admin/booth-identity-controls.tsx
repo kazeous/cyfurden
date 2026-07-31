@@ -146,7 +146,7 @@ export function BoothIdentityControls({
       setLogoPreviewUrl(URL.createObjectURL(file));
       setLogoObjectKey(presign.objectKey);
       setUploadMessage(
-        "Logo uploaded. Save the draft to attach it to this booth.",
+        "Logo uploaded. Save changes to attach it to this booth.",
       );
       onDirty();
     } catch (error) {
@@ -164,7 +164,7 @@ export function BoothIdentityControls({
     if (logoPreviewUrl) URL.revokeObjectURL(logoPreviewUrl);
     setLogoPreviewUrl(null);
     setLogoObjectKey("");
-    setUploadMessage("Logo will be removed when the draft is saved.");
+    setUploadMessage("Logo will be removed when you save.");
     setUploadError(null);
     onDirty();
   };
