@@ -9,6 +9,7 @@ import {
   OWNED_BOOTH_LIMIT_MESSAGE,
 } from "@/lib/booth-limit";
 import { db } from "@/lib/db";
+import { isReservedBoothSlug } from "@/lib/demo-booth";
 import { DEFAULT_GACHA_RATES } from "@/lib/gacha-rates";
 import { createDefaultStorefrontDocument } from "@/lib/storefront-document";
 
@@ -27,6 +28,10 @@ const boothSchema = z.object({
     .regex(
       /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
       "Use lowercase letters, numbers, and single hyphens only.",
+    )
+    .refine(
+      (slug) => !isReservedBoothSlug(slug),
+      "That booth address is reserved for the Cyfurden demo.",
     ),
 });
 

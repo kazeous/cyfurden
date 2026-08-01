@@ -247,7 +247,7 @@ export type PublicLandingStrings = {
   heroBody: string;
   heroNote: string;
   heroActionPrimary: string;
-  heroActionSecondary: string;
+  heroActionDemo: string;
   mockPreviewHeading: string;
   mockPreviewStatus: string;
   mockPreviewTagline: string;
@@ -270,10 +270,11 @@ export type PublicLandingStrings = {
   finalHeading: string;
   finalBody: string;
   finalPrimary: string;
-  finalSecondary: string;
+  finalDemo: string;
   footerWordmark: string;
   footerTagline: string;
   footerNavAria: string;
+  footerDemo: string;
   footerSignIn: string;
   footerCreateBooth: string;
   feature1Title: string;

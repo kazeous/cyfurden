@@ -1,6 +1,26 @@
 [
   {
     "date": "2026-08-01",
+    "scope": "landing + public booth",
+    "macrostructure": "Narrative Workflow + Catalogue (locked)",
+    "theme": "Cyfurden locked editorial-utilitarian",
+    "enrichment": "Tier-A CSS booth preview + product fallback art (unchanged)",
+    "brief": "Link a maintained original demo booth that showcases bilingual content, quantity promotion, and a free digital reveal",
+    "critique": {
+      "philosophy": 5,
+      "hierarchy": 5,
+      "execution": 5,
+      "specificity": 5,
+      "restraint": 5,
+      "variety": 4
+    },
+    "slop_test": "pass (1-58)",
+    "verified_viewports": [320, 375, 390, 414, 768, 1280],
+    "navigation": "N9 landing edge-aligned minimal + N4 public command bar (unchanged)",
+    "footer": "Ft1 landing masthead + public inline legal strip (unchanged)"
+  },
+  {
+    "date": "2026-08-01",
     "scope": "app",
     "macrostructure": "Catalogue + Index-First (locked)",
     "theme": "Cyfurden locked editorial-utilitarian",

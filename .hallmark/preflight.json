@@ -11,7 +11,9 @@
     "font pairing",
     "routes",
     "application logic",
+    "landing Narrative Workflow macrostructure",
     "public Catalogue and admin Index-First macrostructures",
     "N4 public command bar and Ft1 inline legal strip"
-  ]
+  ],
+  "package_refresh": "No dependency or design-system change; Phase 13 adds one tsx demo-seed command and its verification suites."
 }

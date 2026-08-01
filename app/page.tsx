@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { DocumentLocale } from "@/components/i18n/document-locale";
 import { LanguageToggle } from "@/components/landing/language-toggle";
+import { DEMO_BOOTH_PATH } from "@/lib/demo-booth";
 import { readLocaleCookie } from "@/lib/i18n/server-locale";
 import { translate, type Locale } from "@/lib/i18n";
 import styles from "./landing.module.css";
@@ -63,8 +64,8 @@ export default async function Home() {
               <Link className={styles.primaryLink} href="/sign-up">
                 {landing.heroActionPrimary} <span aria-hidden="true">→</span>
               </Link>
-              <Link className={styles.secondaryLink} href="/sign-in">
-                {landing.heroActionSecondary}
+              <Link className={styles.secondaryLink} href={DEMO_BOOTH_PATH}>
+                {landing.heroActionDemo}
               </Link>
             </div>
           </div>
@@ -203,8 +204,8 @@ export default async function Home() {
             <Link className={styles.primaryLink} href="/sign-up">
               {landing.finalPrimary} <span aria-hidden="true">→</span>
             </Link>
-            <Link className={styles.textLink} href="/sign-in">
-              {landing.finalSecondary}
+            <Link className={styles.textLink} href={DEMO_BOOTH_PATH}>
+              {landing.finalDemo}
             </Link>
           </div>
         </section>
@@ -216,6 +217,7 @@ export default async function Home() {
           <p className={styles.footerTagline}>{landing.footerTagline}</p>
         </div>
         <nav className={styles.footerLinks} aria-label={landing.footerNavAria}>
+          <Link href={DEMO_BOOTH_PATH}>{landing.footerDemo}</Link>
           <Link href="/sign-in">{landing.footerSignIn}</Link>
           <Link href="/sign-up">{landing.footerCreateBooth}</Link>
         </nav>
