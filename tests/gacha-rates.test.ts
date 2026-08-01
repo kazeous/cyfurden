@@ -17,15 +17,29 @@ test("readGachaRates normalizes legacy uppercase keys without mutating input", (
   const result = readGachaRates(legacy);
   assert.deepEqual(result.value, DEFAULT_GACHA_RATES);
   assert.equal(result.usedLegacyKeys, true);
+  assert.equal(result.usedDefaults, true);
 });
 
 test("readGachaRates accepts the canonical lowercase shape", () => {
   const result = readGachaRates(DEFAULT_GACHA_RATES);
   assert.deepEqual(result.value, DEFAULT_GACHA_RATES);
   assert.equal(result.usedLegacyKeys, false);
+  assert.equal(result.usedDefaults, false);
 });
 
 test("readGachaRates falls back to defaults for missing keys", () => {
   const result = readGachaRates({ common: 50 });
   assert.deepEqual(result.value, DEFAULT_GACHA_RATES);
+  assert.equal(result.usedDefaults, true);
+});
+
+test("readGachaRates rejects complete shapes that do not total 100", () => {
+  const result = readGachaRates({
+    common: 70,
+    rare: 20,
+    epic: 5,
+    legendary: 1,
+  });
+  assert.deepEqual(result.value, DEFAULT_GACHA_RATES);
+  assert.equal(result.usedDefaults, true);
 });

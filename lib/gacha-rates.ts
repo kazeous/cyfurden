@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export const DEFAULT_GACHA_RATES = Object.freeze({
   common: 70,
   rare: 24,
@@ -5,7 +7,19 @@ export const DEFAULT_GACHA_RATES = Object.freeze({
   legendary: 1,
 });
 
-type RateRecord = Record<keyof typeof DEFAULT_GACHA_RATES, number>;
+export type GachaRates = Record<keyof typeof DEFAULT_GACHA_RATES, number>;
+
+export const gachaRatesSchema = z
+  .object({
+    common: z.number().int().min(0).max(100),
+    rare: z.number().int().min(0).max(100),
+    epic: z.number().int().min(0).max(100),
+    legendary: z.number().int().min(0).max(100),
+  })
+  .refine(
+    (rates) => rates.common + rates.rare + rates.epic + rates.legendary === 100,
+    { message: "Gacha rates must total 100%." },
+  );
 
 const KEY_ALIASES: Record<string, keyof typeof DEFAULT_GACHA_RATES> = {
   common: "common",
@@ -19,8 +33,9 @@ const KEY_ALIASES: Record<string, keyof typeof DEFAULT_GACHA_RATES> = {
 };
 
 export function readGachaRates(value: unknown): {
-  value: RateRecord;
+  value: GachaRates;
   usedLegacyKeys: boolean;
+  usedDefaults: boolean;
 } {
   const normalized: Record<string, number> = {};
   let usedLegacyKeys = false;
@@ -43,12 +58,34 @@ export function readGachaRates(value: unknown): {
   const keysPresent = (
     Object.keys(DEFAULT_GACHA_RATES) as (keyof typeof DEFAULT_GACHA_RATES)[]
   ).every((k) => k in normalized);
-  if (!keysPresent || usedLegacyKeys) {
-    return { value: { ...DEFAULT_GACHA_RATES }, usedLegacyKeys };
+  const parsed = keysPresent
+    ? gachaRatesSchema.safeParse(normalized)
+    : { success: false as const };
+  if (!parsed.success || usedLegacyKeys) {
+    return {
+      value: { ...DEFAULT_GACHA_RATES },
+      usedLegacyKeys,
+      usedDefaults: true,
+    };
   }
 
   return {
-    value: normalized as RateRecord,
+    value: parsed.data,
     usedLegacyKeys,
+    usedDefaults: false,
   };
+}
+
+export function parseGachaRatesInput(values: {
+  common: unknown;
+  rare: unknown;
+  epic: unknown;
+  legendary: unknown;
+}): GachaRates {
+  return gachaRatesSchema.parse({
+    common: Number(values.common),
+    rare: Number(values.rare),
+    epic: Number(values.epic),
+    legendary: Number(values.legendary),
+  });
 }

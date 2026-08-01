@@ -4,12 +4,19 @@ import {
   adminStyles as admin,
 } from "@/components/admin/admin-shell";
 import { SubmitButton } from "@/components/admin/form-controls";
+import { FreeGacha } from "@/components/storefront/free-gacha";
 import { requireBoothSection } from "@/lib/authorization";
 import { db } from "@/lib/db";
+import { compileGachaDocument } from "@/lib/gacha-document";
+import { DEFAULT_GACHA_RATES, readGachaRates } from "@/lib/gacha-rates";
+import { eventDateInput } from "@/lib/order-events";
+import { readStorefrontDocument } from "@/lib/storefront-document";
 import {
+  publishGachaAction,
   saveGachaAction,
   saveGachaBannerAction,
   saveGachaPoolAction,
+  unpublishGachaAction,
 } from "../actions";
 import styles from "./gacha.module.css";
 
@@ -23,23 +30,31 @@ export default async function GachaPage({
     saved?: string;
     poolSaved?: string;
     new?: string;
+    published?: string;
+    unpublished?: string;
   }>;
 }) {
   const { boothId } = await params;
   const filters = await searchParams;
-  await requireBoothSection(boothId, "gacha");
-  const [config, banners, products] = await Promise.all([
+  const { booth } = await requireBoothSection(boothId, "gacha");
+  const [config, banners, products, storefront] = await Promise.all([
     db.gachaConfig.findUnique({ where: { boothId } }),
     db.gachaBanner.findMany({
       where: { boothId },
-      include: { pool: true },
-      orderBy: [{ active: "desc" }, { sortOrder: "asc" }],
+      include: {
+        pool: {
+          include: { productVariant: { include: { product: true } } },
+          orderBy: { sortOrder: "asc" },
+        },
+      },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
     }),
     db.product.findMany({
       where: { boothId, status: { in: ["LIVE", "DRAFT"] } },
       include: { variants: { orderBy: { sortOrder: "asc" } } },
       orderBy: { name: "asc" },
     }),
+    db.storefrontConfig.findUnique({ where: { boothId } }),
   ]);
   const selectedBanner = filters.new
     ? null
@@ -47,33 +62,44 @@ export default async function GachaPage({
   const staleSelection = Boolean(
     filters.banner && !filters.new && !selectedBanner,
   );
-  const selectedVariantIds = new Set(
-    selectedBanner?.pool
-      .map((entry) => entry.productVariantId)
-      .filter(Boolean) ?? [],
+  const selectedEntries = new Map(
+    selectedBanner?.pool.flatMap((entry) =>
+      entry.productVariantId ? [[entry.productVariantId, entry] as const] : [],
+    ) ?? [],
   );
+  const rates = readGachaRates(config?.rates ?? DEFAULT_GACHA_RATES).value;
+  const compilation = compileGachaDocument({
+    config,
+    banners,
+    publishedAt: config?.updatedAt ?? new Date(),
+  });
+  const storefrontDocument = readStorefrontDocument(
+    storefront?.draftDocument,
+    booth.name,
+  );
+  const isPublished = Boolean(config?.publishedAt && config.publishedDocument);
 
   return (
     <>
       <PageHeading
-        eyebrow="Optional booth feature"
-        title="Free game"
-        description="Prepare a free surprise pool without payments, credits, or paid pulls."
+        eyebrow="Public booth feature"
+        title="Free reveal game"
+        description="Build a scheduled, transparent digital reveal game, preview the saved draft, then publish it to the booth."
         actions={
           <span
             className={admin.statusBadge}
-            data-status={config?.enabled ? "ACTIVE" : "DRAFT"}
+            data-status={isPublished ? "ACTIVE" : "DRAFT"}
           >
-            {config?.enabled ? "Configuration enabled" : "Configuration off"}
+            {isPublished ? "Published" : "Draft only"}
           </span>
         }
       />
 
       <div className={styles.scopeNotice} role="note">
-        <strong>Configuration only</strong>
+        <strong>Free digital reveal only</strong>
         <span>
-          The visitor-facing game is not connected to the public storefront yet.
-          Saving here prepares content without claiming it is live.
+          A play never creates an order or claim, debits stock, stores value, or
+          asks for payment. Publishing exposes only the saved snapshot.
         </span>
       </div>
 
@@ -85,6 +111,16 @@ export default async function GachaPage({
       {filters.poolSaved ? (
         <p className={admin.successNotice} role="status">
           Reward pool saved.
+        </p>
+      ) : null}
+      {filters.published ? (
+        <p className={admin.successNotice} role="status">
+          Game published. Visitors now see this saved revision.
+        </p>
+      ) : null}
+      {filters.unpublished ? (
+        <p className={admin.successNotice} role="status">
+          Game unpublished. Its saved draft is still available here.
         </p>
       ) : null}
 
@@ -106,10 +142,9 @@ export default async function GachaPage({
                 defaultChecked={config?.enabled ?? false}
               />
               <span>
-                Enable this configuration
+                Include the game in the next publish
                 <small>
-                  This does not publish a visitor-facing game in the current
-                  release.
+                  Saving remains a draft until you use the publish footer.
                 </small>
               </span>
             </label>
@@ -133,6 +168,17 @@ export default async function GachaPage({
                 max="500"
                 defaultValue={config?.guaranteedAt ?? 50}
               />
+            </label>
+            <label className={admin.field}>
+              Guaranteed rarity
+              <select
+                name="guaranteedRarity"
+                defaultValue={config?.guaranteedRarity ?? "EPIC"}
+              >
+                <option value="RARE">Rare or better</option>
+                <option value="EPIC">Epic or better</option>
+                <option value="LEGENDARY">Legendary</option>
+              </select>
             </label>
           </div>
 
@@ -169,6 +215,63 @@ export default async function GachaPage({
                 <option value="starlight">Starlight</option>
               </select>
             </label>
+          </div>
+
+          <div className={styles.formSection}>
+            <h3>Tier odds</h3>
+            <p className={styles.sectionHelp}>
+              Whole percentages across all four tiers must total 100. Item
+              weights inside a tier are edited in each banner lineup.
+            </p>
+            <div className={styles.oddsGrid}>
+              <label className={admin.field}>
+                Common %
+                <input
+                  name="rateCommon"
+                  type="number"
+                  min="0"
+                  max="100"
+                  defaultValue={rates.common}
+                  required
+                />
+              </label>
+              <label className={admin.field}>
+                Rare %
+                <input
+                  name="rateRare"
+                  type="number"
+                  min="0"
+                  max="100"
+                  defaultValue={rates.rare}
+                  required
+                />
+              </label>
+              <label className={admin.field}>
+                Epic %
+                <input
+                  name="rateEpic"
+                  type="number"
+                  min="0"
+                  max="100"
+                  defaultValue={rates.epic}
+                  required
+                />
+              </label>
+              <label className={admin.field}>
+                Legendary %
+                <input
+                  name="rateLegendary"
+                  type="number"
+                  min="0"
+                  max="100"
+                  defaultValue={rates.legendary}
+                  required
+                />
+              </label>
+            </div>
+            <strong className={styles.oddsTotal}>
+              Total: {rates.common + rates.rare + rates.epic + rates.legendary}%
+            </strong>
           </div>
 
           <div className={styles.formActions}>
@@ -323,6 +426,32 @@ export default async function GachaPage({
                       />
                     </label>
                   </div>
+                  <div className={styles.dateGrid}>
+                    <label className={admin.field}>
+                      Starts on (optional)
+                      <input
+                        name="startDate"
+                        type="date"
+                        defaultValue={
+                          selectedBanner?.startsAt
+                            ? eventDateInput(selectedBanner.startsAt)
+                            : ""
+                        }
+                      />
+                    </label>
+                    <label className={admin.field}>
+                      Ends on (optional)
+                      <input
+                        name="endDate"
+                        type="date"
+                        defaultValue={
+                          selectedBanner?.endsAt
+                            ? eventDateInput(selectedBanner.endsAt, true)
+                            : ""
+                        }
+                      />
+                    </label>
+                  </div>
                   <label className={admin.checkboxField}>
                     <input
                       name="bannerActive"
@@ -330,8 +459,11 @@ export default async function GachaPage({
                       defaultChecked={selectedBanner?.active ?? false}
                     />
                     <span>
-                      Mark configuration active
-                      <small>Used when the public game is implemented.</small>
+                      Include this banner when publishing
+                      <small>
+                        Leave both dates empty to keep it open whenever the game
+                        is published.
+                      </small>
                     </span>
                   </label>
                   <SubmitButton
@@ -359,33 +491,77 @@ export default async function GachaPage({
                         <h3>Choose product variants</h3>
                       </div>
                       <span className={admin.pill}>
-                        {selectedVariantIds.size} selected
+                        {selectedEntries.size} selected
                       </span>
                     </div>
+                    <p className={styles.sectionHelp}>
+                      Tier odds choose a rarity first; weight chooses among
+                      reveals inside that rarity. Higher weight means more
+                      frequent.
+                    </p>
                     {products.some((product) => product.variants.length) ? (
                       <div className={styles.variantList}>
                         {products.flatMap((product) =>
-                          product.variants.map((variant) => (
-                            <label
-                              className={admin.checkboxField}
-                              key={variant.id}
-                            >
-                              <input
-                                type="checkbox"
-                                name="variantId"
-                                value={variant.id}
-                                defaultChecked={selectedVariantIds.has(
-                                  variant.id,
-                                )}
-                              />
-                              <span>
-                                {product.name} · {variant.label}
-                                <small>
-                                  {variant.status.toLocaleLowerCase()}
-                                </small>
-                              </span>
-                            </label>
-                          )),
+                          product.variants.map((variant) => {
+                            const entry = selectedEntries.get(variant.id);
+                            return (
+                              <div
+                                className={styles.variantRow}
+                                key={variant.id}
+                              >
+                                <label className={styles.variantChoice}>
+                                  <input
+                                    type="checkbox"
+                                    name="variantId"
+                                    value={variant.id}
+                                    defaultChecked={Boolean(entry)}
+                                  />
+                                  <span>
+                                    <strong>
+                                      {product.name} · {variant.label}
+                                    </strong>
+                                    <small>
+                                      {variant.status.toLocaleLowerCase()}
+                                    </small>
+                                  </span>
+                                </label>
+                                <div className={styles.variantControls}>
+                                  <label>
+                                    Rarity
+                                    <select
+                                      name={`rarity:${variant.id}`}
+                                      defaultValue={entry?.rarity ?? "COMMON"}
+                                    >
+                                      <option value="COMMON">Common</option>
+                                      <option value="RARE">Rare</option>
+                                      <option value="EPIC">Epic</option>
+                                      <option value="LEGENDARY">
+                                        Legendary
+                                      </option>
+                                    </select>
+                                  </label>
+                                  <label>
+                                    Weight
+                                    <input
+                                      name={`weight:${variant.id}`}
+                                      type="number"
+                                      min="1"
+                                      max="1000"
+                                      defaultValue={entry?.weight ?? 1}
+                                    />
+                                  </label>
+                                  <label className={styles.featuredToggle}>
+                                    <input
+                                      name={`featured:${variant.id}`}
+                                      type="checkbox"
+                                      defaultChecked={entry?.featured ?? false}
+                                    />
+                                    Featured
+                                  </label>
+                                </div>
+                              </div>
+                            );
+                          }),
                         )}
                       </div>
                     ) : (
@@ -432,6 +608,85 @@ export default async function GachaPage({
           </div>
         </div>
       </section>
+
+      <section
+        className={`${admin.panel} ${styles.previewPanel}`}
+        aria-labelledby="gacha-preview-title"
+      >
+        <div className={admin.panelHeader}>
+          <div>
+            <h2 id="gacha-preview-title">Saved draft preview</h2>
+            <p>
+              This uses the same game component as the public booth. Save each
+              form before checking the preview.
+            </p>
+          </div>
+          <span
+            className={admin.statusBadge}
+            data-status={compilation.success ? "ACTIVE" : "DRAFT"}
+          >
+            {compilation.success ? "Ready to publish" : "Needs attention"}
+          </span>
+        </div>
+
+        {compilation.success ? (
+          <div className={styles.previewCanvas}>
+            <FreeGacha
+              document={compilation.document}
+              boothSlug={booth.slug}
+              locale={storefrontDocument.locale}
+              preview
+            />
+          </div>
+        ) : (
+          <div className={styles.readiness} role="note">
+            <h3>Finish the saved draft</h3>
+            <ul>
+              {compilation.errors.map((error) => (
+                <li key={error}>{error}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
+
+      <aside className={styles.publishBar} aria-label="Game publishing">
+        <div>
+          <strong>
+            {isPublished ? "Game is published" : "Draft is private"}
+          </strong>
+          <span>
+            {isPublished && config?.publishedAt
+              ? `Published ${config.publishedAt.toLocaleString("en-GB", {
+                  timeZone: "Asia/Ho_Chi_Minh",
+                })}`
+              : "Publishing creates a public snapshot; later edits stay private."}
+          </span>
+        </div>
+        <div className={styles.publishActions}>
+          {isPublished ? (
+            <form action={unpublishGachaAction}>
+              <input type="hidden" name="boothId" value={boothId} />
+              <SubmitButton
+                className={admin.button}
+                pendingLabel="Unpublishing…"
+              >
+                Unpublish
+              </SubmitButton>
+            </form>
+          ) : null}
+          <form action={publishGachaAction}>
+            <input type="hidden" name="boothId" value={boothId} />
+            <SubmitButton
+              className={admin.buttonPrimary}
+              pendingLabel="Publishing…"
+              disabled={!compilation.success}
+            >
+              {isPublished ? "Publish saved changes" : "Publish game"}
+            </SubmitButton>
+          </form>
+        </div>
+      </aside>
     </>
   );
 }

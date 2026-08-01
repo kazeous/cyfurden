@@ -152,6 +152,29 @@ export type PublicBoothStrings = {
   socialQrAlt: (label: string) => string;
   tagAriaLabel: string;
   infoSocialsHeading: string;
+  gachaFreeLabel: string;
+  gachaPreviewLabel: string;
+  gachaBannerTypeLabels: Record<"CHARACTER" | "WEAPON" | "COLLECTION", string>;
+  gachaRarityLabels: Record<"COMMON" | "RARE" | "EPIC" | "LEGENDARY", string>;
+  gachaChooseBanner: string;
+  gachaLiveNow: string;
+  gachaAlwaysOpen: string;
+  gachaOpens: (date: string) => string;
+  gachaSchedule: (start: string, end: string) => string;
+  gachaEnded: string;
+  gachaLineupHeading: string;
+  gachaFeaturedLabel: string;
+  gachaOddsHeading: string;
+  gachaOddsLine: (rarity: string, rate: number) => string;
+  gachaGuaranteeRule: (draw: number, rarity: string) => string;
+  gachaGuaranteeProgress: (remaining: number, rarity: string) => string;
+  gachaRevealButton: string;
+  gachaRevealAgain: string;
+  gachaResultHeading: string;
+  gachaResultAnnouncement: (name: string, rarity: string) => string;
+  gachaGuaranteeApplied: string;
+  gachaDigitalOnly: string;
+  gachaNoLiveBanner: string;
 };
 
 export type PublicReservationStrings = {

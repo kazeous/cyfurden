@@ -417,18 +417,21 @@ model OrderItem {
 }
 
 model GachaConfig {
-  id           String   @id @default(cuid())
-  boothId      String   @unique
-  enabled      Boolean  @default(false)
-  title        String   @default("Wish upon the shelf")
-  introduction String   @default("Meet a surprise from this booth.") @db.Text
-  gameTheme    String   @default("anemo")
-  pityEnabled  Boolean  @default(true)
-  guaranteedAt Int      @default(50)
-  rates        Json
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  booth        Booth    @relation(fields: [boothId], references: [id], onDelete: Cascade)
+  id                String      @id @default(cuid())
+  boothId           String      @unique
+  enabled           Boolean     @default(false)
+  title             String      @default("Wish upon the shelf")
+  introduction      String      @default("Meet a surprise from this booth.") @db.Text
+  gameTheme         String      @default("anemo")
+  pityEnabled       Boolean     @default(true)
+  guaranteedAt      Int         @default(50)
+  guaranteedRarity  GachaRarity @default(EPIC)
+  rates             Json
+  publishedDocument Json?
+  publishedAt       DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  booth             Booth       @relation(fields: [boothId], references: [id], onDelete: Cascade)
 }
 
 model GachaBanner {

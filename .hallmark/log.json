@@ -1,5 +1,25 @@
 [
   {
+    "date": "2026-08-01",
+    "scope": "app",
+    "macrostructure": "Catalogue + Index-First (locked)",
+    "theme": "Cyfurden locked editorial-utilitarian",
+    "enrichment": "Tier-A CSS reveal stage",
+    "brief": "Publish and play a transparent, free-only digital reveal game without changing the storefront chrome or commerce boundary",
+    "critique": {
+      "philosophy": 5,
+      "hierarchy": 5,
+      "execution": 5,
+      "specificity": 5,
+      "restraint": 5,
+      "variety": 4
+    },
+    "slop_test": "pass (1-58)",
+    "verified_viewports": [320, 375, 390, 414, 768, 1280, 1440],
+    "navigation": "N4 compact booth command bar (unchanged)",
+    "footer": "Ft1 inline public legal strip (unchanged)"
+  },
+  {
     "date": "2026-07-24",
     "scope": "app",
     "macrostructure": "Catalogue + Workbench",

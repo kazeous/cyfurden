@@ -1,0 +1,412 @@
+/* Hallmark · genre: playful-within-editorial · macrostructure: Catalogue (locked by design.md) · C1 outlined chip knobs: shape=rectangular, density=spacious, adornment=none · enrichment: Tier-A CSS reveal stage · designed-as-app */
+/* Hallmark pre-emit critique: P5 H5 E5 S5 R5 V4 */
+/* Hallmark: contrast=pass (40–41); nav=N4; footer=Ft1; chrome=pass (47); honest=pass (46); icons=pass (30); tokens=pass (48); responsive=pass (49–57); mobile=pass (34, 49–57); slop=pass (1–58) */
+
+.gacha {
+  --gacha-accent: var(--color-action);
+  --gacha-accent-ink: var(--color-action-ink);
+  --gacha-accent-soft: var(--color-action-soft);
+  --gacha-accent-line: var(--color-action-line);
+  display: grid;
+  gap: var(--space-lg);
+  padding: clamp(var(--space-lg), 5vw, var(--space-2xl));
+  margin-block-start: var(--space-md);
+  overflow: clip;
+  border: var(--rule-hairline);
+  border-radius: var(--radius-card);
+  color: var(--color-ink);
+  background: var(--color-panel);
+  box-shadow: var(--shadow-panel);
+}
+
+.gacha[data-theme="ember"] {
+  --gacha-accent: var(--color-accent);
+  --gacha-accent-ink: var(--color-accent-ink);
+  --gacha-accent-soft: var(--color-accent-soft);
+  --gacha-accent-line: var(--color-accent-line);
+}
+
+.gacha[data-theme="starlight"] {
+  --gacha-accent: var(--color-info);
+  --gacha-accent-ink: var(--color-panel);
+  --gacha-accent-soft: var(--color-info-soft);
+  --gacha-accent-line: var(--color-info-line);
+}
+
+.intro {
+  display: grid;
+  max-inline-size: 65ch;
+  gap: var(--space-xs);
+}
+
+.intro h2,
+.intro p,
+.bannerHeading h3,
+.bannerHeading p,
+.contract,
+.odds p {
+  margin: 0;
+}
+
+.intro h2 {
+  overflow-wrap: anywhere;
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+}
+
+.intro > p:last-child,
+.bannerHeading > div > p:last-child,
+.contract,
+.odds p {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+}
+
+.kicker,
+.bannerType {
+  color: var(--gacha-accent);
+  font-size: var(--text-xs);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.layout {
+  display: grid;
+  min-inline-size: 0;
+  gap: var(--space-md);
+}
+
+.bannerRail {
+  display: flex;
+  gap: var(--space-xs);
+  overflow-x: auto;
+  padding-block-end: var(--space-2xs);
+  scrollbar-width: thin;
+}
+
+.bannerRail button,
+.revealButton {
+  min-block-size: 2.75rem;
+  border: 1px solid var(--gacha-accent-line);
+  border-radius: var(--radius-button);
+  color: var(--color-ink);
+  background: var(--color-panel);
+  font: inherit;
+  cursor: pointer;
+}
+
+.bannerRail button {
+  display: grid;
+  min-inline-size: min(15rem, 78vw);
+  gap: var(--space-2xs);
+  padding: var(--space-sm) var(--space-md);
+  text-align: start;
+  white-space: nowrap;
+}
+
+.bannerRail button[aria-pressed="true"] {
+  border-color: var(--gacha-accent);
+  background: var(--gacha-accent-soft);
+}
+
+.bannerRail span,
+.bannerRail small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bannerRail span {
+  font-weight: 800;
+}
+
+.bannerRail small {
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}
+
+.bannerRail button:focus-visible,
+.revealButton:focus-visible,
+.odds summary:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.stage {
+  display: grid;
+  min-inline-size: 0;
+  gap: var(--space-lg);
+  padding: var(--space-lg);
+  border: 1px solid var(--gacha-accent-line);
+  border-radius: var(--radius-card);
+  color: var(--color-ink);
+  background: color-mix(
+    in oklch,
+    var(--gacha-accent-soft) 58%,
+    var(--color-panel)
+  );
+}
+
+.bannerHeading {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.bannerHeading > div {
+  display: grid;
+  min-inline-size: 0;
+  gap: var(--space-xs);
+}
+
+.bannerHeading h3 {
+  overflow-wrap: anywhere;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  line-height: 1.2;
+}
+
+.freeBadge {
+  flex: 0 0 auto;
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--gacha-accent-line);
+  border-radius: var(--radius-pill);
+  color: var(--gacha-accent);
+  background: var(--color-panel);
+  font-size: var(--text-xs);
+  font-weight: 800;
+  white-space: normal;
+}
+
+.featured {
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.featured > strong,
+.odds summary {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 800;
+}
+
+.featured ul,
+.odds ul {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.featured ul {
+  display: grid;
+  gap: var(--space-xs);
+}
+
+.featured li {
+  display: flex;
+  min-inline-size: 0;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  padding-block: var(--space-xs);
+  border-block-start: var(--rule-hairline);
+}
+
+.featured li > span {
+  overflow: visible;
+  font-weight: 700;
+  white-space: normal;
+}
+
+.featured small {
+  flex: 0 0 auto;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}
+
+.odds {
+  border-block: var(--rule-hairline);
+  padding-block: var(--space-sm);
+}
+
+.odds summary {
+  min-block-size: 2.75rem;
+  align-content: center;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.odds ul {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-xs) var(--space-lg);
+  padding-block: var(--space-sm);
+}
+
+.odds li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-md);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.drawArea {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.readyState,
+.result {
+  display: grid;
+  min-block-size: 7rem;
+  align-content: center;
+  gap: var(--space-xs);
+  padding: var(--space-lg);
+  border: 1px solid var(--gacha-accent-line);
+  border-radius: var(--radius-card);
+  color: var(--color-ink);
+  background: var(--color-panel);
+}
+
+.readyState span,
+.result span,
+.result small {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.result {
+  animation: reveal-result var(--dur-short) var(--ease-out) both;
+}
+
+.result strong {
+  overflow-wrap: anywhere;
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+}
+
+.revealButton {
+  inline-size: 100%;
+  padding-inline: var(--space-lg);
+  border-color: var(--gacha-accent);
+  color: var(--gacha-accent-ink);
+  background: var(--gacha-accent);
+  font-weight: 800;
+  white-space: nowrap;
+  transition:
+    transform var(--dur-micro) var(--ease-out),
+    background-color var(--dur-short) var(--ease-out);
+}
+
+.revealButton:active {
+  transform: translateY(var(--space-3xs));
+}
+
+.revealButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.contract {
+  max-inline-size: 75ch;
+}
+
+@keyframes reveal-result {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-xs));
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .bannerRail button:hover {
+    border-color: var(--gacha-accent);
+  }
+
+  .revealButton:not(:disabled):hover {
+    transform: translateY(calc(var(--space-3xs) * -1));
+  }
+}
+
+@media (min-width: 60rem) {
+  .layout {
+    grid-template-columns: minmax(13rem, 0.32fr) minmax(0, 1fr);
+    gap: var(--space-lg);
+  }
+
+  .bannerRail {
+    display: grid;
+    align-content: start;
+    overflow: visible;
+  }
+
+  .bannerRail button {
+    min-inline-size: 0;
+  }
+}
+
+@media (min-width: 40rem) {
+  .bannerHeading {
+    justify-content: space-between;
+    flex-direction: row;
+  }
+
+  .freeBadge {
+    white-space: nowrap;
+  }
+
+  .featured li {
+    align-items: center;
+    justify-content: space-between;
+    flex-direction: row;
+    gap: var(--space-md);
+  }
+
+  .featured li > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .odds ul {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .revealButton {
+    inline-size: auto;
+    justify-self: start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .result {
+    animation-duration: var(--dur-micro);
+    animation-name: reveal-result-reduced;
+  }
+
+  .revealButton {
+    transition-duration: var(--dur-micro);
+  }
+
+  @keyframes reveal-result-reduced {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+}

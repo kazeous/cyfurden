@@ -7,6 +7,8 @@ import {
   type PublicOrderState,
 } from "@/app/s/[slug]/actions";
 import { DocumentLocale } from "@/components/i18n/document-locale";
+import { FreeGacha } from "@/components/storefront/free-gacha";
+import type { PublishedGachaDocument } from "@/lib/gacha-document";
 import { resolveOracleImageUrl } from "@/lib/oracle-images";
 import {
   isPurchasableVariant,
@@ -261,6 +263,7 @@ export function ManagedStorefront({
   document,
   products,
   promotions = [],
+  gacha = null,
   canAcceptReservations,
   locale = "en",
 }: {
@@ -272,6 +275,7 @@ export function ManagedStorefront({
   document: StorefrontDocument;
   products: ProductDto[];
   promotions?: QuantityPromotionRule[];
+  gacha?: PublishedGachaDocument | null;
   canAcceptReservations: boolean;
   locale?: Locale;
 }) {
@@ -1321,6 +1325,10 @@ export function ManagedStorefront({
             </div>
           ))}
         </div>
+
+        {gacha ? (
+          <FreeGacha document={gacha} boothSlug={booth.slug} locale={locale} />
+        ) : null}
 
         <footer className={styles.footer}>
           <span>{b(document.eventFulfillment)}</span>

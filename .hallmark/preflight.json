@@ -1,15 +1,17 @@
 {
-  "date": "2026-07-24",
+  "date": "2026-08-01",
   "framework": "Next.js 16 App Router",
   "font_stack": "Bundled Manrope Variable display with IBM Plex Sans Variable body/UI",
   "palette": "Locked warm paper and navy ink with coral selection and forest action tokens",
-  "motion": "Motion-cut; no animation library installed",
+  "motion": "Motion-cut with one transform-and-opacity result reveal and a reduced-motion fallback; no animation library installed",
   "spacing": "Locked 4-point named scale from tokens.css",
   "preserve": [
     "design.md system",
     "brand palette",
     "font pairing",
     "routes",
-    "application logic"
+    "application logic",
+    "public Catalogue and admin Index-First macrostructures",
+    "N4 public command bar and Ft1 inline legal strip"
   ]
 }

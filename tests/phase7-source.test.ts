@@ -22,16 +22,15 @@ test("Phase 7 keeps only destination-owned new=1 query parameters", async () => 
   assert.doesNotMatch(storefrontPage, /\bnew\b/);
 });
 
-test("Phase 7 gacha creation paths share the canonical lowercase rates", async () => {
+test("Phase 7 gacha creation paths keep canonical lowercase rates", async () => {
   const [dashboardActions, manageActions] = await Promise.all([
     readSource("app/dashboard/actions.ts"),
     readSource("app/manage/[boothId]/actions.ts"),
   ]);
 
-  for (const source of [dashboardActions, manageActions]) {
-    assert.match(source, /DEFAULT_GACHA_RATES/);
-    assert.doesNotMatch(source, /\bCOMMON\s*:/);
-  }
+  assert.match(dashboardActions, /DEFAULT_GACHA_RATES/);
+  assert.match(manageActions, /parseGachaRatesInput/);
+  assert.doesNotMatch(`${dashboardActions}${manageActions}`, /\bCOMMON\s*:/);
 });
 
 test("Phase 7 defect cleanup stays wired", async () => {

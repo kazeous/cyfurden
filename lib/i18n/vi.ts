@@ -175,6 +175,43 @@ export const viCatalogue: Catalogue = {
     socialQrAlt: (label) => `Mã QR trang ${label}`,
     tagAriaLabel: "Thẻ",
     infoSocialsHeading: "Mạng xã hội của booth",
+    gachaFreeLabel: "Lượt hé lộ kỹ thuật số miễn phí · không cần mua",
+    gachaPreviewLabel: "Bản xem trước nháp",
+    gachaBannerTypeLabels: {
+      CHARACTER: "Nhân vật",
+      WEAPON: "Vật phẩm",
+      COLLECTION: "Bộ sưu tập",
+    },
+    gachaRarityLabels: {
+      COMMON: "Phổ biến",
+      RARE: "Hiếm",
+      EPIC: "Sử thi",
+      LEGENDARY: "Huyền thoại",
+    },
+    gachaChooseBanner: "Chọn banner",
+    gachaLiveNow: "Đang mở",
+    gachaAlwaysOpen: "Luôn mở",
+    gachaOpens: (date) => `Mở từ ${date}`,
+    gachaSchedule: (start, end) => `${start}–${end}`,
+    gachaEnded: "Banner này đã kết thúc",
+    gachaLineupHeading: "Các kết quả có thể hé lộ",
+    gachaFeaturedLabel: "Nổi bật",
+    gachaOddsHeading: "Tỷ lệ và bảo đảm",
+    gachaOddsLine: (rarity, rate) => `${rarity}: ${rate}%`,
+    gachaGuaranteeRule: (draw, rarity) =>
+      `Bảo đảm ${rarity} trở lên trước hoặc tại lượt ${draw}.`,
+    gachaGuaranteeProgress: (remaining, rarity) =>
+      `Còn ${remaining} lượt để được bảo đảm ${rarity} trở lên.`,
+    gachaRevealButton: "Hé lộ miễn phí",
+    gachaRevealAgain: "Hé lộ lần nữa",
+    gachaResultHeading: "Kết quả của bạn",
+    gachaResultAnnouncement: (name, rarity) =>
+      `Kết quả kỹ thuật số ${rarity}: ${name}.`,
+    gachaGuaranteeApplied: "Lượt này đã áp dụng bảo đảm.",
+    gachaDigitalOnly:
+      "Chỉ là kết quả kỹ thuật số. Hoạt động này không giữ chỗ hoặc trao vật phẩm, không thay đổi tồn kho, không tạo đơn và không yêu cầu thanh toán.",
+    gachaNoLiveBanner:
+      "Hiện không có banner nào mở lượt hé lộ miễn phí. Hãy xem lịch ở trên.",
   },
   publicReservation: {
     pageTitle: "Đã nhận đặt trước",

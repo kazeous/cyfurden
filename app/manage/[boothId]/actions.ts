@@ -4,9 +4,11 @@ import * as Sentry from "@sentry/nextjs";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { Prisma } from "@/generated/prisma/client";
 import { requireBoothRole, requireUser } from "@/lib/authorization";
 import { db } from "@/lib/db";
-import { DEFAULT_GACHA_RATES } from "@/lib/gacha-rates";
+import { compileGachaDocument } from "@/lib/gacha-document";
+import { parseGachaRatesInput } from "@/lib/gacha-rates";
 import { transitionOrderStatus } from "@/lib/order-admin";
 import { parseEventDateRange } from "@/lib/order-events";
 import {
@@ -1463,10 +1465,22 @@ export async function updateOrderStatusAction(
 export async function saveGachaAction(formData: FormData) {
   const boothId = requiredText(formData, "boothId");
   const { session } = await requireBoothRole(boothId, editorRoles);
+  const rates = parseGachaRatesInput({
+    common: formData.get("rateCommon"),
+    rare: formData.get("rateRare"),
+    epic: formData.get("rateEpic"),
+    legendary: formData.get("rateLegendary"),
+  });
   const guaranteedAt = Math.min(
     500,
     Math.max(1, parseInteger(formData.get("guaranteedAt"), 50)),
   );
+  const guaranteedRarity = z
+    .enum(["RARE", "EPIC", "LEGENDARY"])
+    .parse(requiredText(formData, "guaranteedRarity"));
+  const gameTheme = z
+    .enum(["anemo", "ember", "starlight"])
+    .parse(requiredText(formData, "gameTheme"));
   await db.$transaction(async (transaction) => {
     await transaction.gachaConfig.upsert({
       where: { boothId },
@@ -1475,18 +1489,21 @@ export async function saveGachaAction(formData: FormData) {
         enabled: booleanField(formData, "enabled"),
         title: requiredText(formData, "title"),
         introduction: requiredText(formData, "introduction"),
-        gameTheme: requiredText(formData, "gameTheme") || "anemo",
+        gameTheme,
         pityEnabled: booleanField(formData, "pityEnabled"),
         guaranteedAt,
-        rates: { ...DEFAULT_GACHA_RATES },
+        guaranteedRarity,
+        rates,
       },
       update: {
         enabled: booleanField(formData, "enabled"),
         title: requiredText(formData, "title"),
         introduction: requiredText(formData, "introduction"),
-        gameTheme: requiredText(formData, "gameTheme") || "anemo",
+        gameTheme,
         pityEnabled: booleanField(formData, "pityEnabled"),
         guaranteedAt,
+        guaranteedRarity,
+        rates,
       },
     });
     await transaction.auditLog.create({
@@ -1506,35 +1523,63 @@ export async function saveGachaAction(formData: FormData) {
 
 export async function saveGachaBannerAction(formData: FormData) {
   const boothId = requiredText(formData, "boothId");
-  await requireBoothRole(boothId, editorRoles);
+  const { session } = await requireBoothRole(boothId, editorRoles);
   const bannerId = optionalText(formData, "bannerId");
+  const startDate = requiredText(formData, "startDate");
+  const endDate = requiredText(formData, "endDate");
+  const dateRange =
+    !startDate && !endDate ? null : parseEventDateRange(startDate, endDate);
+  if ((startDate || endDate) && !dateRange) {
+    throw new Error(
+      "Choose a valid start and end date, with the end on or after the start.",
+    );
+  }
   const data = {
     title: requiredText(formData, "bannerTitle"),
     copy: requiredText(formData, "bannerCopy"),
     type: z
       .enum(["CHARACTER", "WEAPON", "COLLECTION"])
       .parse(requiredText(formData, "bannerType")),
-    theme: requiredText(formData, "bannerTheme") || "anemo",
+    theme: z
+      .enum(["anemo", "ember", "starlight"])
+      .parse(requiredText(formData, "bannerTheme")),
     featuredCount: Math.min(
       10,
       Math.max(1, parseInteger(formData.get("featuredCount"), 3)),
     ),
+    startsAt: dateRange?.startsAt ?? null,
+    endsAt: dateRange?.endsAt ?? null,
     active: booleanField(formData, "bannerActive"),
   } as const;
 
   let savedBannerId = bannerId;
-  if (bannerId) {
-    const result = await db.gachaBanner.updateMany({
-      where: { id: bannerId, boothId },
-      data,
+  await db.$transaction(async (transaction) => {
+    if (bannerId) {
+      const result = await transaction.gachaBanner.updateMany({
+        where: { id: bannerId, boothId },
+        data,
+      });
+      if (!result.count) throw new Error("Banner not found in this booth.");
+    } else {
+      const sortOrder = await transaction.gachaBanner.count({
+        where: { boothId },
+      });
+      const created = await transaction.gachaBanner.create({
+        data: { boothId, ...data, sortOrder },
+      });
+      savedBannerId = created.id;
+    }
+    await transaction.auditLog.create({
+      data: {
+        boothId,
+        actorUserId: session.user.id,
+        action: "gacha.banner_saved",
+        entityType: "GachaBanner",
+        entityId: savedBannerId || boothId,
+        metadata: { freeOnly: true },
+      },
     });
-    if (!result.count) throw new Error("Banner not found in this booth.");
-  } else {
-    const created = await db.gachaBanner.create({
-      data: { boothId, ...data },
-    });
-    savedBannerId = created.id;
-  }
+  });
 
   revalidatePath(`/manage/${boothId}/gacha`);
   redirect(`/manage/${boothId}/gacha?banner=${savedBannerId}&saved=1`);
@@ -1543,16 +1588,15 @@ export async function saveGachaBannerAction(formData: FormData) {
 export async function saveGachaPoolAction(formData: FormData) {
   const boothId = requiredText(formData, "boothId");
   const bannerId = requiredText(formData, "bannerId");
-  await requireBoothRole(boothId, editorRoles);
+  const { session } = await requireBoothRole(boothId, editorRoles);
   const banner = await db.gachaBanner.findFirst({
     where: { id: bannerId, boothId },
   });
   if (!banner) throw new Error("Banner not found in this booth.");
 
-  const requestedVariantIds = formData
-    .getAll("variantId")
-    .map(String)
-    .filter(Boolean);
+  const requestedVariantIds = [
+    ...new Set(formData.getAll("variantId").map(String).filter(Boolean)),
+  ];
   const variants = await db.productVariant.findMany({
     where: {
       id: { in: requestedVariantIds },
@@ -1560,25 +1604,135 @@ export async function saveGachaPoolAction(formData: FormData) {
     },
     include: { product: true },
   });
+  if (variants.length !== requestedVariantIds.length) {
+    throw new Error(
+      "One or more selected variants do not belong to this booth.",
+    );
+  }
+  const variantMap = new Map(variants.map((variant) => [variant.id, variant]));
+  const poolEntries = requestedVariantIds.map((variantId, index) => {
+    const variant = variantMap.get(variantId);
+    if (!variant) throw new Error("Selected variant not found.");
+    return {
+      bannerId,
+      productVariantId: variant.id,
+      displayName: `${variant.product.name} · ${variant.label}`,
+      rarity: z
+        .enum(["COMMON", "RARE", "EPIC", "LEGENDARY"])
+        .parse(requiredText(formData, `rarity:${variant.id}`)),
+      weight: Math.min(
+        1_000,
+        Math.max(1, parseInteger(formData.get(`weight:${variant.id}`), 1)),
+      ),
+      featured: booleanField(formData, `featured:${variant.id}`),
+      sortOrder: index,
+    };
+  });
 
   await db.$transaction(async (transaction) => {
     await transaction.gachaPoolEntry.deleteMany({ where: { bannerId } });
-    if (variants.length) {
+    if (poolEntries.length) {
       await transaction.gachaPoolEntry.createMany({
-        data: variants.map((variant, index) => ({
-          bannerId,
-          productVariantId: variant.id,
-          displayName: `${variant.product.name} · ${variant.label}`,
-          rarity: index === 0 ? "EPIC" : "COMMON",
-          weight: index === 0 ? 5 : 20,
-          featured: index === 0,
-          sortOrder: index,
-        })),
+        data: poolEntries,
       });
     }
+    await transaction.auditLog.create({
+      data: {
+        boothId,
+        actorUserId: session.user.id,
+        action: "gacha.pool_saved",
+        entityType: "GachaBanner",
+        entityId: bannerId,
+        metadata: { entries: poolEntries.length, freeOnly: true },
+      },
+    });
   });
   revalidatePath(`/manage/${boothId}/gacha`);
   redirect(`/manage/${boothId}/gacha?banner=${bannerId}&poolSaved=1`);
+}
+
+export async function publishGachaAction(formData: FormData) {
+  const boothId = requiredText(formData, "boothId");
+  const { session, booth } = await requireBoothRole(boothId, editorRoles);
+  const publishedAt = new Date();
+
+  await db.$transaction(async (transaction) => {
+    const [config, banners] = await Promise.all([
+      transaction.gachaConfig.findUnique({ where: { boothId } }),
+      transaction.gachaBanner.findMany({
+        where: { boothId },
+        include: {
+          pool: {
+            include: { productVariant: { include: { product: true } } },
+            orderBy: { sortOrder: "asc" },
+          },
+        },
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+      }),
+    ]);
+    const compilation = compileGachaDocument({
+      config,
+      banners,
+      publishedAt,
+    });
+    if (!compilation.success) {
+      throw new Error(compilation.errors.join(" "));
+    }
+    await transaction.gachaConfig.update({
+      where: { boothId },
+      data: {
+        publishedDocument: compilation.document,
+        publishedAt,
+      },
+    });
+    await transaction.auditLog.create({
+      data: {
+        boothId,
+        actorUserId: session.user.id,
+        action: "gacha.published",
+        entityType: "GachaConfig",
+        entityId: config?.id ?? boothId,
+        metadata: {
+          banners: compilation.document.banners.length,
+          resultContract: compilation.document.resultContract,
+          freeOnly: true,
+        },
+      },
+    });
+  });
+
+  revalidatePath(`/manage/${boothId}/gacha`);
+  revalidatePath(`/s/${booth.slug}`);
+  redirect(`/manage/${boothId}/gacha?published=1`);
+}
+
+export async function unpublishGachaAction(formData: FormData) {
+  const boothId = requiredText(formData, "boothId");
+  const { session, booth } = await requireBoothRole(boothId, editorRoles);
+  await db.$transaction(async (transaction) => {
+    const config = await transaction.gachaConfig.findUnique({
+      where: { boothId },
+      select: { id: true },
+    });
+    if (!config) throw new Error("Save the game setup before unpublishing.");
+    await transaction.gachaConfig.update({
+      where: { boothId },
+      data: { publishedDocument: Prisma.DbNull, publishedAt: null },
+    });
+    await transaction.auditLog.create({
+      data: {
+        boothId,
+        actorUserId: session.user.id,
+        action: "gacha.unpublished",
+        entityType: "GachaConfig",
+        entityId: config.id,
+        metadata: { freeOnly: true },
+      },
+    });
+  });
+  revalidatePath(`/manage/${boothId}/gacha`);
+  revalidatePath(`/s/${booth.slug}`);
+  redirect(`/manage/${boothId}/gacha?unpublished=1`);
 }
 
 const teamInviteSchema = z.object({

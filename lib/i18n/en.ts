@@ -175,6 +175,43 @@ export const enCatalogue: Catalogue = {
     socialQrAlt: (label) => `${label} profile QR code`,
     tagAriaLabel: "Tags",
     infoSocialsHeading: "Booth socials",
+    gachaFreeLabel: "Free digital reveal · no purchase",
+    gachaPreviewLabel: "Draft preview",
+    gachaBannerTypeLabels: {
+      CHARACTER: "Character",
+      WEAPON: "Object",
+      COLLECTION: "Collection",
+    },
+    gachaRarityLabels: {
+      COMMON: "Common",
+      RARE: "Rare",
+      EPIC: "Epic",
+      LEGENDARY: "Legendary",
+    },
+    gachaChooseBanner: "Choose a banner",
+    gachaLiveNow: "Open now",
+    gachaAlwaysOpen: "Always open",
+    gachaOpens: (date) => `Opens ${date}`,
+    gachaSchedule: (start, end) => `${start}–${end}`,
+    gachaEnded: "This banner has ended",
+    gachaLineupHeading: "Possible reveals",
+    gachaFeaturedLabel: "Featured",
+    gachaOddsHeading: "Odds and guarantee",
+    gachaOddsLine: (rarity, rate) => `${rarity}: ${rate}%`,
+    gachaGuaranteeRule: (draw, rarity) =>
+      `${rarity} or better guaranteed by reveal ${draw}.`,
+    gachaGuaranteeProgress: (remaining, rarity) =>
+      `${remaining} ${remaining === 1 ? "reveal" : "reveals"} until ${rarity} or better is guaranteed.`,
+    gachaRevealButton: "Make a free reveal",
+    gachaRevealAgain: "Reveal again",
+    gachaResultHeading: "Your reveal",
+    gachaResultAnnouncement: (name, rarity) =>
+      `${rarity} digital reveal: ${name}.`,
+    gachaGuaranteeApplied: "Guarantee applied on this reveal.",
+    gachaDigitalOnly:
+      "Digital reveal only. This does not reserve or award an item, change stock, create an order, or require payment.",
+    gachaNoLiveBanner:
+      "No banner is open for free reveals right now. Check the schedule above.",
   },
   publicReservation: {
     pageTitle: "Reservation received",

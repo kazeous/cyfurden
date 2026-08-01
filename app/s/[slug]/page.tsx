@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { ManagedStorefront } from "@/components/storefront/managed-storefront";
 import { db } from "@/lib/db";
+import { readPublishedGachaDocument } from "@/lib/gacha-document";
 import { parseBilingual } from "@/lib/i18n";
 import {
   createOrderPaymentSnapshot,
@@ -23,6 +24,7 @@ const getManagedBooth = cache(async (slug: string) => {
       where: { slug },
       include: {
         storefront: true,
+        gacha: true,
         paymentInstructions: true,
         promotions: {
           where: { active: true },
@@ -196,6 +198,7 @@ export default async function PublicBoothPage({
       : [];
   });
   const socialLinks = readBoothSocialLinks(managed.socialLinks);
+  const gacha = readPublishedGachaDocument(managed.gacha?.publishedDocument);
   return (
     <ManagedStorefront
       booth={{ id: managed.id, slug: managed.slug }}
@@ -210,6 +213,7 @@ export default async function PublicBoothPage({
       document={document}
       products={products}
       promotions={promotions}
+      gacha={gacha}
       canAcceptReservations={Boolean(
         createOrderPaymentSnapshot(managed.paymentInstructions),
       )}

@@ -1,6 +1,6 @@
-/* Hallmark · genre: editorial · macrostructure: Index-First · design-system: design.md · designed-as-app */
+/* Hallmark · genre: editorial-utilitarian · macrostructure: Index-First (locked by design.md) · C4 sticky bottom bar knobs: reveal=always, anchored=inline-at-bottom, shadow=hairline · designed-as-app */
 /* Hallmark · final critique: P5 H5 E5 S5 R5 V4 */
-/* Hallmark · contrast: pass (40–41) · slop: pass (1–58) · mobile: pass (34, 49–57) */
+/* Hallmark · contrast: pass (40–41) · chrome: pass (47) · honest: pass (46) · icons: pass (30) · tokens: pass (48) · slop: pass (1–58) · mobile: pass (34, 49–57) */
 
 .scopeNotice {
   display: flex;
@@ -41,6 +41,31 @@
 .editorEmpty h3 {
   margin: 0;
   font-size: 1rem;
+}
+
+.sectionHelp {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+}
+
+.oddsGrid,
+.dateGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-sm);
+}
+
+.oddsTotal {
+  justify-self: start;
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--color-info-line);
+  border-radius: var(--radius-pill);
+  color: var(--color-info-ink);
+  background: var(--color-info-soft);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
 }
 
 .formActions {
@@ -144,11 +169,87 @@
 
 .variantList {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  max-height: 340px;
+  gap: var(--space-sm);
+  max-height: 36rem;
   overflow: auto;
-  padding-right: 4px;
+  padding-inline-end: var(--space-2xs);
+}
+
+.variantRow {
+  display: grid;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: var(--rule-hairline);
+  border-radius: var(--radius-card);
+  background: var(--color-panel);
+}
+
+.variantChoice {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: flex-start;
+  cursor: pointer;
+}
+
+.variantChoice input,
+.featuredToggle input {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--color-action);
+}
+
+.variantChoice span {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2xs);
+}
+
+.variantChoice strong {
+  overflow-wrap: anywhere;
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+}
+
+.variantChoice small {
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}
+
+.variantControls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(6rem, 0.5fr) auto;
+  gap: var(--space-sm);
+  align-items: end;
+}
+
+.variantControls > label:not(.featuredToggle) {
+  display: grid;
+  gap: var(--space-2xs);
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+.variantControls select,
+.variantControls input[type="number"] {
+  min-height: 2.75rem;
+  padding-inline: var(--space-sm);
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-input);
+  color: var(--color-ink);
+  background: var(--color-panel);
+  font: inherit;
+}
+
+.featuredToggle {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .compactEmpty,
@@ -182,6 +283,79 @@
   background: var(--color-paper-3);
 }
 
+.previewPanel {
+  margin-top: var(--space-lg);
+}
+
+.previewCanvas {
+  padding: var(--space-md);
+  border: var(--rule-hairline);
+  border-radius: var(--radius-card);
+  background: var(--color-paper-3);
+}
+
+.previewCanvas > section {
+  margin-block-start: 0;
+}
+
+.readiness {
+  display: grid;
+  gap: var(--space-sm);
+  padding: var(--space-lg);
+  border: 1px solid var(--color-warning-line);
+  border-radius: var(--radius-card);
+  color: var(--color-warning-ink);
+  background: var(--color-warning-soft);
+}
+
+.readiness h3,
+.readiness ul {
+  margin: 0;
+}
+
+.readiness ul {
+  display: grid;
+  gap: var(--space-xs);
+  padding-inline-start: var(--space-lg);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.publishBar {
+  position: sticky;
+  z-index: var(--z-sticky);
+  bottom: var(--space-md);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  padding: var(--space-md);
+  margin-top: var(--space-lg);
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-card);
+  color: var(--color-ink);
+  background: var(--color-panel-glass);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(var(--space-sm));
+}
+
+.publishBar > div:first-child {
+  display: grid;
+  gap: var(--space-2xs);
+}
+
+.publishBar span {
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+}
+
+.publishActions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: var(--space-xs);
+}
+
 @media (max-width: 980px) {
   .bannerWorkspace {
     grid-template-columns: 1fr;
@@ -205,9 +379,14 @@
   }
 
   .setupForm,
-  .variantList,
   .bannerIndex ul {
     grid-template-columns: 1fr;
+  }
+
+  .oddsGrid,
+  .dateGrid,
+  .variantControls {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .formActions > button {
@@ -217,5 +396,16 @@
   .editorHeading {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .publishBar,
+  .publishActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .publishActions form,
+  .publishActions button {
+    width: 100%;
   }
 }
