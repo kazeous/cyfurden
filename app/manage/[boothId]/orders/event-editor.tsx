@@ -2,6 +2,8 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import { saveOrderEventAction, type OrderEventActionState } from "../actions";
+import type { Locale } from "@/lib/i18n";
+import { getWorkspaceStrings } from "@/lib/i18n/workspace";
 import styles from "./orders.module.css";
 
 const initialState: OrderEventActionState = {
@@ -19,10 +21,13 @@ export type EditableOrderEvent = {
 export function EventEditor({
   boothId,
   event,
+  locale,
 }: {
   boothId: string;
   event?: EditableOrderEvent;
+  locale: Locale;
 }) {
+  const strings = getWorkspaceStrings(locale).orders;
   const [state, formAction, pending] = useActionState(
     saveOrderEventAction,
     initialState,
@@ -40,7 +45,7 @@ export function EventEditor({
       <input type="hidden" name="boothId" value={boothId} />
       <input type="hidden" name="eventId" value={event?.id ?? ""} />
       <label htmlFor={`event-name-${fieldSuffix}`}>
-        Event name
+        {strings.eventName}
         <input
           id={`event-name-${fieldSuffix}`}
           name="name"
@@ -48,13 +53,13 @@ export function EventEditor({
           minLength={2}
           maxLength={100}
           defaultValue={event?.name}
-          placeholder="Summer Artist Alley"
+          placeholder={strings.eventPlaceholder}
           required
         />
       </label>
       <div className={styles.eventDateFields}>
         <label htmlFor={`event-start-${fieldSuffix}`}>
-          Starts
+          {strings.eventStarts}
           <input
             id={`event-start-${fieldSuffix}`}
             name="startDate"
@@ -64,7 +69,7 @@ export function EventEditor({
           />
         </label>
         <label htmlFor={`event-end-${fieldSuffix}`}>
-          Ends
+          {strings.eventEnds}
           <input
             id={`event-end-${fieldSuffix}`}
             name="endDate"
@@ -74,13 +79,14 @@ export function EventEditor({
           />
         </label>
       </div>
-      <p className={styles.eventTimezone}>
-        Dates include the full day in Asia/Ho_Chi_Minh. Booth events cannot
-        overlap.
-      </p>
+      <p className={styles.eventTimezone}>{strings.eventTimezone}</p>
       <div className={styles.eventFormFooter}>
         <button type="submit" disabled={pending}>
-          {pending ? "Saving…" : event ? "Save event" : "Create event"}
+          {pending
+            ? strings.savingEvent
+            : event
+              ? strings.saveEvent
+              : strings.createEventButton}
         </button>
         <p
           className={styles.eventFormMessage}

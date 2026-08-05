@@ -2,6 +2,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { Locale } from "@/lib/i18n";
+import { getWorkspaceStrings } from "@/lib/i18n/workspace";
 import { type BoothSocialLinks, socialPlatforms } from "@/lib/shop-settings";
 import { PAYMENT_QR_MAX_BYTES, paymentQrAccept } from "@/lib/payment-qr";
 import { createSocialQrDataUrl } from "@/lib/social-qr";
@@ -17,11 +19,14 @@ function SocialQrPreview({
   label,
   logoUrl,
   url,
+  locale,
 }: {
   label: string;
   logoUrl?: string;
   url: string;
+  locale: Locale;
 }) {
+  const strings = getWorkspaceStrings(locale).identity;
   const [qrUrl, setQrUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -49,7 +54,7 @@ function SocialQrPreview({
     <div className={styles.socialQrPreview}>
       {qrUrl ? (
         <span className={styles.socialQrImage}>
-          <img src={qrUrl} alt={`${label} profile QR code preview`} />
+          <img src={qrUrl} alt={strings.socialQrAlt(label)} />
           <span className={styles.socialQrLogo} aria-hidden="true">
             {logoUrl ? <img src={logoUrl} alt="" /> : "C"}
           </span>
@@ -59,9 +64,7 @@ function SocialQrPreview({
           QR
         </span>
       )}
-      <small>
-        {url ? "High-correction QR preview" : "Add a link to generate"}
-      </small>
+      <small>{url ? strings.qrReady : strings.qrAddLink}</small>
     </div>
   );
 }
@@ -71,6 +74,7 @@ export function BoothIdentityControls({
   initialLogoObjectKey,
   initialLogoUrl,
   initialSocialLinks,
+  locale,
   uploadConfigured,
   onBusyChange,
   onDirty,
@@ -79,10 +83,13 @@ export function BoothIdentityControls({
   initialLogoObjectKey: string;
   initialLogoUrl?: string;
   initialSocialLinks: BoothSocialLinks;
+  locale: Locale;
   uploadConfigured: boolean;
   onBusyChange: (busy: boolean) => void;
   onDirty: () => void;
 }) {
+  const workspaceStrings = getWorkspaceStrings(locale);
+  const strings = workspaceStrings.identity;
   const [logoObjectKey, setLogoObjectKey] = useState(initialLogoObjectKey);
   const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
   const [socialLinks, setSocialLinks] = useState(initialSocialLinks);
@@ -108,11 +115,11 @@ export function BoothIdentityControls({
     setUploadMessage(null);
     if (!file) return;
     if (file.size > PAYMENT_QR_MAX_BYTES) {
-      setUploadError("Logo images must be 5 MB or smaller.");
+      setUploadError(strings.logoTooLarge);
       return;
     }
     if (!paymentQrAccept.split(",").includes(file.type)) {
-      setUploadError("Choose a PNG, JPEG, or WebP logo image.");
+      setUploadError(strings.logoInvalidType);
       return;
     }
 
@@ -130,7 +137,7 @@ export function BoothIdentityControls({
       });
       const presign = (await response.json()) as PresignResponse;
       if (!response.ok || !presign.uploadUrl || !presign.objectKey) {
-        throw new Error(presign.error || "The logo upload could not start.");
+        throw new Error(strings.logoUploadStartFailed);
       }
 
       const upload = await fetch(presign.uploadUrl, {
@@ -139,21 +146,17 @@ export function BoothIdentityControls({
         body: file,
       });
       if (!upload.ok) {
-        throw new Error("Oracle Object Storage rejected the logo upload.");
+        throw new Error(strings.logoUploadRejected);
       }
 
       if (logoPreviewUrl) URL.revokeObjectURL(logoPreviewUrl);
       setLogoPreviewUrl(URL.createObjectURL(file));
       setLogoObjectKey(presign.objectKey);
-      setUploadMessage(
-        "Logo uploaded. Save changes to attach it to this booth.",
-      );
+      setUploadMessage(strings.logoUploaded);
       onDirty();
     } catch (error) {
       setUploadError(
-        error instanceof Error
-          ? error.message
-          : "The logo could not be uploaded.",
+        error instanceof Error ? error.message : strings.logoUploadFailed,
       );
     } finally {
       setUploadBusy(false);
@@ -164,7 +167,7 @@ export function BoothIdentityControls({
     if (logoPreviewUrl) URL.revokeObjectURL(logoPreviewUrl);
     setLogoPreviewUrl(null);
     setLogoObjectKey("");
-    setUploadMessage("Logo will be removed when you save.");
+    setUploadMessage(strings.logoWillRemove);
     setUploadError(null);
     onDirty();
   };
@@ -178,18 +181,19 @@ export function BoothIdentityControls({
       >
         <div className={styles.identitySectionHeading}>
           <div>
-            <strong id="booth-logo-title">Booth logo</strong>
-            <small>
-              PNG, JPEG, or WebP up to 5 MB. Uploads use a short-lived,
-              booth-scoped Oracle URL.
-            </small>
+            <strong id="booth-logo-title">{strings.logoTitle}</strong>
+            <small>{strings.logoHelp}</small>
           </div>
-          <span>{logoObjectKey ? "Configured" : "Optional"}</span>
+          <span>
+            {logoObjectKey
+              ? workspaceStrings.common.configured
+              : workspaceStrings.common.optional}
+          </span>
         </div>
         <div className={styles.logoUploadGrid}>
           <span className={styles.logoPreview}>
             {visibleLogoUrl ? (
-              <img src={visibleLogoUrl} alt="Booth logo preview" />
+              <img src={visibleLogoUrl} alt={strings.logoPreviewAlt} />
             ) : (
               "C"
             )}
@@ -204,10 +208,10 @@ export function BoothIdentityControls({
               aria-disabled={!uploadConfigured || uploading}
             >
               {uploading
-                ? "Uploading…"
+                ? strings.uploading
                 : logoObjectKey
-                  ? "Replace logo"
-                  : "Choose logo"}
+                  ? strings.replaceLogo
+                  : strings.chooseLogo}
               <input
                 className={styles.srOnly}
                 type="file"
@@ -218,16 +222,13 @@ export function BoothIdentityControls({
             </label>
             {logoObjectKey ? (
               <button type="button" onClick={removeLogo} disabled={uploading}>
-                Remove logo
+                {strings.removeLogo}
               </button>
             ) : null}
           </div>
         </div>
         {!uploadConfigured ? (
-          <p className={styles.qrHelp}>
-            Logo uploads are unavailable until Oracle Object Storage and its
-            public delivery origin are configured.
-          </p>
+          <p className={styles.qrHelp}>{strings.logoUnavailable}</p>
         ) : null}
         {uploadError ? (
           <p className={styles.formError} role="alert">
@@ -244,14 +245,13 @@ export function BoothIdentityControls({
       <section aria-labelledby="social-links-title">
         <div className={styles.identitySectionHeading}>
           <div>
-            <strong id="social-links-title">Social links and QR codes</strong>
-            <small>
-              Use complete HTTPS profile URLs. Each QR uses high error
-              correction and centers the booth mark when available.
-            </small>
+            <strong id="social-links-title">{strings.socialTitle}</strong>
+            <small>{strings.socialHelp}</small>
           </div>
           <span>
-            {Object.values(socialLinks).filter(Boolean).length} configured
+            {strings.configuredCount(
+              Object.values(socialLinks).filter(Boolean).length,
+            )}
           </span>
         </div>
         <div className={styles.socialLinkList}>
@@ -277,6 +277,7 @@ export function BoothIdentityControls({
               <SocialQrPreview
                 label={label}
                 logoUrl={visibleLogoUrl}
+                locale={locale}
                 url={socialLinks[id]}
               />
             </label>

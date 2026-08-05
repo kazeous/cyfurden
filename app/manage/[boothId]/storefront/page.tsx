@@ -7,12 +7,23 @@ import { requireBoothSection } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { resolveOracleImageUrl } from "@/lib/oracle-images";
 import { isOracleQrUploadConfigured } from "@/lib/oracle-uploads";
+import { readLocaleCookie } from "@/lib/i18n/server-locale";
+import { getWorkspaceStrings } from "@/lib/i18n/workspace";
 import { readBoothSocialLinks } from "@/lib/shop-settings";
 import {
   readStorefrontDocument,
   storefrontCornerRadiusPixels,
   storefrontLocaleDisplayCodes,
 } from "@/lib/storefront-document";
+import { defaultPaymentContent } from "@/lib/system-content";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const strings = getWorkspaceStrings(await readLocaleCookie()).storefront;
+  return {
+    title: strings.metadataTitle,
+    robots: { index: false, follow: false },
+  };
+}
 
 export default async function StorefrontPage({
   params,
@@ -24,7 +35,7 @@ export default async function StorefrontPage({
   const { boothId } = await params;
   const messages = await searchParams;
   const { booth } = await requireBoothSection(boothId, "storefront");
-  const [config, payment, storefrontProducts] = await Promise.all([
+  const [config, payment, storefrontProducts, locale] = await Promise.all([
     db.storefrontConfig.findUnique({ where: { boothId } }),
     db.boothPaymentInstruction.findUnique({ where: { boothId } }),
     db.product.findMany({
@@ -47,46 +58,54 @@ export default async function StorefrontPage({
       },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
     }),
+    readLocaleCookie(),
   ]);
   const document = readStorefrontDocument(config?.draftDocument, booth.name);
+  const workspaceStrings = getWorkspaceStrings(locale);
+  const strings = workspaceStrings.storefront;
 
   return (
     <>
       <PageHeading
-        eyebrow="Visual storefront"
-        title="Storefront designer"
-        description="Build the storefront directly on the preview, then save and publish when it is ready."
+        eyebrow={strings.eyebrow}
+        title={strings.title}
+        description={strings.description}
         actions={
           <>
             <span
               className={styles.pill}
-              aria-label={`Card corner radius: ${storefrontCornerRadiusPixels[document.cornerRadius]} pixels`}
+              aria-label={strings.cornerAria(
+                storefrontCornerRadiusPixels[document.cornerRadius],
+              )}
             >
-              {storefrontCornerRadiusPixels[document.cornerRadius]}px corners
+              {strings.cornerLabel(
+                storefrontCornerRadiusPixels[document.cornerRadius],
+              )}
             </span>
             <span
               className={styles.pill}
-              aria-label={`Storefront language: ${document.locale === "en" ? "English" : "Vietnamese"}`}
+              aria-label={strings.localeAria(
+                workspaceStrings.common.localeName[document.locale],
+              )}
             >
-              {storefrontLocaleDisplayCodes[document.locale]} locale
+              {strings.localeLabel(
+                storefrontLocaleDisplayCodes[document.locale],
+              )}
             </span>
           </>
         }
       />
 
       {messages.saved ? (
-        <p className={styles.notice}>
-          Draft saved. The public storefront is unchanged until you publish.
-        </p>
+        <p className={styles.notice}>{strings.savedNotice}</p>
       ) : null}
       {messages.published ? (
-        <p className={styles.notice}>
-          Published successfully. Visitors now see this storefront revision.
-        </p>
+        <p className={styles.notice}>{strings.publishedNotice}</p>
       ) : null}
 
       <StorefrontDesigner
         boothId={boothId}
+        workspaceLocale={locale}
         boothStatus={booth.status}
         document={document}
         payment={{
@@ -94,16 +113,13 @@ export default async function StorefrontPage({
           bankCode: payment?.bankCode ?? "",
           accountName: payment?.accountName ?? document.creatorName,
           accountNumber: payment?.accountNumber ?? "0000000000",
-          paymentLabel: payment?.paymentLabel ?? "Bank transfer",
+          paymentLabel: payment?.paymentLabel ?? defaultPaymentContent.label,
           transferReferenceTemplate:
             payment?.transferReferenceTemplate ?? "{code}",
           qrObjectKey: payment?.qrObjectKey ?? "",
           instructions:
-            payment?.instructions ??
-            "Transfer the exact order total and include the order reference.",
-          disclaimer:
-            payment?.disclaimer ??
-            "Bank transfers are reviewed manually. Cyfurden does not verify or process payment automatically.",
+            payment?.instructions ?? defaultPaymentContent.instructions,
+          disclaimer: payment?.disclaimer ?? defaultPaymentContent.disclaimer,
         }}
         identity={{
           logoObjectKey: booth.logoObjectKey ?? "",
@@ -128,3 +144,4 @@ export default async function StorefrontPage({
     </>
   );
 }
+import type { Metadata } from "next";

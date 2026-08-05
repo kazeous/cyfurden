@@ -33,8 +33,8 @@ test("Phase 11 Settings reuses protected booth, storefront, and payment records"
   ]);
 
   assert.match(page, /requireBoothSection\(boothId, "settings"\)/);
-  assert.match(form, /Booth info/);
-  assert.match(form, /Payment &amp; QR/);
+  assert.match(form, /strings\.boothInfo/);
+  assert.match(form, /strings\.paymentQr/);
   assert.match(form, /BoothIdentityControls/);
   assert.match(form, /name="qrImage"/);
   assert.match(actions, /saveBoothSettingsAction/);

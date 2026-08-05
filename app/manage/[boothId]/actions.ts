@@ -9,6 +9,13 @@ import { requireBoothRole, requireUser } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { compileGachaDocument } from "@/lib/gacha-document";
 import { parseGachaRatesInput } from "@/lib/gacha-rates";
+import { parseBilingual } from "@/lib/i18n";
+import { localizeGachaCompilationError } from "@/lib/i18n/gacha-errors";
+import { readLocaleCookie } from "@/lib/i18n/server-locale";
+import {
+  getWorkspaceStrings,
+  type WorkspaceCatalogue,
+} from "@/lib/i18n/workspace";
 import { transitionOrderStatus } from "@/lib/order-admin";
 import { parseEventDateRange } from "@/lib/order-events";
 import {
@@ -48,11 +55,18 @@ import {
   socialPlatforms,
 } from "@/lib/shop-settings";
 import { validateVietQrBeneficiary } from "@/lib/vietqr";
+import {
+  defaultPaymentContent,
+  defaultProductVariantLabel,
+} from "@/lib/system-content";
 
 const editorRoles = ["OWNER", "ADMIN"] as const;
 const orderRoles = ["OWNER", "ADMIN", "STAFF"] as const;
 const MAX_PRODUCT_PRICE_VND = 9_000_000_000_000;
 const MAX_STOCK_QUANTITY = 2_147_483_647;
+
+const readActionStrings = async () =>
+  getWorkspaceStrings(await readLocaleCookie()).actions;
 
 const requiredText = (formData: FormData, key: string) =>
   String(formData.get(key) ?? "").trim();
@@ -79,40 +93,38 @@ const slugify = (value: string) =>
     .replace(/^-+|-+$/g, "")
     .slice(0, 70);
 
-const paymentDraftSchema = z
-  .object({
-    bankName: z.string().trim().min(1).max(120),
-    bankCode: z.string().regex(/^\d{6}$/),
-    accountName: z.string().trim().max(120),
-    accountNumber: z.string().trim().max(80),
-    paymentLabel: z.string().trim().min(2).max(80),
-    transferReferenceTemplate: z.string().trim().max(120),
-    instructions: z.string().trim().max(2_000),
-    disclaimer: z.string().trim().max(1_000),
-  })
-  .superRefine((payment, context) => {
-    if (!payment.accountName || !payment.accountNumber) {
-      context.addIssue({
-        code: "custom",
-        path: ["bankCode"],
-        message:
-          "A bank, account name, and account number are required to generate VietQR.",
-      });
-      return;
-    }
-    try {
-      validateVietQrBeneficiary(payment);
-    } catch (error) {
-      context.addIssue({
-        code: "custom",
-        path: ["accountNumber"],
-        message:
-          error instanceof Error
-            ? error.message
-            : "Check the VietQR beneficiary details.",
-      });
-    }
-  });
+const paymentDraftSchema = (strings: WorkspaceCatalogue["actions"]) =>
+  z
+    .object({
+      bankName: z.string().trim().min(1).max(120),
+      bankCode: z.string().regex(/^\d{6}$/),
+      accountName: z.string().trim().max(120),
+      accountNumber: z.string().trim().max(80),
+      paymentLabel: z.string().trim().min(2).max(80),
+      transferReferenceTemplate: z.string().trim().max(120),
+      instructions: z.string().trim().max(2_000),
+      disclaimer: z.string().trim().max(1_000),
+    })
+    .superRefine((payment, context) => {
+      if (!payment.accountName || !payment.accountNumber) {
+        context.addIssue({
+          code: "custom",
+          path: ["bankCode"],
+          message: strings.paymentRequired,
+        });
+        return;
+      }
+      try {
+        validateVietQrBeneficiary(payment);
+      } catch (error) {
+        context.addIssue({
+          code: "custom",
+          path: ["accountNumber"],
+          message:
+            error instanceof Error ? error.message : strings.beneficiaryInvalid,
+        });
+      }
+    });
 
 const productImageManifestSchema = z
   .array(
@@ -133,34 +145,35 @@ const productImageManifestSchema = z
   )
   .max(PRODUCT_IMAGE_MAX_COUNT);
 
-const promotionSchema = z
-  .object({
-    promotionId: z.string().trim().min(1).max(100).nullable(),
-    name: z.string().trim().min(2).max(160),
-    buyQuantity: z.number().int().min(1).max(MAX_PROMOTION_QUANTITY),
-    rewardQuantity: z.number().int().min(1).max(MAX_PROMOTION_QUANTITY),
-    active: z.boolean(),
-    repeatable: z.boolean(),
-    buyProductIds: z.array(z.string().trim().min(1).max(100)).max(100),
-    rewardProductIds: z.array(z.string().trim().min(1).max(100)).max(100),
-  })
-  .superRefine((promotion, context) => {
-    if (!promotion.active) return;
-    if (!promotion.buyProductIds.length) {
-      context.addIssue({
-        code: "custom",
-        path: ["buyProductIds"],
-        message: "Choose at least one qualifying product before going live.",
-      });
-    }
-    if (!promotion.rewardProductIds.length) {
-      context.addIssue({
-        code: "custom",
-        path: ["rewardProductIds"],
-        message: "Choose at least one reward product before going live.",
-      });
-    }
-  });
+const promotionSchema = (strings: WorkspaceCatalogue["actions"]) =>
+  z
+    .object({
+      promotionId: z.string().trim().min(1).max(100).nullable(),
+      name: z.string().trim().min(2).max(160),
+      buyQuantity: z.number().int().min(1).max(MAX_PROMOTION_QUANTITY),
+      rewardQuantity: z.number().int().min(1).max(MAX_PROMOTION_QUANTITY),
+      active: z.boolean(),
+      repeatable: z.boolean(),
+      buyProductIds: z.array(z.string().trim().min(1).max(100)).max(100),
+      rewardProductIds: z.array(z.string().trim().min(1).max(100)).max(100),
+    })
+    .superRefine((promotion, context) => {
+      if (!promotion.active) return;
+      if (!promotion.buyProductIds.length) {
+        context.addIssue({
+          code: "custom",
+          path: ["buyProductIds"],
+          message: strings.promotionQualifying,
+        });
+      }
+      if (!promotion.rewardProductIds.length) {
+        context.addIssue({
+          code: "custom",
+          path: ["rewardProductIds"],
+          message: strings.promotionReward,
+        });
+      }
+    });
 
 export type StorefrontSaveState = { error: string | null };
 export type BoothSettingsSaveState = { error: string | null };
@@ -171,11 +184,12 @@ export async function saveBoothSettingsAction(
 ): Promise<BoothSettingsSaveState> {
   const boothId = requiredText(formData, "boothId");
   const { session, booth } = await requireBoothRole(boothId, editorRoles);
+  const strings = await readActionStrings();
   const boothNameResult = z
     .string()
     .trim()
-    .min(2, "Give this booth a name with at least 2 characters.")
-    .max(80, "Keep the booth name to 80 characters or fewer.")
+    .min(2, strings.boothNameMin)
+    .max(80, strings.boothNameMax)
     .safeParse(requiredText(formData, "boothName"));
   if (!boothNameResult.success) {
     return { error: boothNameResult.error.issues[0]?.message };
@@ -184,10 +198,10 @@ export async function saveBoothSettingsAction(
   const selectedBank = findVietQrBank(requiredText(formData, "bankCode"));
   if (!selectedBank) {
     return {
-      error: "Select a supported bank for the receiving account.",
+      error: strings.supportedBank,
     };
   }
-  const paymentResult = paymentDraftSchema.safeParse({
+  const paymentResult = paymentDraftSchema(strings).safeParse({
     bankName: selectedBank.shortName,
     bankCode: selectedBank.bin,
     accountName: requiredText(formData, "accountName"),
@@ -202,9 +216,7 @@ export async function saveBoothSettingsAction(
   });
   if (!paymentResult.success) {
     return {
-      error:
-        paymentResult.error.issues[0]?.message ??
-        "Check the payment instruction fields and try again.",
+      error: paymentResult.error.issues[0]?.message ?? strings.paymentFields,
     };
   }
 
@@ -218,17 +230,14 @@ export async function saveBoothSettingsAction(
   );
   if (!socialResult.success) {
     return {
-      error:
-        socialResult.error.issues[0]?.message ??
-        "Check the social links and try again.",
+      error: socialResult.error.issues[0]?.message ?? strings.socialLinks,
     };
   }
 
   const logoObjectKey = requiredText(formData, "logoObjectKey");
   if (logoObjectKey && !isBoothLogoObjectKey(boothId, logoObjectKey)) {
     return {
-      error:
-        "The selected logo does not belong to this booth. Upload it again.",
+      error: strings.logoScope,
     };
   }
   if (logoObjectKey && logoObjectKey !== booth.logoObjectKey) {
@@ -236,7 +245,7 @@ export async function saveBoothSettingsAction(
       await verifyBoothLogoUpload({ boothId, objectKey: logoObjectKey });
     } catch (error) {
       if (error instanceof OracleLogoVerificationError) {
-        return { error: error.message };
+        return { error: strings.logoUpload };
       }
       throw error;
     }
@@ -264,7 +273,7 @@ export async function saveBoothSettingsAction(
       qrObjectKey = uploadedQrObjectKey;
     } catch (error) {
       if (error instanceof OracleQrUploadError) {
-        return { error: error.message };
+        return { error: strings.qrUpload };
       }
       throw error;
     }
@@ -307,9 +316,7 @@ export async function saveBoothSettingsAction(
           transferReferenceTemplate:
             payment.transferReferenceTemplate || "{code}",
           instructions: payment.instructions,
-          disclaimer:
-            payment.disclaimer ||
-            "Bank transfers are reviewed manually. This storefront does not verify payment automatically.",
+          disclaimer: payment.disclaimer || defaultPaymentContent.disclaimer,
         },
         update: {
           bankName: payment.bankName,
@@ -321,9 +328,7 @@ export async function saveBoothSettingsAction(
           transferReferenceTemplate:
             payment.transferReferenceTemplate || "{code}",
           instructions: payment.instructions,
-          disclaimer:
-            payment.disclaimer ||
-            "Bank transfers are reviewed manually. This storefront does not verify payment automatically.",
+          disclaimer: payment.disclaimer || defaultPaymentContent.disclaimer,
         },
       });
       await transaction.booth.update({
@@ -371,6 +376,7 @@ export async function saveStorefrontAction(
 ): Promise<StorefrontSaveState> {
   const boothId = requiredText(formData, "boothId");
   const { session, booth } = await requireBoothRole(boothId, editorRoles);
+  const strings = await readActionStrings();
   const visibleSections = storefrontSectionIds.filter((section) =>
     booleanField(formData, `visible-${section}`),
   );
@@ -387,8 +393,7 @@ export async function saveStorefrontAction(
       featuredProductIds = JSON.parse(featuredProductIdsValue);
     } catch {
       return {
-        error:
-          "The featured product selection could not be read. Refresh and try again.",
+        error: strings.featuredSelection,
       };
     }
   }
@@ -418,8 +423,7 @@ export async function saveStorefrontAction(
   if (!documentResult.success) {
     return {
       error:
-        documentResult.error.issues[0]?.message ??
-        "Check the storefront fields and try again.",
+        documentResult.error.issues[0]?.message ?? strings.storefrontFields,
     };
   }
   const document = documentResult.data;
@@ -433,18 +437,17 @@ export async function saveStorefrontAction(
     });
     if (featuredProductCount !== document.featuredProductIds.length) {
       return {
-        error:
-          "A featured product is no longer public. Refresh, update the slider selection, and save again.",
+        error: strings.featuredUnavailable,
       };
     }
   }
   const selectedBank = findVietQrBank(requiredText(formData, "bankCode"));
   if (!selectedBank) {
     return {
-      error: "Select a supported bank for the receiving account.",
+      error: strings.supportedBank,
     };
   }
-  const paymentResult = paymentDraftSchema.safeParse({
+  const paymentResult = paymentDraftSchema(strings).safeParse({
     bankName: selectedBank.shortName,
     bankCode: selectedBank.bin,
     accountName: requiredText(formData, "accountName"),
@@ -459,9 +462,7 @@ export async function saveStorefrontAction(
   });
   if (!paymentResult.success) {
     return {
-      error:
-        paymentResult.error.issues[0]?.message ??
-        "Check the payment instruction fields and try again.",
+      error: paymentResult.error.issues[0]?.message ?? strings.paymentFields,
     };
   }
   const payment = paymentResult.data;
@@ -475,16 +476,13 @@ export async function saveStorefrontAction(
   );
   if (!socialResult.success) {
     return {
-      error:
-        socialResult.error.issues[0]?.message ??
-        "Check the social links and try again.",
+      error: socialResult.error.issues[0]?.message ?? strings.socialLinks,
     };
   }
   const logoObjectKey = requiredText(formData, "logoObjectKey");
   if (logoObjectKey && !isBoothLogoObjectKey(boothId, logoObjectKey)) {
     return {
-      error:
-        "The selected logo does not belong to this booth. Upload it again.",
+      error: strings.logoScope,
     };
   }
   if (logoObjectKey && logoObjectKey !== booth.logoObjectKey) {
@@ -492,7 +490,7 @@ export async function saveStorefrontAction(
       await verifyBoothLogoUpload({ boothId, objectKey: logoObjectKey });
     } catch (error) {
       if (error instanceof OracleLogoVerificationError) {
-        return { error: error.message };
+        return { error: strings.logoUpload };
       }
       throw error;
     }
@@ -514,7 +512,7 @@ export async function saveStorefrontAction(
       qrObjectKey = uploadedQrObjectKey;
     } catch (error) {
       if (error instanceof OracleQrUploadError) {
-        return { error: error.message };
+        return { error: strings.qrUpload };
       }
       throw error;
     }
@@ -548,9 +546,7 @@ export async function saveStorefrontAction(
           transferReferenceTemplate:
             payment.transferReferenceTemplate || "{code}",
           instructions: payment.instructions,
-          disclaimer:
-            payment.disclaimer ||
-            "Bank transfers are reviewed manually. This storefront does not verify payment automatically.",
+          disclaimer: payment.disclaimer || defaultPaymentContent.disclaimer,
         },
         update: {
           bankName: payment.bankName,
@@ -562,9 +558,7 @@ export async function saveStorefrontAction(
           transferReferenceTemplate:
             payment.transferReferenceTemplate || "{code}",
           instructions: payment.instructions,
-          disclaimer:
-            payment.disclaimer ||
-            "Bank transfers are reviewed manually. This storefront does not verify payment automatically.",
+          disclaimer: payment.disclaimer || defaultPaymentContent.disclaimer,
         },
       });
       await transaction.booth.update({
@@ -606,9 +600,10 @@ export async function saveStorefrontAction(
 export async function publishStorefrontAction(formData: FormData) {
   const boothId = requiredText(formData, "boothId");
   const { session, booth } = await requireBoothRole(boothId, editorRoles);
+  const strings = await readActionStrings();
   const config = await db.storefrontConfig.findUnique({ where: { boothId } });
   if (!config) {
-    throw new Error("Save the storefront draft before publishing.");
+    throw new Error(strings.saveDraftBeforePublish);
   }
 
   const document = storefrontDocumentSchema.parse(config.draftDocument);
@@ -650,12 +645,13 @@ export async function deleteBoothAction(
   const boothId = requiredText(formData, "boothId");
   const confirmation = requiredText(formData, "confirmation");
   const { session, booth } = await requireBoothRole(boothId, ["OWNER"]);
+  const strings = await readActionStrings();
 
   if (booth.ownerId !== session.user.id) {
-    return { error: "Only the booth owner can delete this booth." };
+    return { error: strings.ownerDeleteOnly };
   }
   if (confirmation !== booth.slug) {
-    return { error: `Type ${booth.slug} exactly to confirm deletion.` };
+    return { error: strings.confirmBoothSlug(booth.slug) };
   }
 
   const result = await db.$transaction(
@@ -663,8 +659,7 @@ export async function deleteBoothAction(
       const orderCount = await transaction.order.count({ where: { boothId } });
       if (orderCount > 0) {
         return {
-          error:
-            "This booth has order history and cannot be deleted. Archive support belongs to a later lifecycle milestone.",
+          error: strings.boothHasOrders,
         };
       }
 
@@ -673,7 +668,7 @@ export async function deleteBoothAction(
       });
       return deleted.count
         ? { error: null }
-        : { error: "The booth no longer exists or is no longer yours." };
+        : { error: strings.boothUnavailable };
     },
     { isolationLevel: "Serializable" },
   );
@@ -735,6 +730,7 @@ async function saveProduct(
   const productId = optionalText(formData, "productId");
   const variantId = optionalText(formData, "variantId");
   const { session, booth } = await requireBoothRole(boothId, editorRoles);
+  const strings = await readActionStrings();
   const name = requiredText(formData, "name");
   const slug = slugify(requiredText(formData, "slug") || name);
   const sku = requiredText(formData, "sku").toLocaleUpperCase();
@@ -743,7 +739,8 @@ async function saveProduct(
   const description = requiredText(formData, "description");
   const eyebrow = requiredText(formData, "eyebrow");
   const shortDescription = requiredText(formData, "shortDescription");
-  const variantLabel = requiredText(formData, "variantLabel") || "Standard";
+  const variantLabel =
+    requiredText(formData, "variantLabel") || defaultProductVariantLabel;
   const fulfillmentNote = requiredText(formData, "fulfillmentNote");
   const rawStockQuantity = requiredText(formData, "stockQuantity");
   const stockQuantity = rawStockQuantity ? Number(rawStockQuantity) : null;
@@ -758,7 +755,9 @@ async function saveProduct(
     priceVnd > MAX_PRODUCT_PRICE_VND
   ) {
     return {
-      error: `Use a 2-120 character name, a SKU made from letters, numbers, dots, underscores, or hyphens, and a whole-number price between 0 and ${MAX_PRODUCT_PRICE_VND.toLocaleString("en-US")} VND.`,
+      error: strings.productCoreFields(
+        MAX_PRODUCT_PRICE_VND.toLocaleString("en-US"),
+      ),
     };
   }
   if (
@@ -770,8 +769,7 @@ async function saveProduct(
     fulfillmentNote.length > 500
   ) {
     return {
-      error:
-        "Keep the description under 5,000 characters and the supporting labels within their displayed limits.",
+      error: strings.productCopyLimits,
     };
   }
   if (
@@ -781,7 +779,7 @@ async function saveProduct(
       stockQuantity > MAX_STOCK_QUANTITY)
   ) {
     return {
-      error: `Stock must be a whole number from 0 to ${MAX_STOCK_QUANTITY.toLocaleString("en-US")}, or blank when untracked.`,
+      error: strings.productStock(MAX_STOCK_QUANTITY.toLocaleString("en-US")),
     };
   }
 
@@ -790,14 +788,14 @@ async function saveProduct(
     rawImageManifest = JSON.parse(requiredText(formData, "imageManifest"));
   } catch {
     return {
-      error: "The product image list is invalid. Refresh and try again.",
+      error: strings.productImagesInvalid,
     };
   }
   const imageManifestResult =
     productImageManifestSchema.safeParse(rawImageManifest);
   if (!imageManifestResult.success) {
     return {
-      error: `Use no more than ${PRODUCT_IMAGE_MAX_COUNT} product images and keep alt text under 300 characters.`,
+      error: strings.productImagesLimit(PRODUCT_IMAGE_MAX_COUNT),
     };
   }
   const imageManifest = imageManifestResult.data;
@@ -807,7 +805,7 @@ async function saveProduct(
       : `new:${image.objectKey}`,
   );
   if (new Set(manifestIdentifiers).size !== manifestIdentifiers.length) {
-    return { error: "The product image list contains duplicates." };
+    return { error: strings.productImagesDuplicate };
   }
 
   const priceCents = BigInt(Math.round(priceVnd * 100));
@@ -818,7 +816,7 @@ async function saveProduct(
     requiredText(formData, "variantStatus"),
   );
   if (!statusResult.success || !variantStatusResult.success) {
-    return { error: "Choose a valid product and variant status." };
+    return { error: strings.productStatuses };
   }
   const status = statusResult.data;
   const variantStatus = variantStatusResult.data;
@@ -839,7 +837,7 @@ async function saveProduct(
     : null;
   if (productId && !existing) {
     return {
-      error: "That product is no longer available. Refresh and try again.",
+      error: strings.productUnavailable,
     };
   }
 
@@ -854,8 +852,7 @@ async function saveProduct(
     .map((image) => image.existingId);
   if (retainedExistingIds.some((imageId) => !existingImagesById.has(imageId))) {
     return {
-      error:
-        "One of the existing product images is no longer available. Refresh and try again.",
+      error: strings.productExistingImageUnavailable,
     };
   }
   const uploadedImageObjectKeys = imageManifest
@@ -870,7 +867,7 @@ async function saveProduct(
     )
   ) {
     return {
-      error: "An uploaded product image does not belong to this booth.",
+      error: strings.productImageScope,
     };
   }
   if (uploadedImageObjectKeys.length) {
@@ -880,8 +877,7 @@ async function saveProduct(
     });
     if (attachedUpload) {
       return {
-        error:
-          "An uploaded product image is already attached. Refresh and try again.",
+        error: strings.productImageAttached,
       };
     }
   }
@@ -893,7 +889,7 @@ async function saveProduct(
     await Promise.all(uploadedImageObjectKeys.map(discardUploadedProductImage));
     if (error instanceof OracleProductImageVerificationError) {
       return {
-        error: error.message,
+        error: strings.productImageVerification,
         discardedImageObjectKeys: uploadedImageObjectKeys,
       };
     }
@@ -1026,8 +1022,7 @@ async function saveProduct(
   } catch (error) {
     if (hasCode(error, "P2002")) {
       return {
-        error:
-          "That slug or SKU is already used in this booth. Choose a unique value.",
+        error: strings.productUnique,
       };
     }
     if (
@@ -1036,7 +1031,7 @@ async function saveProduct(
         error.message === "Product variant not found in this product.")
     ) {
       return {
-        error: "That product is no longer available. Refresh and try again.",
+        error: strings.productUnavailable,
       };
     }
     Sentry.captureException(error, {
@@ -1058,12 +1053,11 @@ async function saveProduct(
     console.error("Failed to save product", error);
     if (hasCode(error, "P2020")) {
       return {
-        error:
-          "The database rejected the price or stock value. If those values are correct, apply the latest database migrations and try again.",
+        error: strings.productDatabaseValue,
       };
     }
     return {
-      error: "We could not save this product. Check the fields and try again.",
+      error: strings.productSaveFailed,
     };
   }
 
@@ -1086,11 +1080,12 @@ export async function hideProductAction(formData: FormData) {
   const boothId = requiredText(formData, "boothId");
   const productId = requiredText(formData, "productId");
   const { session, booth } = await requireBoothRole(boothId, editorRoles);
+  const strings = await readActionStrings();
   const result = await db.product.updateMany({
     where: { id: productId, boothId },
     data: { status: "HIDDEN" },
   });
-  if (!result.count) throw new Error("Product not found in this booth.");
+  if (!result.count) throw new Error(strings.productUnavailable);
   await db.auditLog.create({
     data: {
       boothId,
@@ -1113,7 +1108,8 @@ export async function savePromotionAction(
 ): Promise<PromotionSaveState> {
   const boothId = requiredText(formData, "boothId");
   const { session, booth } = await requireBoothRole(boothId, editorRoles);
-  const parsed = promotionSchema.safeParse({
+  const strings = await readActionStrings();
+  const parsed = promotionSchema(strings).safeParse({
     promotionId: optionalText(formData, "promotionId"),
     name: requiredText(formData, "name"),
     buyQuantity: parseInteger(formData.get("buyQuantity"), 0),
@@ -1127,9 +1123,7 @@ export async function savePromotionAction(
   });
   if (!parsed.success) {
     return {
-      error:
-        parsed.error.issues[0]?.message ??
-        "Check the promotion fields and try again.",
+      error: parsed.error.issues[0]?.message ?? strings.promotionFields,
     };
   }
 
@@ -1231,15 +1225,14 @@ export async function savePromotionAction(
         error.message === "PROMOTION_NOT_FOUND")
     ) {
       return {
-        error:
-          "A selected product or promotion no longer belongs to this booth. Refresh and try again.",
+        error: strings.promotionScope,
       };
     }
     Sentry.captureException(error, {
       tags: { "cyfurden.operation": "promotion.save" },
     });
     console.error("Failed to save quantity promotion", error);
-    return { error: "We could not save the promotion. Try again." };
+    return { error: strings.promotionSaveFailed };
   }
 
   revalidatePath(`/manage/${boothId}/products`);
@@ -1269,6 +1262,7 @@ export async function saveOrderEventAction(
   _previousState: OrderEventActionState,
   formData: FormData,
 ): Promise<OrderEventActionState> {
+  const strings = await readActionStrings();
   const parsed = orderEventSchema.safeParse({
     boothId: requiredText(formData, "boothId"),
     eventId: requiredText(formData, "eventId"),
@@ -1279,7 +1273,7 @@ export async function saveOrderEventAction(
   if (!parsed.success) {
     return {
       status: "error",
-      message: "Enter an event name and a valid start and end date.",
+      message: strings.eventFields,
     };
   }
 
@@ -1287,7 +1281,7 @@ export async function saveOrderEventAction(
   if (!range) {
     return {
       status: "error",
-      message: "The end date must be on or after the start date.",
+      message: strings.eventDateOrder,
     };
   }
 
@@ -1357,20 +1351,20 @@ export async function saveOrderEventAction(
         if (result.kind === "missing") {
           return {
             status: "error",
-            message: "This event no longer belongs to the active booth.",
+            message: strings.eventMissing,
           };
         }
         if (result.kind === "overlap") {
           return {
             status: "error",
-            message: `These dates overlap ${result.eventName}. Events for one booth cannot overlap.`,
+            message: strings.eventOverlap(result.eventName),
           };
         }
 
         revalidatePath(`/manage/${boothId}/orders`);
         return {
           status: "success",
-          message: eventId ? "Event updated." : "Event created.",
+          message: eventId ? strings.eventUpdated : strings.eventCreated,
         };
       } catch (error) {
         const code =
@@ -1390,7 +1384,7 @@ export async function saveOrderEventAction(
 
   return {
     status: "error",
-    message: "The event could not be saved. Try again.",
+    message: strings.eventSaveFailed,
   };
 }
 
@@ -1398,6 +1392,9 @@ export async function updateOrderStatusAction(
   _previousState: OrderStatusActionState,
   formData: FormData,
 ): Promise<OrderStatusActionState> {
+  const locale = await readLocaleCookie();
+  const catalogue = getWorkspaceStrings(locale);
+  const strings = catalogue.actions;
   const boothId = requiredText(formData, "boothId");
   const orderId = requiredText(formData, "orderId");
   const parsedStatus = z
@@ -1407,7 +1404,7 @@ export async function updateOrderStatusAction(
   if (!boothId || !orderId || !parsedStatus.success) {
     return {
       status: "error",
-      message: "Choose a valid order status and try again.",
+      message: strings.orderStatusInvalid,
     };
   }
 
@@ -1424,20 +1421,23 @@ export async function updateOrderStatusAction(
     if (result.kind === "missing") {
       return {
         status: "error",
-        message: "This order was not found in the active booth.",
+        message: strings.orderMissing,
       };
     }
     if (result.kind === "conflict") {
       return {
         status: "error",
-        message:
-          "This order changed in another session. Refresh and try again.",
+        message: strings.orderConflict,
       };
     }
     if (result.kind === "invalid-transition") {
       return {
         status: "error",
-        message: `${result.code} cannot move from ${result.currentStatus.toLocaleLowerCase()} to ${nextStatus.toLocaleLowerCase()}. Terminal statuses cannot be reopened.`,
+        message: strings.orderTransition(
+          result.code,
+          catalogue.common.orderStatusLabels[result.currentStatus],
+          catalogue.common.orderStatusLabels[nextStatus],
+        ),
       };
     }
 
@@ -1445,19 +1445,19 @@ export async function updateOrderStatusAction(
       revalidatePath(`/manage/${boothId}/orders`);
       revalidatePath(`/s/${booth.slug}`);
     }
-    const label = nextStatus.toLocaleLowerCase().replaceAll("_", " ");
+    const label = catalogue.common.orderStatusLabels[nextStatus];
     return {
       status: "success",
       message:
         result.kind === "changed"
-          ? `${result.code} is now ${label}.`
-          : `${result.code} is already ${label}.`,
+          ? strings.orderChanged(result.code, label)
+          : strings.orderUnchanged(result.code, label),
     };
   } catch (error) {
     console.error("Order status update failed", error);
     return {
       status: "error",
-      message: "The status could not be saved. Try again.",
+      message: strings.orderSaveFailed,
     };
   }
 }
@@ -1524,15 +1524,14 @@ export async function saveGachaAction(formData: FormData) {
 export async function saveGachaBannerAction(formData: FormData) {
   const boothId = requiredText(formData, "boothId");
   const { session } = await requireBoothRole(boothId, editorRoles);
+  const strings = await readActionStrings();
   const bannerId = optionalText(formData, "bannerId");
   const startDate = requiredText(formData, "startDate");
   const endDate = requiredText(formData, "endDate");
   const dateRange =
     !startDate && !endDate ? null : parseEventDateRange(startDate, endDate);
   if ((startDate || endDate) && !dateRange) {
-    throw new Error(
-      "Choose a valid start and end date, with the end on or after the start.",
-    );
+    throw new Error(strings.gachaDates);
   }
   const data = {
     title: requiredText(formData, "bannerTitle"),
@@ -1559,7 +1558,7 @@ export async function saveGachaBannerAction(formData: FormData) {
         where: { id: bannerId, boothId },
         data,
       });
-      if (!result.count) throw new Error("Banner not found in this booth.");
+      if (!result.count) throw new Error(strings.gachaBannerMissing);
     } else {
       const sortOrder = await transaction.gachaBanner.count({
         where: { boothId },
@@ -1589,10 +1588,11 @@ export async function saveGachaPoolAction(formData: FormData) {
   const boothId = requiredText(formData, "boothId");
   const bannerId = requiredText(formData, "bannerId");
   const { session } = await requireBoothRole(boothId, editorRoles);
+  const strings = await readActionStrings();
   const banner = await db.gachaBanner.findFirst({
     where: { id: bannerId, boothId },
   });
-  if (!banner) throw new Error("Banner not found in this booth.");
+  if (!banner) throw new Error(strings.gachaBannerMissing);
 
   const requestedVariantIds = [
     ...new Set(formData.getAll("variantId").map(String).filter(Boolean)),
@@ -1605,14 +1605,12 @@ export async function saveGachaPoolAction(formData: FormData) {
     include: { product: true },
   });
   if (variants.length !== requestedVariantIds.length) {
-    throw new Error(
-      "One or more selected variants do not belong to this booth.",
-    );
+    throw new Error(strings.gachaVariantScope);
   }
   const variantMap = new Map(variants.map((variant) => [variant.id, variant]));
   const poolEntries = requestedVariantIds.map((variantId, index) => {
     const variant = variantMap.get(variantId);
-    if (!variant) throw new Error("Selected variant not found.");
+    if (!variant) throw new Error(strings.gachaVariantMissing);
     return {
       bannerId,
       productVariantId: variant.id,
@@ -1654,6 +1652,8 @@ export async function saveGachaPoolAction(formData: FormData) {
 export async function publishGachaAction(formData: FormData) {
   const boothId = requiredText(formData, "boothId");
   const { session, booth } = await requireBoothRole(boothId, editorRoles);
+  const locale = await readLocaleCookie();
+  const catalogue = getWorkspaceStrings(locale);
   const publishedAt = new Date();
 
   await db.$transaction(async (transaction) => {
@@ -1676,7 +1676,15 @@ export async function publishGachaAction(formData: FormData) {
       publishedAt,
     });
     if (!compilation.success) {
-      throw new Error(compilation.errors.join(" "));
+      throw new Error(
+        compilation.errors
+          .map((error) =>
+            localizeGachaCompilationError(error, catalogue.gacha, (value) =>
+              parseBilingual(value, locale),
+            ),
+          )
+          .join(" "),
+      );
     }
     await transaction.gachaConfig.update({
       where: { boothId },
@@ -1709,12 +1717,13 @@ export async function publishGachaAction(formData: FormData) {
 export async function unpublishGachaAction(formData: FormData) {
   const boothId = requiredText(formData, "boothId");
   const { session, booth } = await requireBoothRole(boothId, editorRoles);
+  const strings = await readActionStrings();
   await db.$transaction(async (transaction) => {
     const config = await transaction.gachaConfig.findUnique({
       where: { boothId },
       select: { id: true },
     });
-    if (!config) throw new Error("Save the game setup before unpublishing.");
+    if (!config) throw new Error(strings.gachaSetupMissing);
     await transaction.gachaConfig.update({
       where: { boothId },
       data: { publishedDocument: Prisma.DbNull, publishedAt: null },
@@ -1735,13 +1744,14 @@ export async function unpublishGachaAction(formData: FormData) {
   redirect(`/manage/${boothId}/gacha?unpublished=1`);
 }
 
-const teamInviteSchema = z.object({
-  email: z
-    .email("Enter a valid email address.")
-    .max(254)
-    .transform((value) => value.trim().toLocaleLowerCase()),
-  role: z.enum(["ADMIN", "STAFF"]),
-});
+const teamInviteSchema = (strings: WorkspaceCatalogue["actions"]) =>
+  z.object({
+    email: z
+      .email(strings.invitationEmail)
+      .max(254)
+      .transform((value) => value.trim().toLocaleLowerCase()),
+    role: z.enum(["ADMIN", "STAFF"]),
+  });
 
 const teamMemberUpdateSchema = z.object({
   role: z.enum(["ADMIN", "STAFF"]),
@@ -1767,13 +1777,14 @@ export async function inviteTeamMemberAction(
 ): Promise<TeamInviteState> {
   const boothId = requiredText(formData, "boothId");
   const { session } = await requireBoothRole(boothId, ["OWNER"]);
-  const parsed = teamInviteSchema.safeParse({
+  const strings = await readActionStrings();
+  const parsed = teamInviteSchema(strings).safeParse({
     email: requiredText(formData, "email"),
     role: requiredText(formData, "role"),
   });
   if (!parsed.success) {
     return {
-      error: parsed.error.issues[0]?.message ?? "Check the invitation.",
+      error: parsed.error.issues[0]?.message ?? strings.invitationCheck,
     };
   }
 
@@ -1788,20 +1799,19 @@ export async function inviteTeamMemberAction(
   } catch (error) {
     console.error("Failed to create team invitation", error);
     return {
-      error: "The invitation could not be created. Please try again.",
+      error: strings.invitationCreateFailed,
     };
   }
 
   if (result.kind === "already-member") {
-    return { error: "This person already belongs to the booth." };
+    return { error: strings.invitationAlreadyMember };
   }
   if (result.kind === "already-invited") {
-    return { error: "An active invitation already exists for this email." };
+    return { error: strings.invitationAlreadyActive };
   }
   if (result.kind === "capacity") {
     return {
-      error:
-        "This booth has filled all 10 active-member and pending-invitation places.",
+      error: strings.invitationCapacity,
     };
   }
 
@@ -1819,6 +1829,7 @@ export async function revokeTeamInvitationAction(
   const boothId = requiredText(formData, "boothId");
   const invitationId = requiredText(formData, "invitationId");
   const { session } = await requireBoothRole(boothId, ["OWNER"]);
+  const strings = await readActionStrings();
   let revoked: boolean;
   try {
     revoked = await revokeTeamInvitation({
@@ -1828,11 +1839,11 @@ export async function revokeTeamInvitationAction(
     });
   } catch (error) {
     console.error("Failed to revoke team invitation", error);
-    return { error: "The invitation could not be revoked. Try again." };
+    return { error: strings.invitationRevokeFailed };
   }
-  if (!revoked) return { error: "This invitation is no longer active." };
+  if (!revoked) return { error: strings.invitationInactive };
   revalidatePath(`/manage/${boothId}/team`);
-  return { success: "Invitation revoked." };
+  return { success: strings.invitationRevoked };
 }
 
 export async function updateTeamMemberAction(
@@ -1842,12 +1853,12 @@ export async function updateTeamMemberAction(
   const boothId = requiredText(formData, "boothId");
   const membershipId = requiredText(formData, "membershipId");
   const { session } = await requireBoothRole(boothId, ["OWNER"]);
+  const strings = await readActionStrings();
   const parsed = teamMemberUpdateSchema.safeParse({
     role: requiredText(formData, "role"),
     status: requiredText(formData, "status"),
   });
-  if (!parsed.success)
-    return { error: "Choose a valid role and access state." };
+  if (!parsed.success) return { error: strings.memberAccessInvalid };
 
   let result: Awaited<ReturnType<typeof updateTeamMemberAccess>>;
   try {
@@ -1860,20 +1871,20 @@ export async function updateTeamMemberAction(
     });
   } catch (error) {
     console.error("Failed to update team member", error);
-    return { error: "Member access could not be updated. Try again." };
+    return { error: strings.memberUpdateFailed };
   }
 
   if (result.kind === "missing") {
-    return { error: "This member could not be found." };
+    return { error: strings.memberMissing };
   }
   if (result.kind === "owner-protected") {
-    return { error: "The booth owner cannot be changed here." };
+    return { error: strings.memberOwnerChange };
   }
   if (result.kind === "capacity") {
-    return { error: "Revoke an invitation before enabling this member." };
+    return { error: strings.memberCapacity };
   }
   revalidatePath(`/manage/${boothId}/team`);
-  return { success: "Member access updated." };
+  return { success: strings.memberUpdated };
 }
 
 export async function removeTeamMemberAction(
@@ -1883,6 +1894,7 @@ export async function removeTeamMemberAction(
   const boothId = requiredText(formData, "boothId");
   const membershipId = requiredText(formData, "membershipId");
   const { session } = await requireBoothRole(boothId, ["OWNER"]);
+  const strings = await readActionStrings();
 
   let result: Awaited<ReturnType<typeof removeTeamMember>>;
   try {
@@ -1893,26 +1905,27 @@ export async function removeTeamMemberAction(
     });
   } catch (error) {
     console.error("Failed to remove team member", error);
-    return { error: "Member could not be removed. Try again." };
+    return { error: strings.memberRemoveFailed };
   }
 
   if (result.kind === "missing") {
-    return { error: "This member could not be found." };
+    return { error: strings.memberMissing };
   }
   if (result.kind === "owner-protected") {
-    return { error: "The booth owner cannot be removed." };
+    return { error: strings.memberOwnerRemove };
   }
   revalidatePath(`/manage/${boothId}/team`);
-  return { success: "Member removed from this booth." };
+  return { success: strings.memberRemoved };
 }
 
 export async function acceptTeamInvitationAction(
   _previousState: InvitationAcceptanceState,
   formData: FormData,
 ): Promise<InvitationAcceptanceState> {
+  const strings = await readActionStrings();
   const token = requiredText(formData, "token");
   if (!/^[a-f0-9]{64}$/i.test(token)) {
-    return { error: "This invitation link is invalid." };
+    return { error: strings.invitationInvalid };
   }
   const session = await requireUser(`/invitations/${token}`);
   let result: Awaited<ReturnType<typeof acceptTeamInvitation>>;
@@ -1924,25 +1937,25 @@ export async function acceptTeamInvitationAction(
     });
   } catch (error) {
     console.error("Failed to accept team invitation", error);
-    return { error: "The invitation could not be accepted. Try again." };
+    return { error: strings.invitationAcceptFailed };
   }
 
   if (result.kind === "invalid") {
-    return { error: "This invitation link is invalid." };
+    return { error: strings.invitationInvalid };
   }
   if (result.kind === "inactive") {
-    return { error: "This invitation is no longer active." };
+    return { error: strings.invitationInactive };
   }
   if (result.kind === "expired") {
-    return { error: "This invitation has expired." };
+    return { error: strings.invitationExpired };
   }
   if (result.kind === "email-mismatch") {
     return {
-      error: `Sign in as ${result.invitedEmail} to accept this invitation.`,
+      error: strings.invitationEmailMismatch(result.invitedEmail ?? ""),
     };
   }
   if (result.kind === "owner-protected") {
-    return { error: "The booth owner does not need an invitation." };
+    return { error: strings.invitationOwner };
   }
   if (result.kind === "accepted") {
     const workspacePath = `/manage/${result.boothId}/orders`;
@@ -1950,5 +1963,5 @@ export async function acceptTeamInvitationAction(
     revalidatePath(`/manage/${result.boothId}/team`);
     redirect(workspacePath);
   }
-  return { error: "The invitation could not be accepted. Try again." };
+  return { error: strings.invitationAcceptFailed };
 }

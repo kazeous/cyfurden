@@ -1,18 +1,25 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { LanguageToggle } from "@/components/landing/language-toggle";
 import { requireUser } from "@/lib/authorization";
 import { getDefaultBoothSection } from "@/lib/booth-sections";
 import { countOwnedBooths } from "@/lib/booth-limit";
 import { db } from "@/lib/db";
+import { parseBilingual } from "@/lib/i18n";
+import { getWorkspaceStrings } from "@/lib/i18n/workspace";
+import { readLocaleCookie } from "@/lib/i18n/server-locale";
 import { resolveOracleImageUrl } from "@/lib/oracle-images";
 import { SignOutButton } from "./sign-out-button";
 import styles from "./dashboard.module.css";
 
-export const metadata: Metadata = {
-  title: "Your booths",
-  description: "Choose a Cyfurden booth to manage or create a new one.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const strings = getWorkspaceStrings(await readLocaleCookie()).dashboard;
+  return {
+    title: strings.metadataTitle,
+    description: strings.metadataDescription,
+  };
+}
 
 function BoothMark({
   name,
@@ -65,7 +72,13 @@ export default async function DashboardPage({
   searchParams: Promise<{ deleted?: string }>;
 }) {
   const messages = await searchParams;
-  const session = await requireUser();
+  const [session, locale] = await Promise.all([
+    requireUser(),
+    readLocaleCookie(),
+  ]);
+  const workspaceStrings = getWorkspaceStrings(locale);
+  const strings = workspaceStrings.dashboard;
+  const common = workspaceStrings.common;
   const memberships = await db.boothMembership.findMany({
     where: {
       userId: session.user.id,
@@ -91,57 +104,59 @@ export default async function DashboardPage({
         <Link
           className={styles.brand}
           href="/"
-          aria-label="Cyfurden storefront"
+          aria-label={strings.storefrontAria}
         >
           <span className={styles.brandMark} aria-hidden="true">
             C
           </span>
           <span>
             <strong>Cyfurden</strong>
-            <small>Artist booth studio</small>
+            <small>{common.brandSubline}</small>
           </span>
         </Link>
 
         <div className={styles.accountActions}>
+          <LanguageToggle
+            current={locale}
+            redirectTo="/dashboard"
+            label={common.language}
+          />
           <span className={styles.accountName}>
             {session.user.name || session.user.email}
           </span>
-          <SignOutButton />
+          <SignOutButton locale={locale} />
         </div>
       </header>
 
       <section className={styles.workspace} aria-labelledby="dashboard-title">
         {messages.deleted ? (
           <p className={styles.notice} role="status">
-            Booth deleted successfully.
+            {strings.deletedNotice}
           </p>
         ) : null}
         <div className={styles.pageHeader}>
           <div className={styles.heading}>
-            <p className={styles.eyebrow}>Booth workspaces</p>
-            <h1 id="dashboard-title">Your booths</h1>
-            <p>
-              Choose a booth to update its storefront, products, and orders.
-            </p>
+            <p className={styles.eyebrow}>{strings.eyebrow}</p>
+            <h1 id="dashboard-title">{strings.title}</h1>
+            <p>{strings.description}</p>
             <p className={styles.boothCounter}>
-              <strong>{ownedCount} of 5 booths used</strong>
+              <strong>{strings.ownedCount(ownedCount)}</strong>
               <small>
-                Joined booths do not count toward your cap.
-                {joinedCount > 0
-                  ? ` You currently join ${joinedCount} booth${joinedCount === 1 ? "" : "s"}.`
-                  : ""}
+                {strings.joinedDoesNotCount}
+                {joinedCount > 0 ? strings.joinedCount(joinedCount) : ""}
               </small>
             </p>
           </div>
           <Link className={styles.headerAction} href="/dashboard/new">
             <span aria-hidden="true">+</span>
-            Create booth
+            {strings.createBooth}
           </Link>
         </div>
 
         {memberships.length ? (
           <div className={styles.boothGrid}>
             {memberships.map(({ booth, role }) => {
+              const boothName = parseBilingual(booth.name, locale);
               const isPublished = booth.status === "PUBLISHED";
               const isStaff = role === "STAFF";
               const workspaceSection = getDefaultBoothSection(
@@ -152,11 +167,11 @@ export default async function DashboardPage({
                 <article className={styles.boothCard} key={booth.id}>
                   <div className={styles.boothCardHead}>
                     <BoothMark
-                      name={booth.name}
+                      name={boothName}
                       logoObjectKey={booth.logoObjectKey}
                     />
                     <div className={styles.boothIdentity}>
-                      <h2>{booth.name}</h2>
+                      <h2>{boothName}</h2>
                       <span>cyfurden · /s/{booth.slug}</span>
                     </div>
                   </div>
@@ -167,23 +182,19 @@ export default async function DashboardPage({
                       data-status={booth.status}
                     >
                       <span aria-hidden="true" />
-                      {isPublished
-                        ? "Published"
-                        : booth.status === "ARCHIVED"
-                          ? "Archived"
-                          : "Draft"}
+                      {common.boothStatusLabels[booth.status] ?? booth.status}
                     </span>
                     <span className={styles.roleBadge}>
-                      {role.toLowerCase()}
+                      {common.roleLabels[role] ?? role}
                     </span>
                   </div>
 
                   <p className={styles.boothSummary}>
                     {isStaff
-                      ? "Orders-only access. Review reservations and keep fulfilment moving."
+                      ? strings.staffSummary
                       : isPublished
-                        ? "Live for visitors. Keep the catalogue and order queue current."
-                        : "Private until you publish. Finish the storefront and payment details first."}
+                        ? strings.publishedSummary
+                        : strings.draftSummary}
                   </p>
 
                   <div className={styles.boothActions}>
@@ -192,10 +203,10 @@ export default async function DashboardPage({
                       href={`/manage/${booth.id}/${workspaceSection}`}
                     >
                       {isStaff
-                        ? "Open Orders"
+                        ? strings.openOrders
                         : isPublished
-                          ? "Manage booth"
-                          : "Continue setup"}
+                          ? strings.manageBooth
+                          : strings.continueSetup}
                       <ArrowIcon />
                     </Link>
                     {isPublished ? (
@@ -203,7 +214,7 @@ export default async function DashboardPage({
                         className={styles.secondaryAction}
                         href={`/s/${booth.slug}`}
                       >
-                        View storefront
+                        {strings.viewStorefront}
                         <ExternalIcon />
                       </Link>
                     ) : null}
@@ -217,13 +228,10 @@ export default async function DashboardPage({
             <span className={styles.emptyMark} aria-hidden="true">
               C
             </span>
-            <h2>Create your first booth</h2>
-            <p>
-              Start with a private draft, add products and payment details, then
-              publish when everything is ready.
-            </p>
+            <h2>{strings.emptyTitle}</h2>
+            <p>{strings.emptyBody}</p>
             <Link className={styles.headerAction} href="/dashboard/new">
-              Create booth
+              {strings.createBooth}
               <ArrowIcon />
             </Link>
           </div>

@@ -3,20 +3,28 @@ import Link from "next/link";
 import { createHash } from "node:crypto";
 import { requireUser } from "@/lib/authorization";
 import { db } from "@/lib/db";
+import type { Locale } from "@/lib/i18n";
+import { readLocaleCookie } from "@/lib/i18n/server-locale";
+import { getWorkspaceStrings } from "@/lib/i18n/workspace";
 import { InvitationAcceptanceForm } from "./invitation-form";
 import styles from "./invitation.module.css";
 
-export const metadata: Metadata = {
-  title: "Team invitation",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const strings = getWorkspaceStrings(await readLocaleCookie()).invitation;
+  return {
+    title: strings.metadataTitle,
+    robots: { index: false, follow: false },
+  };
+}
 
 export default async function InvitationPage({
   params,
 }: {
   params: Promise<{ token: string }>;
 }) {
-  const { token } = await params;
+  const [{ token }, locale] = await Promise.all([params, readLocaleCookie()]);
+  const workspaceStrings = getWorkspaceStrings(locale);
+  const strings = workspaceStrings.invitation;
   const invitation = /^[a-f0-9]{64}$/i.test(token)
     ? await db.teamInvitation.findUnique({
         where: { tokenHash: createHash("sha256").update(token).digest("hex") },
@@ -29,15 +37,12 @@ export default async function InvitationPage({
     (invitation.role !== "ADMIN" && invitation.role !== "STAFF")
   ) {
     return (
-      <InvitationShell>
-        <p className={styles.eyebrow}>Invitation unavailable</p>
-        <h1>This link does not work</h1>
-        <p>
-          Check that the full invitation link was copied, or ask the booth owner
-          to create a new one.
-        </p>
+      <InvitationShell locale={locale}>
+        <p className={styles.eyebrow}>{strings.unavailableEyebrow}</p>
+        <h1>{strings.unavailableTitle}</h1>
+        <p>{strings.unavailableBody}</p>
         <Link className={styles.secondaryButton} href="/">
-          Visit storefront
+          {strings.visitStorefront}
         </Link>
       </InvitationShell>
     );
@@ -52,44 +57,51 @@ export default async function InvitationPage({
 
   if (!active || !emailMatches) {
     return (
-      <InvitationShell>
-        <p className={styles.eyebrow}>Team invitation</p>
+      <InvitationShell locale={locale}>
+        <p className={styles.eyebrow}>{strings.invitationEyebrow}</p>
         <h1>
           {!emailMatches
-            ? "Use the invited account"
+            ? strings.invitedAccountTitle
             : expired
-              ? "This link has expired"
-              : "This invitation is no longer active"}
+              ? strings.expiredTitle
+              : strings.inactiveTitle}
         </h1>
         <p>
           {!emailMatches
-            ? `This invitation was created for ${invitation.email}. Sign out and sign in with that account, then open the link again.`
+            ? strings.wrongAccountBody(invitation.email)
             : expired
-              ? "Ask the booth owner to create a fresh invitation link."
-              : "It may already have been accepted or revoked."}
+              ? strings.expiredBody
+              : strings.inactiveBody}
         </p>
         <Link className={styles.secondaryButton} href="/dashboard">
-          Go to dashboard
+          {strings.dashboard}
         </Link>
       </InvitationShell>
     );
   }
 
   return (
-    <InvitationShell>
-      <p className={styles.eyebrow}>You have been invited</p>
-      <h1>Join {invitation.booth.name}</h1>
+    <InvitationShell locale={locale}>
+      <p className={styles.eyebrow}>{strings.invitedEyebrow}</p>
+      <h1>{strings.joinTitle(invitation.booth.name)}</h1>
       <p>
-        You will join as a{" "}
-        {invitation.role === "ADMIN" ? "booth admin" : "staff member"}. Your
-        account email matches this invitation.
+        {invitation.role === "ADMIN"
+          ? strings.joinBodyAdmin
+          : strings.joinBodyStaff}
       </p>
-      <InvitationAcceptanceForm token={token} />
+      <InvitationAcceptanceForm token={token} locale={locale} />
     </InvitationShell>
   );
 }
 
-function InvitationShell({ children }: { children: React.ReactNode }) {
+function InvitationShell({
+  children,
+  locale,
+}: {
+  children: React.ReactNode;
+  locale: Locale;
+}) {
+  const strings = getWorkspaceStrings(locale);
   return (
     <main className={styles.page}>
       <div className={styles.card}>
@@ -99,7 +111,7 @@ function InvitationShell({ children }: { children: React.ReactNode }) {
           </span>
           <span>
             <strong>Cyfurden</strong>
-            <small>Artist booth studio</small>
+            <small>{strings.common.brandSubline}</small>
           </span>
         </Link>
         <section className={styles.content}>{children}</section>

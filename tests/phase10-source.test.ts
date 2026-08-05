@@ -49,13 +49,13 @@ test("Phase 10 exposes Event mode, All events filtering, and visible polling", a
     readSource("app/manage/[boothId]/orders/live-refresh.tsx"),
   ]);
 
-  assert.match(page, />\s*Events\s*</);
-  assert.match(page, /All events/);
+  assert.match(page, /strings\.events/);
+  assert.match(page, /strings\.allEvents/);
   assert.match(page, /orderEventWhere\(selectedMode, selectedEvent\)/);
   assert.match(page, /<EventEditor/);
   assert.match(page, /<OrdersLiveRefresh/);
   assert.match(refresh, /router\.refresh\(\)/);
   assert.match(refresh, /window\.setInterval/);
   assert.match(refresh, /visibilitychange/);
-  assert.match(refresh, /Live updates on/);
+  assert.match(refresh, /strings\.liveOn/);
 });

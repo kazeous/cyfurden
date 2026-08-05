@@ -5,6 +5,8 @@ import {
   deleteBoothAction,
   type DeleteBoothState,
 } from "@/app/manage/[boothId]/actions";
+import type { Locale } from "@/lib/i18n";
+import { getWorkspaceStrings } from "@/lib/i18n/workspace";
 import styles from "./admin.module.css";
 
 const initialState: DeleteBoothState = { error: null };
@@ -13,11 +15,14 @@ export function BoothDangerZone({
   boothId,
   boothName,
   boothSlug,
+  locale,
 }: {
   boothId: string;
   boothName: string;
   boothSlug: string;
+  locale: Locale;
 }) {
+  const strings = getWorkspaceStrings(locale).danger;
   const [state, action, pending] = useActionState(
     deleteBoothAction,
     initialState,
@@ -26,18 +31,14 @@ export function BoothDangerZone({
   return (
     <section className={styles.dangerZone} aria-labelledby="delete-booth-title">
       <div>
-        <p className={styles.dangerEyebrow}>Booth lifecycle</p>
-        <h2 id="delete-booth-title">Delete {boothName}</h2>
-        <p>
-          This permanently removes a booth that has no order history. Product,
-          storefront, team, and configuration records are removed with it.
-          Oracle bucket lifecycle rules should clean up unreferenced images.
-        </p>
+        <p className={styles.dangerEyebrow}>{strings.eyebrow}</p>
+        <h2 id="delete-booth-title">{strings.title(boothName)}</h2>
+        <p>{strings.description}</p>
       </div>
       <form action={action} className={styles.dangerForm}>
         <input type="hidden" name="boothId" value={boothId} />
         <label>
-          Type <strong>{boothSlug}</strong> to confirm
+          {strings.confirmation(boothSlug)}
           <input
             name="confirmation"
             required
@@ -51,7 +52,7 @@ export function BoothDangerZone({
           </p>
         ) : null}
         <button type="submit" disabled={pending}>
-          {pending ? "Deleting booth…" : "Delete booth"}
+          {pending ? strings.deleting : strings.delete}
         </button>
       </form>
     </section>

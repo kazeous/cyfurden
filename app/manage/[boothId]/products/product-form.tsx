@@ -15,6 +15,8 @@ import {
   PRODUCT_IMAGE_MAX_COUNT,
   productImageAccept,
 } from "@/lib/payment-qr";
+import type { Locale } from "@/lib/i18n";
+import { getWorkspaceStrings } from "@/lib/i18n/workspace";
 import styles from "./products.module.css";
 
 type ProductStatus = "DRAFT" | "LIVE" | "SOLD_OUT" | "HIDDEN";
@@ -86,6 +88,7 @@ const isNextNavigationError = (error: unknown) => {
 async function saveProductWithClientFallback(
   previousState: ProductSaveState,
   formData: FormData,
+  transportError: string,
 ): Promise<ProductSaveState> {
   try {
     return await saveProductAction(previousState, formData);
@@ -98,13 +101,16 @@ async function saveProductWithClientFallback(
       },
     });
     return {
-      error:
-        "We could not send this product to the server. Your entries are still here. Check your connection and image size, then try again.",
+      error: transportError,
     };
   }
 }
 
-async function uploadProductImageDirect(file: File, boothId: string) {
+async function uploadProductImageDirect(
+  file: File,
+  boothId: string,
+  errors: { start: string; rejected: string },
+) {
   const response = await fetch("/api/uploads/presign", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -117,9 +123,7 @@ async function uploadProductImageDirect(file: File, boothId: string) {
   });
   const presign = (await response.json()) as PresignResponse;
   if (!response.ok || !presign.uploadUrl || !presign.objectKey) {
-    throw new Error(
-      presign.error || "The product image upload could not start.",
-    );
+    throw new Error(errors.start);
   }
 
   const upload = await fetch(presign.uploadUrl, {
@@ -128,22 +132,27 @@ async function uploadProductImageDirect(file: File, boothId: string) {
     body: file,
   });
   if (!upload.ok) {
-    throw new Error("Oracle Object Storage rejected the product image.");
+    throw new Error(errors.rejected);
   }
   return presign.objectKey;
 }
 
 export function ProductForm({
   boothId,
+  locale,
   value,
   canEdit,
   cancelHref,
 }: {
   boothId: string;
+  locale: Locale;
   value: ProductEditorValue;
   canEdit: boolean;
   cancelHref: string;
 }) {
+  const workspaceStrings = getWorkspaceStrings(locale);
+  const strings = workspaceStrings.productForm;
+  const common = workspaceStrings.common;
   const [images, setImages] = useState<EditableProductImage[]>(() =>
     value.images.map((image) => ({
       clientId: `existing-${image.id}`,
@@ -160,7 +169,11 @@ export function ProductForm({
     previousState: ProductSaveState,
     formData: FormData,
   ) => {
-    const result = await saveProductWithClientFallback(previousState, formData);
+    const result = await saveProductWithClientFallback(
+      previousState,
+      formData,
+      strings.transportError,
+    );
     const discarded = result.discardedImageObjectKeys;
     if (discarded?.length) {
       const discardedSet = new Set(discarded);
@@ -176,7 +189,7 @@ export function ProductForm({
           return true;
         }),
       );
-      setUploadMessage("The rejected uploads were removed. Choose them again.");
+      setUploadMessage(strings.rejectedRemoved);
     }
     return result;
   };
@@ -203,20 +216,18 @@ export function ProductForm({
     const selected = Array.from(files ?? []);
     if (!selected.length) return;
     if (images.length + selected.length > PRODUCT_IMAGE_MAX_COUNT) {
-      setImageError(
-        `A product can have up to ${PRODUCT_IMAGE_MAX_COUNT} images.`,
-      );
+      setImageError(strings.imageLimit(PRODUCT_IMAGE_MAX_COUNT));
       setInputKey((current) => current + 1);
       return;
     }
     for (const file of selected) {
       if (file.size > PRODUCT_IMAGE_MAX_BYTES) {
-        setImageError("Each product image must be 5 MB or smaller.");
+        setImageError(strings.imageTooLarge);
         setInputKey((current) => current + 1);
         return;
       }
       if (!productImageAccept.split(",").includes(file.type)) {
-        setImageError("Choose PNG, JPEG, or WebP product images.");
+        setImageError(strings.imageInvalidType);
         setInputKey((current) => current + 1);
         return;
       }
@@ -225,10 +236,11 @@ export function ProductForm({
     setUploading(true);
     try {
       for (const [index, file] of selected.entries()) {
-        setUploadMessage(
-          `Uploading image ${index + 1} of ${selected.length} directly to Oracle Object Storage...`,
-        );
-        const objectKey = await uploadProductImageDirect(file, boothId);
+        setUploadMessage(strings.uploadingImage(index + 1, selected.length));
+        const objectKey = await uploadProductImageDirect(file, boothId, {
+          start: strings.uploadStartFailed,
+          rejected: strings.uploadRejected,
+        });
         const uploaded: EditableProductImage = {
           clientId: `uploaded-${objectKey}`,
           source: "uploaded",
@@ -238,9 +250,7 @@ export function ProductForm({
         };
         setImages((current) => [...current, uploaded]);
       }
-      setUploadMessage(
-        "Upload complete. Save the product to verify and attach the images.",
-      );
+      setUploadMessage(strings.uploadComplete);
     } catch (error) {
       Sentry.captureException(error, {
         tags: {
@@ -249,9 +259,7 @@ export function ProductForm({
         },
       });
       setImageError(
-        error instanceof Error
-          ? error.message
-          : "The product images could not be uploaded.",
+        error instanceof Error ? error.message : strings.uploadFailed,
       );
     } finally {
       setUploading(false);
@@ -315,15 +323,14 @@ export function ProductForm({
 
         <div className={styles.editorHeader}>
           <div>
-            <h2>{value.id ? `Edit ${value.name}` : "Create product"}</h2>
-            <p>
-              Keep the listing clear for visitors. Save as draft while you
-              prepare the public release.
-            </p>
+            <h2>
+              {value.id ? strings.editTitle(value.name) : strings.createTitle}
+            </h2>
+            <p>{strings.intro}</p>
           </div>
           {value.id ? (
             <span className={styles.status} data-status={value.status}>
-              {value.status.toLowerCase().replace("_", " ")}
+              {common.productStatusLabels[value.status]}
             </span>
           ) : null}
         </div>
@@ -336,15 +343,11 @@ export function ProductForm({
           className={styles.formSection}
           aria-labelledby="basics-heading"
         >
-          <h3 id="basics-heading">Basics</h3>
-          <p className={styles.helper}>
-            Public names and descriptions support{" "}
-            <code>[en]English[/en][vi]Tiếng Việt[/vi]</code>. Plain text appears
-            in both storefront languages.
-          </p>
+          <h3 id="basics-heading">{strings.basics}</h3>
+          <p className={styles.helper}>{strings.bilingualHelp}</p>
           <div className={styles.formGrid}>
             <label className={styles.field}>
-              Product name
+              {strings.productName}
               <input
                 name="name"
                 defaultValue={value.name}
@@ -355,20 +358,18 @@ export function ProductForm({
               />
             </label>
             <label className={styles.field}>
-              URL slug
+              {strings.urlSlug}
               <input
                 name="slug"
                 defaultValue={value.slug}
                 maxLength={70}
-                placeholder="generated-from-name"
+                placeholder={strings.slugPlaceholder}
                 aria-describedby="slug-help"
               />
-              <small id="slug-help">
-                Lowercase letters and hyphens are used publicly.
-              </small>
+              <small id="slug-help">{strings.slugHelp}</small>
             </label>
             <label className={styles.field}>
-              SKU
+              {strings.sku}
               <input
                 name="sku"
                 defaultValue={value.sku}
@@ -384,10 +385,10 @@ export function ProductForm({
           className={styles.formSection}
           aria-labelledby="pricing-heading"
         >
-          <h3 id="pricing-heading">Pricing &amp; stock</h3>
+          <h3 id="pricing-heading">{strings.pricingStock}</h3>
           <div className={styles.formGrid}>
             <label className={styles.field}>
-              Price (VND)
+              {strings.priceVnd}
               <input
                 name="priceVnd"
                 type="number"
@@ -397,36 +398,47 @@ export function ProductForm({
                 defaultValue={value.priceVnd}
                 required
               />
-              <small>
-                Enter whole đồng; the storefront formats the amount.
-              </small>
+              <small>{strings.priceHelp}</small>
             </label>
             <label className={styles.field}>
-              Product status
+              {strings.productStatus}
               <select name="status" defaultValue={value.status}>
-                <option value="DRAFT">Draft</option>
-                <option value="LIVE">Live</option>
-                <option value="SOLD_OUT">Sold out</option>
-                <option value="HIDDEN">Hidden</option>
+                <option value="DRAFT">
+                  {common.productStatusLabels.DRAFT}
+                </option>
+                <option value="LIVE">{common.productStatusLabels.LIVE}</option>
+                <option value="SOLD_OUT">
+                  {common.productStatusLabels.SOLD_OUT}
+                </option>
+                <option value="HIDDEN">
+                  {common.productStatusLabels.HIDDEN}
+                </option>
               </select>
-              <small>
-                Live products become sold out automatically when all tracked
-                stock reaches zero.
-              </small>
+              <small>{strings.productStatusHelp}</small>
             </label>
             <label className={styles.field}>
-              Variant status
+              {strings.variantStatus}
               <select name="variantStatus" defaultValue={value.variantStatus}>
-                <option value="AVAILABLE">Available</option>
-                <option value="LOW_STOCK">Low stock</option>
-                <option value="PREORDER">Pre-order</option>
-                <option value="SOLD_OUT">Sold out</option>
-                <option value="HIDDEN">Hidden</option>
+                <option value="AVAILABLE">
+                  {common.variantStatusLabels.AVAILABLE}
+                </option>
+                <option value="LOW_STOCK">
+                  {common.variantStatusLabels.LOW_STOCK}
+                </option>
+                <option value="PREORDER">
+                  {common.variantStatusLabels.PREORDER}
+                </option>
+                <option value="SOLD_OUT">
+                  {common.variantStatusLabels.SOLD_OUT}
+                </option>
+                <option value="HIDDEN">
+                  {common.variantStatusLabels.HIDDEN}
+                </option>
               </select>
-              <small>Low-stock variants appear in the attention filter.</small>
+              <small>{strings.variantStatusHelp}</small>
             </label>
             <label className={styles.field}>
-              Variant label
+              {strings.variantLabel}
               <input
                 name="variantLabel"
                 defaultValue={value.variantLabel}
@@ -434,7 +446,7 @@ export function ProductForm({
               />
             </label>
             <label className={styles.field}>
-              Stock quantity
+              {strings.stockQuantity}
               <input
                 name="stockQuantity"
                 type="number"
@@ -442,12 +454,12 @@ export function ProductForm({
                 max="2147483647"
                 step="1"
                 defaultValue={value.stockQuantity ?? ""}
-                placeholder="Untracked"
+                placeholder={strings.untrackedPlaceholder}
               />
-              <small>Leave blank when this item is not stock-counted.</small>
+              <small>{strings.stockHelp}</small>
             </label>
             <label className={styles.field}>
-              Fulfilment note
+              {strings.fulfilmentNote}
               <input
                 name="fulfillmentNote"
                 defaultValue={value.fulfillmentNote}
@@ -461,13 +473,13 @@ export function ProductForm({
           className={styles.formSection}
           aria-labelledby="details-heading"
         >
-          <h3 id="details-heading">Details</h3>
+          <h3 id="details-heading">{strings.details}</h3>
           <label className={styles.field}>
-            Eyebrow
+            {strings.eyebrow}
             <input name="eyebrow" defaultValue={value.eyebrow} maxLength={80} />
           </label>
           <label className={styles.field}>
-            Short description
+            {strings.shortDescription}
             <input
               name="shortDescription"
               defaultValue={value.shortDescription}
@@ -475,7 +487,7 @@ export function ProductForm({
             />
           </label>
           <label className={styles.field}>
-            Full description
+            {strings.fullDescription}
             <textarea
               name="description"
               defaultValue={value.description}
@@ -484,14 +496,14 @@ export function ProductForm({
             />
           </label>
           <label className={styles.field}>
-            Tags
+            {strings.tags}
             <input name="tags" defaultValue={value.tags} maxLength={500} />
-            <small>Comma-separated, up to twelve tags.</small>
+            <small>{strings.tagsHelp}</small>
           </label>
         </section>
 
         <section className={styles.formSection} aria-labelledby="media-heading">
-          <h3 id="media-heading">Media</h3>
+          <h3 id="media-heading">{strings.media}</h3>
           <div className={styles.upload}>
             {images.length ? (
               <div className={styles.imageGallery}>
@@ -501,24 +513,26 @@ export function ProductForm({
                       {image.url ? (
                         <img
                           src={image.url}
-                          alt={image.alt || value.name || "Product preview"}
+                          alt={
+                            image.alt || value.name || strings.productPreviewAlt
+                          }
                         />
                       ) : (
                         <p className={styles.imagePlaceholder}>
-                          Image preview unavailable
+                          {strings.imageUnavailable}
                         </p>
                       )}
                       <span className={styles.imagePosition}>
-                        {index === 0 ? "Cover" : index + 1}
+                        {index === 0 ? strings.cover : index + 1}
                       </span>
                     </div>
                     <label className={styles.field}>
-                      Alt text
+                      {strings.altText}
                       <input
                         value={image.alt}
                         disabled={!canEdit || pending || uploading}
                         maxLength={300}
-                        placeholder={value.name || "Describe this image"}
+                        placeholder={value.name || strings.describeImage}
                         onChange={(event) =>
                           updateImageAlt(image.clientId, event.target.value)
                         }
@@ -531,7 +545,7 @@ export function ProductForm({
                         disabled={index === 0 || pending || uploading}
                         onClick={() => moveImage(index, -1)}
                       >
-                        Move up
+                        {strings.moveUp}
                       </button>
                       <button
                         className={styles.removeButton}
@@ -541,7 +555,7 @@ export function ProductForm({
                         }
                         onClick={() => moveImage(index, 1)}
                       >
-                        Move down
+                        {strings.moveDown}
                       </button>
                       <button
                         className={styles.removeButton}
@@ -549,7 +563,7 @@ export function ProductForm({
                         disabled={pending || uploading}
                         onClick={() => removeImage(image.clientId)}
                       >
-                        Remove
+                        {strings.remove}
                       </button>
                     </div>
                   </article>
@@ -558,13 +572,12 @@ export function ProductForm({
             ) : (
               <div className={styles.imagePreview}>
                 <p className={styles.imagePlaceholder}>
-                  Add up to {PRODUCT_IMAGE_MAX_COUNT} product images. The first
-                  image is used as the catalogue cover.
+                  {strings.emptyImages(PRODUCT_IMAGE_MAX_COUNT)}
                 </p>
               </div>
             )}
             <strong className={styles.helper}>
-              {images.length} of {PRODUCT_IMAGE_MAX_COUNT} images
+              {strings.imageCount(images.length, PRODUCT_IMAGE_MAX_COUNT)}
             </strong>
             <input
               key={inputKey}
@@ -584,7 +597,7 @@ export function ProductForm({
             <div className={styles.uploadActions}>
               {canEdit && images.length < PRODUCT_IMAGE_MAX_COUNT ? (
                 <label className={styles.uploadButton} htmlFor="product-images">
-                  {uploading ? "Uploading..." : "Choose images"}
+                  {uploading ? strings.uploading : strings.chooseImages}
                 </label>
               ) : null}
             </div>
@@ -593,10 +606,7 @@ export function ProductForm({
                 {uploadMessage}
               </p>
             ) : null}
-            <p className={styles.helper}>
-              PNG, JPEG, or WebP, up to 5 MB each. Images upload directly to
-              Oracle and are verified by Cyfurden when you save.
-            </p>
+            <p className={styles.helper}>{strings.imageHelp}</p>
           </div>
         </section>
 
@@ -604,7 +614,7 @@ export function ProductForm({
           className={styles.formSection}
           aria-labelledby="publishing-heading"
         >
-          <h3 id="publishing-heading">Publishing</h3>
+          <h3 id="publishing-heading">{strings.publishing}</h3>
           <label className={styles.checkbox}>
             <input
               name="featured"
@@ -613,11 +623,8 @@ export function ProductForm({
               disabled={!canEdit || pending}
             />
             <span>
-              Feature this item on the storefront
-              <small className={styles.helper}>
-                This is the default spotlight choice. You can pick and order up
-                to five slider products in Storefront designer.
-              </small>
+              {strings.featureItem}
+              <small className={styles.helper}>{strings.featureHelp}</small>
             </span>
           </label>
         </section>
@@ -625,7 +632,7 @@ export function ProductForm({
         {canEdit ? (
           <div className={styles.saveBar}>
             <Link className={styles.cancelButton} href={cancelHref}>
-              Cancel
+              {strings.cancel}
             </Link>
             <div className={styles.saveActions}>
               <button
@@ -634,38 +641,30 @@ export function ProductForm({
                 disabled={pending || uploading}
               >
                 {uploading
-                  ? "Uploading images…"
+                  ? strings.uploadingImages
                   : pending
-                    ? "Saving…"
+                    ? strings.saving
                     : value.id
-                      ? "Save changes"
-                      : "Create product"}
+                      ? strings.saveChanges
+                      : strings.createProduct}
               </button>
             </div>
           </div>
         ) : (
-          <p className={styles.helper}>
-            Staff access is read-only for products.
-          </p>
+          <p className={styles.helper}>{strings.staffReadOnly}</p>
         )}
       </form>
 
       {value.id && canEdit ? (
         <div className={styles.dangerZone}>
           <p>
-            {value.status === "HIDDEN"
-              ? "This product is hidden. Set Product status to Draft or Live and save to restore it."
-              : "Hide removes this item from the public catalogue without deleting its data."}
+            {value.status === "HIDDEN" ? strings.hiddenHelp : strings.hideHelp}
           </p>
           {value.status !== "HIDDEN" ? (
             <form
               action={hideProductAction}
               onSubmit={(event) => {
-                if (
-                  !window.confirm(
-                    `Hide ${value.name} from the public catalogue?`,
-                  )
-                ) {
+                if (!window.confirm(strings.hideConfirm(value.name))) {
                   event.preventDefault();
                 }
               }}
@@ -673,7 +672,7 @@ export function ProductForm({
               <input type="hidden" name="boothId" value={boothId} />
               <input type="hidden" name="productId" value={value.id} />
               <button className={styles.dangerButton} type="submit">
-                Hide product
+                {strings.hideProduct}
               </button>
             </form>
           ) : null}

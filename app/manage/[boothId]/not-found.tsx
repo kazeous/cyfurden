@@ -1,19 +1,20 @@
 import Link from "next/link";
 import { adminStyles as styles } from "@/components/admin/admin-shell";
+import { readLocaleCookie } from "@/lib/i18n/server-locale";
+import { getWorkspaceStrings } from "@/lib/i18n/workspace";
 
-export default function BoothNotFound() {
+export default async function BoothNotFound() {
+  const strings = getWorkspaceStrings(await readLocaleCookie()).notFound;
   return (
     <div className={styles.emptyState}>
       <div>
         <span className={styles.emptyIcon} aria-hidden="true">
           ◇
         </span>
-        <h1>Booth workspace unavailable</h1>
-        <p>
-          This booth does not exist, or your account does not have access to it.
-        </p>
+        <h1>{strings.title}</h1>
+        <p>{strings.body}</p>
         <Link className={styles.button} href="/dashboard">
-          Return to your booths
+          {strings.dashboard}
         </Link>
       </div>
     </div>

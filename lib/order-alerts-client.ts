@@ -5,6 +5,8 @@ import {
   orderAlertsChangedEvent,
   orderAlertsStorageKey,
 } from "@/lib/order-alerts";
+import type { Locale } from "@/lib/i18n";
+import { getWorkspaceStrings } from "@/lib/i18n/workspace";
 
 let alertAudioContext: AudioContext | null = null;
 
@@ -129,15 +131,23 @@ export async function requestBrowserNotificationPermission() {
   return Notification.requestPermission();
 }
 
-export function showOrderBrowserNotification(boothName: string, code: string) {
+export function showOrderBrowserNotification(
+  boothName: string,
+  code: string,
+  locale: Locale = "en",
+) {
   if (!("Notification" in window) || Notification.permission !== "granted") {
     return;
   }
   try {
-    const notification = new Notification(`New order for ${boothName}`, {
-      body: `${code} is waiting for manual review.`,
-      tag: `cyfurden-order-${code}`,
-    });
+    const strings = getWorkspaceStrings(locale).orders;
+    const notification = new Notification(
+      strings.notificationTitle(boothName),
+      {
+        body: strings.notificationBody(code),
+        tag: `cyfurden-order-${code}`,
+      },
+    );
     window.setTimeout(() => notification.close(), 10_000);
   } catch {
     // Visual and sound alerts remain available if the browser rejects this.

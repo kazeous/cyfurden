@@ -2,6 +2,8 @@
 
 import { useActionState, useState } from "react";
 import { createBooth, type CreateBoothState } from "../actions";
+import type { Locale } from "@/lib/i18n";
+import { getWorkspaceStrings } from "@/lib/i18n/workspace";
 import styles from "../dashboard.module.css";
 
 const initialState: CreateBoothState = {};
@@ -15,18 +17,19 @@ function toSlug(value: string) {
     .slice(0, 48);
 }
 
-export function CreateBoothForm() {
+export function CreateBoothForm({ locale }: { locale: Locale }) {
   const [state, formAction, pending] = useActionState(
     createBooth,
     initialState,
   );
   const [slug, setSlug] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
+  const strings = getWorkspaceStrings(locale).createBooth;
 
   return (
     <form className={styles.createForm} action={formAction}>
       <div className={styles.field}>
-        <label htmlFor="name">Booth name</label>
+        <label htmlFor="name">{strings.nameLabel}</label>
         <input
           id="name"
           name="name"
@@ -49,13 +52,13 @@ export function CreateBoothForm() {
           </p>
         ) : (
           <p className={styles.fieldHelp} id="name-help">
-            This is the name visitors and teammates will see.
+            {strings.nameHelp}
           </p>
         )}
       </div>
 
       <div className={styles.field}>
-        <label htmlFor="slug">Booth address</label>
+        <label htmlFor="slug">{strings.slugLabel}</label>
         <div className={styles.slugField}>
           <span>/s/</span>
           <input
@@ -83,8 +86,7 @@ export function CreateBoothForm() {
           </p>
         ) : (
           <p className={styles.fieldHelp} id="slug-help">
-            Lowercase letters, numbers, and hyphens only. You can change it
-            before launch.
+            {strings.slugHelp}
           </p>
         )}
       </div>
@@ -96,7 +98,7 @@ export function CreateBoothForm() {
       ) : null}
 
       <button className={styles.createButton} type="submit" disabled={pending}>
-        {pending ? "Creating booth…" : "Create booth"}
+        {pending ? strings.submitting : strings.submit}
       </button>
     </form>
   );

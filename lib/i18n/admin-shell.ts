@@ -1,6 +1,7 @@
 import { parseLocale, type Locale } from "./locales";
 
 export type AdminShellStrings = {
+  metadataTitle: string;
   brandSubline: string;
   workspaceLabel: string;
   storefrontLabel: string;
@@ -53,6 +54,7 @@ const roleNames: Record<Locale, Record<string, string>> = {
 
 const catalogues: Record<Locale, AdminShellStrings> = {
   en: {
+    metadataTitle: "Booth management",
     brandSubline: "Artist booth studio",
     workspaceLabel: "Workspace",
     storefrontLabel: "Storefront",
@@ -94,6 +96,7 @@ const catalogues: Record<Locale, AdminShellStrings> = {
       `${count} ${count === 1 ? "product" : "products"}`,
   },
   vi: {
+    metadataTitle: "Quản lý booth",
     brandSubline: "Studio booth cho nghệ sĩ",
     workspaceLabel: "Không gian làm việc",
     storefrontLabel: "Storefront",

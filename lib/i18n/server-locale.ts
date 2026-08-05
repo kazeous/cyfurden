@@ -23,16 +23,15 @@ export async function readLocaleCookie(): Promise<Locale> {
 
 /**
  * Resolve the language for the current HTML document before it is rendered.
- * Landing/auth pages follow the visitor cookie, public booth routes follow the
- * published storefront document, and the currently English-only workspace is
- * explicitly marked as English.
+ * Landing/auth/private-workspace pages follow the visitor cookie, while public
+ * booth routes follow the published storefront document.
  */
 export const readRequestLocale = cache(async (): Promise<Locale> => {
   const requestHeaders = await headers();
   const route = localeRouteForPath(requestHeaders.get(requestPathHeader));
 
   if (route.scope === "site") return readLocaleCookie();
-  if (route.scope === "admin") return defaultLocale;
+  if (route.scope === "admin") return readLocaleCookie();
 
   try {
     const booth = await db.booth.findUnique({

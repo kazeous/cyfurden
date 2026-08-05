@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isNewPendingOrder, type LatestOrderSignal } from "@/lib/order-alerts";
+import type { Locale } from "@/lib/i18n";
+import { getWorkspaceStrings } from "@/lib/i18n/workspace";
 import {
   playOrderAlertSound,
   showOrderBrowserNotification,
@@ -16,11 +18,14 @@ export function OrdersLiveRefresh({
   boothId,
   boothName,
   latestOrder,
+  locale,
 }: {
   boothId: string;
   boothName: string;
   latestOrder: LatestOrderSignal | null;
+  locale: Locale;
 }) {
+  const strings = getWorkspaceStrings(locale).orders;
   const router = useRouter();
   const initializedOrder = useRef(false);
   const previousOrder = useRef<LatestOrderSignal | null>(latestOrder);
@@ -65,14 +70,14 @@ export function OrdersLiveRefresh({
     if (!shouldAlert || !latestOrder) return;
 
     void playOrderAlertSound();
-    showOrderBrowserNotification(boothName, latestOrder.code);
+    showOrderBrowserNotification(boothName, latestOrder.code, locale);
     setVisualAlert(latestOrder);
     if (dismissTimer.current) window.clearTimeout(dismissTimer.current);
     dismissTimer.current = window.setTimeout(
       () => setVisualAlert(null),
       10_000,
     );
-  }, [alertsEnabled, boothName, latestOrder]);
+  }, [alertsEnabled, boothName, latestOrder, locale]);
 
   useEffect(
     () => () => {
@@ -82,7 +87,7 @@ export function OrdersLiveRefresh({
   );
 
   const refreshedAt = lastRefresh
-    ? new Intl.DateTimeFormat("en-GB", {
+    ? new Intl.DateTimeFormat(locale === "vi" ? "vi-VN" : "en-GB", {
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
@@ -94,21 +99,17 @@ export function OrdersLiveRefresh({
       <div
         className={styles.liveRefresh}
         data-paused={paused}
-        title={
-          paused
-            ? "Polling pauses while this tab is hidden."
-            : "The queue refreshes every 10 seconds while this tab is visible."
-        }
+        title={paused ? strings.pollingPausedTitle : strings.pollingOnTitle}
       >
         <span className={styles.liveDot} aria-hidden="true" />
         <span>
-          <strong>{paused ? "Live updates paused" : "Live updates on"}</strong>
+          <strong>{paused ? strings.livePaused : strings.liveOn}</strong>
           <small>
             {paused
-              ? "Return to this tab to resume"
+              ? strings.resume
               : refreshedAt
-                ? `Refreshed ${refreshedAt}`
-                : "Refreshes every 10 seconds"}
+                ? strings.refreshed(refreshedAt)
+                : strings.refreshInterval}
           </small>
         </span>
       </div>
@@ -123,13 +124,13 @@ export function OrdersLiveRefresh({
             !
           </span>
           <span>
-            <strong>New pending order</strong>
-            <small>{visualAlert.code} is ready for manual review.</small>
+            <strong>{strings.newPending}</strong>
+            <small>{strings.newPendingBody(visualAlert.code)}</small>
           </span>
           <button
             type="button"
             onClick={() => setVisualAlert(null)}
-            aria-label="Dismiss new order alert"
+            aria-label={strings.dismissAlert}
           >
             ×
           </button>

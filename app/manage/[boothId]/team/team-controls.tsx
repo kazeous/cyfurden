@@ -1,6 +1,8 @@
 "use client";
 
 import { useActionState, useState, useSyncExternalStore } from "react";
+import type { Locale } from "@/lib/i18n";
+import { getWorkspaceStrings } from "@/lib/i18n/workspace";
 import {
   inviteTeamMemberAction,
   removeTeamMemberAction,
@@ -20,10 +22,13 @@ const readServerOrigin = () => "";
 export function InviteMemberForm({
   boothId,
   remainingSlots,
+  locale,
 }: {
   boothId: string;
   remainingSlots: number;
+  locale: Locale;
 }) {
+  const strings = getWorkspaceStrings(locale).team;
   const [state, formAction, pending] = useActionState(
     inviteTeamMemberAction,
     emptyInviteState,
@@ -54,21 +59,18 @@ export function InviteMemberForm({
     <div className={styles.inviteFormWrap}>
       <div className={styles.cardHeading}>
         <div>
-          <p className={styles.cardEyebrow}>Add access</p>
-          <h2>Invite a teammate</h2>
+          <p className={styles.cardEyebrow}>{strings.addAccess}</p>
+          <h2>{strings.inviteTitle}</h2>
         </div>
         <span className={styles.slotBadge}>
-          {remainingSlots} {remainingSlots === 1 ? "place" : "places"} left
+          {strings.placesLeft(remainingSlots)}
         </span>
       </div>
-      <p className={styles.cardIntro}>
-        Create a private link that expires in seven days. Share it directly;
-        Cyfurden does not send invitation email yet.
-      </p>
+      <p className={styles.cardIntro}>{strings.inviteIntro}</p>
       <form action={formAction} className={styles.inviteForm}>
         <input type="hidden" name="boothId" value={boothId} />
         <label>
-          <span>Email address</span>
+          <span>{strings.email}</span>
           <input
             name="email"
             type="email"
@@ -78,10 +80,10 @@ export function InviteMemberForm({
           />
         </label>
         <label>
-          <span>Role</span>
+          <span>{strings.role}</span>
           <select name="role" defaultValue="STAFF">
-            <option value="STAFF">Staff — orders and fulfilment</option>
-            <option value="ADMIN">Admin — catalogue and storefront</option>
+            <option value="STAFF">{strings.staffRole}</option>
+            <option value="ADMIN">{strings.adminRole}</option>
           </select>
         </label>
         <p className={styles.formError} role="alert" aria-live="polite">
@@ -92,24 +94,24 @@ export function InviteMemberForm({
           type="submit"
           disabled={pending}
         >
-          {pending ? "Creating link..." : "Create invitation link"}
+          {pending ? strings.creatingLink : strings.createLink}
         </button>
       </form>
       {state.invitationPath ? (
         <div className={styles.invitationResult} role="status">
-          <strong>Invitation ready for {state.invitedEmail}</strong>
-          <p>Copy this one-time link and send it to your teammate.</p>
+          <strong>{strings.invitationReady(state.invitedEmail ?? "")}</strong>
+          <p>{strings.copyInstruction}</p>
           <div className={styles.copyRow}>
             <input
-              aria-label="Invitation link"
+              aria-label={strings.invitationLinkAria}
               readOnly
               value={invitationUrl}
             />
             <button type="button" onClick={copyInvitation}>
-              {copied ? "Copied" : "Copy link"}
+              {copied ? strings.copied : strings.copyLink}
             </button>
           </div>
-          <small>It expires after seven days or when revoked.</small>
+          <small>{strings.expiresHelp}</small>
         </div>
       ) : null}
     </div>
@@ -119,10 +121,13 @@ export function InviteMemberForm({
 export function RevokeInvitationForm({
   boothId,
   invitationId,
+  locale,
 }: {
   boothId: string;
   invitationId: string;
+  locale: Locale;
 }) {
+  const strings = getWorkspaceStrings(locale).team;
   const [state, formAction, pending] = useActionState(
     revokeTeamInvitationAction,
     emptyMutationState,
@@ -138,7 +143,7 @@ export function RevokeInvitationForm({
         </span>
       ) : null}
       <button className={styles.ghostButton} type="submit" disabled={pending}>
-        {pending ? "Revoking..." : "Revoke"}
+        {pending ? strings.revoking : strings.revoke}
       </button>
     </form>
   );
@@ -150,13 +155,17 @@ export function MemberAccessForm({
   role,
   status,
   memberName,
+  locale,
 }: {
   boothId: string;
   membershipId: string;
   role: "ADMIN" | "STAFF";
   status: "ACTIVE" | "DISABLED";
   memberName: string;
+  locale: Locale;
 }) {
+  const workspaceStrings = getWorkspaceStrings(locale);
+  const strings = workspaceStrings.team;
   const [state, formAction, pending] = useActionState(
     updateTeamMemberAction,
     emptyMutationState,
@@ -167,26 +176,26 @@ export function MemberAccessForm({
       <input type="hidden" name="boothId" value={boothId} />
       <input type="hidden" name="membershipId" value={membershipId} />
       <label>
-        <span className={styles.srOnly}>Role for {memberName}</span>
+        <span className={styles.srOnly}>{strings.roleFor(memberName)}</span>
         <select key={role} name="role" defaultValue={role} disabled={pending}>
-          <option value="STAFF">Staff</option>
-          <option value="ADMIN">Admin</option>
+          <option value="STAFF">{workspaceStrings.common.staff}</option>
+          <option value="ADMIN">{workspaceStrings.common.admin}</option>
         </select>
       </label>
       <label>
-        <span className={styles.srOnly}>Status for {memberName}</span>
+        <span className={styles.srOnly}>{strings.statusFor(memberName)}</span>
         <select
           key={status}
           name="status"
           defaultValue={status}
           disabled={pending}
         >
-          <option value="ACTIVE">Active</option>
-          <option value="DISABLED">Disabled</option>
+          <option value="ACTIVE">{workspaceStrings.common.active}</option>
+          <option value="DISABLED">{workspaceStrings.common.disabled}</option>
         </select>
       </label>
       <button className={styles.ghostButton} type="submit" disabled={pending}>
-        {pending ? "Saving..." : "Save"}
+        {pending ? strings.saving : strings.save}
       </button>
       {state.error ? (
         <span className={styles.inlineError} role="alert">
@@ -205,11 +214,14 @@ export function RemoveMemberForm({
   boothId,
   membershipId,
   memberName,
+  locale,
 }: {
   boothId: string;
   membershipId: string;
   memberName: string;
+  locale: Locale;
 }) {
+  const strings = getWorkspaceStrings(locale).team;
   const [state, formAction, pending] = useActionState(
     removeTeamMemberAction,
     emptyMutationState,
@@ -220,7 +232,7 @@ export function RemoveMemberForm({
       action={formAction}
       className={styles.removeForm}
       onSubmit={(event) => {
-        if (!window.confirm(`Remove ${memberName} from this booth?`)) {
+        if (!window.confirm(strings.removeConfirm(memberName))) {
           event.preventDefault();
         }
       }}
@@ -228,7 +240,7 @@ export function RemoveMemberForm({
       <input type="hidden" name="boothId" value={boothId} />
       <input type="hidden" name="membershipId" value={membershipId} />
       <button className={styles.dangerButton} type="submit" disabled={pending}>
-        {pending ? "Removing..." : "Remove"}
+        {pending ? strings.removing : strings.remove}
       </button>
       {state.error ? (
         <span className={styles.inlineError} role="alert">

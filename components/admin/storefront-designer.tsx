@@ -14,7 +14,8 @@ import {
   publishStorefrontAction,
   saveStorefrontAction,
 } from "@/app/manage/[boothId]/actions";
-import { parseBilingual } from "@/lib/i18n";
+import { parseBilingual, type Locale } from "@/lib/i18n";
+import { getWorkspaceStrings } from "@/lib/i18n/workspace";
 import { BoothIdentityControls } from "./booth-identity-controls";
 import { resolveOracleImageUrl } from "@/lib/oracle-images";
 import { PAYMENT_QR_MAX_BYTES, paymentQrAccept } from "@/lib/payment-qr";
@@ -58,57 +59,10 @@ export type StorefrontPaymentDraft = {
   disclaimer: string;
 };
 
-const sectionMeta: Record<
-  SectionId,
-  {
-    label: string;
-    description: string;
-    lane: "wide" | "side";
-    icon: string;
-    previewRows: number;
-  }
-> = {
-  featured: {
-    label: "Featured spotlight",
-    description: "Product slider, announcement, and welcome copy",
-    lane: "wide",
-    icon: "F",
-    previewRows: 12,
-  },
-  "booth-info": {
-    label: "Booth information",
-    description: "Creator, convention, location, and hours",
-    lane: "side",
-    icon: "I",
-    previewRows: 12,
-  },
-  browse: {
-    label: "Browse controls",
-    description: "Search, filter, and collection controls",
-    lane: "wide",
-    icon: "B",
-    previewRows: 5,
-  },
-  catalogue: {
-    label: "Product collection",
-    description: "The public product catalogue",
-    lane: "wide",
-    icon: "P",
-    previewRows: 13,
-  },
-  cart: {
-    label: "Shopping cart",
-    description: "Cart and post-reservation payment setup",
-    lane: "side",
-    icon: "C",
-    previewRows: 12,
-  },
-};
-
 const editorTabs = ["layout", "content", "style"] as const;
 
-const money = (minorUnits: string) =>
-  new Intl.NumberFormat("vi-VN", {
+const money = (minorUnits: string, locale: Locale) =>
+  new Intl.NumberFormat(locale === "vi" ? "vi-VN" : "en-GB", {
     style: "currency",
     currency: "VND",
     maximumFractionDigits: 0,
@@ -285,6 +239,7 @@ function EmptyPreview({
 
 export function StorefrontDesigner({
   boothId,
+  workspaceLocale,
   boothStatus,
   document: initialDocument,
   payment: initialPayment,
@@ -294,6 +249,7 @@ export function StorefrontDesigner({
   products,
 }: {
   boothId: string;
+  workspaceLocale: Locale;
   boothStatus: string;
   document: StorefrontDocument;
   payment: StorefrontPaymentDraft;
@@ -306,6 +262,49 @@ export function StorefrontDesigner({
   qrUploadConfigured: boolean;
   products: StorefrontDesignerProduct[];
 }) {
+  const workspaceStrings = getWorkspaceStrings(workspaceLocale);
+  const strings = workspaceStrings.storefront;
+  const sectionMeta: Record<
+    SectionId,
+    {
+      label: string;
+      description: string;
+      lane: "wide" | "side";
+      icon: string;
+      previewRows: number;
+    }
+  > = {
+    featured: {
+      ...strings.sections.featured,
+      lane: "wide",
+      icon: "F",
+      previewRows: 12,
+    },
+    "booth-info": {
+      ...strings.sections.boothInfo,
+      lane: "side",
+      icon: "I",
+      previewRows: 12,
+    },
+    browse: {
+      ...strings.sections.browse,
+      lane: "wide",
+      icon: "B",
+      previewRows: 5,
+    },
+    catalogue: {
+      ...strings.sections.catalogue,
+      lane: "wide",
+      icon: "P",
+      previewRows: 13,
+    },
+    cart: {
+      ...strings.sections.cart,
+      lane: "side",
+      icon: "C",
+      previewRows: 12,
+    },
+  };
   const [document, setDocument] = useState<StorefrontDocument>(() => ({
     ...initialDocument,
     featuredProductIds: resolveStorefrontFeaturedProductIds(
@@ -343,9 +342,7 @@ export function StorefrontDesigner({
   const [saveState, saveAction] = useActionState(saveStorefrontAction, {
     error: null,
   });
-  const [announcement, setAnnouncement] = useState(
-    "Select a block in the preview to edit it.",
-  );
+  const [announcement, setAnnouncement] = useState(strings.selectBlock);
   const previewText = (value: string | null | undefined) =>
     parseBilingual(value, document.locale);
 
@@ -418,13 +415,13 @@ export function StorefrontDesigner({
     if (!file) return;
 
     if (file.size > PAYMENT_QR_MAX_BYTES) {
-      setQrSelectionError("QR images must be 5 MB or smaller.");
+      setQrSelectionError(strings.qrTooLarge);
       setQrInputVersion((current) => current + 1);
       return;
     }
 
     if (file.type && !paymentQrAccept.split(",").includes(file.type)) {
-      setQrSelectionError("Choose a PNG, JPEG, or WebP image.");
+      setQrSelectionError(strings.qrInvalidType);
       setQrInputVersion((current) => current + 1);
       return;
     }
@@ -446,7 +443,7 @@ export function StorefrontDesigner({
   const selectSection = (section: SectionId) => {
     setSelectedSection(section);
     setTab("content");
-    setAnnouncement(`${sectionMeta[section].label} selected for editing.`);
+    setAnnouncement(strings.sectionSelected(sectionMeta[section].label));
   };
 
   const focusEditorTab = (nextTab: EditorTab) => {
@@ -490,7 +487,15 @@ export function StorefrontDesigner({
     nextOrder.splice(targetIndex, 0, source);
     updateDocument("sectionOrder", nextOrder);
     setAnnouncement(
-      `${sectionMeta[source].label} moved ${placement} ${sectionMeta[target].label}.`,
+      placement === "after"
+        ? strings.movedAfter(
+            sectionMeta[source].label,
+            sectionMeta[target].label,
+          )
+        : strings.movedBefore(
+            sectionMeta[source].label,
+            sectionMeta[target].label,
+          ),
     );
   };
 
@@ -505,14 +510,14 @@ export function StorefrontDesigner({
     ];
     updateDocument("sectionOrder", nextOrder);
     setAnnouncement(
-      `${sectionMeta[section].label} moved ${delta < 0 ? "up" : "down"}.`,
+      strings.movedPosition(sectionMeta[section].label, nextIndex + 1),
     );
   };
 
   const toggleVisibility = (section: SectionId) => {
     const visible = document.visibleSections.includes(section);
     if (visible && document.visibleSections.length <= 3) {
-      setAnnouncement("Keep at least three storefront sections visible.");
+      setAnnouncement(strings.keepThree);
       return;
     }
     updateDocument(
@@ -522,7 +527,9 @@ export function StorefrontDesigner({
         : [...document.visibleSections, section],
     );
     setAnnouncement(
-      `${sectionMeta[section].label} is now ${visible ? "hidden" : "visible"}.`,
+      visible
+        ? strings.sectionHidden(sectionMeta[section].label)
+        : strings.sectionShown(sectionMeta[section].label),
     );
   };
 
@@ -532,9 +539,7 @@ export function StorefrontDesigner({
       !selected &&
       selectedFeaturedProductIds.length >= storefrontFeaturedProductLimit
     ) {
-      setAnnouncement(
-        `Choose up to ${storefrontFeaturedProductLimit} products for the featured slider.`,
-      );
+      setAnnouncement(strings.featuredLimit(storefrontFeaturedProductLimit));
       return;
     }
     const nextProductIds = selected
@@ -543,8 +548,8 @@ export function StorefrontDesigner({
     updateDocument("featuredProductIds", nextProductIds);
     setAnnouncement(
       selected
-        ? "Product removed from the featured slider."
-        : `Product added as slide ${nextProductIds.length}.`,
+        ? strings.featuredRemoved
+        : strings.featuredAdded(nextProductIds.length),
     );
   };
 
@@ -564,7 +569,7 @@ export function StorefrontDesigner({
       nextProductIds[currentIndex],
     ];
     updateDocument("featuredProductIds", nextProductIds);
-    setAnnouncement(`Featured slide moved to position ${nextIndex + 1}.`);
+    setAnnouncement(strings.featuredMoved(nextIndex + 1));
   };
 
   const handleDragStart = (
@@ -574,7 +579,7 @@ export function StorefrontDesigner({
     setDraggedSection(section);
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("text/plain", section);
-    setAnnouncement(`Moving ${sectionMeta[section].label}.`);
+    setAnnouncement(strings.moving(sectionMeta[section].label));
   };
 
   const handleDrop = (event: DragEvent<HTMLElement>, target: SectionId) => {
@@ -601,10 +606,11 @@ export function StorefrontDesigner({
               <p>{previewText(document.announcement)}</p>
               <h3>{previewText(selectedFeaturedProducts[0].name)}</h3>
               <span>
-                {money(selectedFeaturedProducts[0].priceCents)} /{" "}
+                {money(selectedFeaturedProducts[0].priceCents, document.locale)}{" "}
+                /{" "}
                 {selectedFeaturedProducts[0].status === "SOLD_OUT"
-                  ? "Sold out"
-                  : "Available"}
+                  ? strings.previewSoldOut
+                  : strings.previewAvailable}
               </span>
               <div className={styles.featuredPreviewDots} aria-hidden="true">
                 {selectedFeaturedProducts.map((product, index) => (
@@ -632,7 +638,7 @@ export function StorefrontDesigner({
             >
               <b>
                 {previewText(selectedFeaturedProducts[0].eyebrow) ||
-                  "Featured release"}
+                  strings.previewFeaturedRelease}
               </b>
             </div>
           </div>
@@ -640,15 +646,17 @@ export function StorefrontDesigner({
           <EmptyPreview
             icon="F"
             title={previewText(document.tagline)}
-            copy="Choose products in this block to build the slider."
+            copy={strings.previewChooseFeatured}
           />
         );
       case "booth-info":
         return (
           <div className={styles.boothPreview}>
-            <p>Booth guide</p>
+            <p>{strings.previewBoothGuide}</p>
             <strong>{previewText(document.creatorName)}</strong>
-            <span>{previewText(document.eventName) || "Next convention"}</span>
+            <span>
+              {previewText(document.eventName) || strings.previewNextConvention}
+            </span>
             <small>
               {previewText(document.eventVenue)} /{" "}
               {previewText(document.eventBoothLabel)}
@@ -659,7 +667,7 @@ export function StorefrontDesigner({
         return (
           <div className={styles.browsePreview}>
             <div className={styles.browsePreviewCategories}>
-              <span data-active>All</span>
+              <span data-active>{strings.previewAll}</span>
               {previewCategories.map((category) => (
                 <span key={category.id}>{previewText(category.name)}</span>
               ))}
@@ -667,7 +675,7 @@ export function StorefrontDesigner({
             <div className={styles.browsePreviewTools}>
               <div className={styles.browsePreviewSearch}>
                 <BrowsePreviewIcon name="search" />
-                Search items...
+                {strings.previewSearch}
               </div>
               <div className={styles.browsePreviewModes}>
                 <span data-active>
@@ -677,7 +685,7 @@ export function StorefrontDesigner({
                   <BrowsePreviewIcon name="list" />
                 </span>
               </div>
-              <div>Recommended</div>
+              <div>{strings.previewRecommended}</div>
             </div>
           </div>
         );
@@ -697,16 +705,16 @@ export function StorefrontDesigner({
         ) : (
           <EmptyPreview
             icon="P"
-            title="No merch is live yet"
-            copy="Products will appear here as soon as the booth adds them."
+            title={strings.previewNoProducts}
+            copy={strings.previewNoProductsBody}
           />
         );
       case "cart":
         return (
           <EmptyPreview
             icon="C"
-            title="Your cart is empty"
-            copy="Customer details are collected before reservation."
+            title={strings.previewEmptyCart}
+            copy={strings.previewEmptyCartBody}
           />
         );
     }
@@ -763,13 +771,21 @@ export function StorefrontDesigner({
             SF
           </span>
           <div>
-            <strong>Storefront builder</strong>
-            <small>Click any preview block to edit it.</small>
+            <strong>{strings.builderTitle}</strong>
+            <small>{strings.builderHint}</small>
           </div>
-          <span className={styles.status}>{boothStatus.toLowerCase()}</span>
+          <span className={styles.status}>
+            {workspaceStrings.common.boothStatusLabels[
+              boothStatus as keyof typeof workspaceStrings.common.boothStatusLabels
+            ] ?? boothStatus}
+          </span>
         </div>
 
-        <div className={styles.tabs} role="tablist" aria-label="Editor panels">
+        <div
+          className={styles.tabs}
+          role="tablist"
+          aria-label={strings.editorPanelsAria}
+        >
           {editorTabs.map((item) => (
             <button
               key={item}
@@ -784,7 +800,7 @@ export function StorefrontDesigner({
               onKeyDown={(event) => handleTabKeyDown(event, item)}
             >
               <ControlIcon name={item} />
-              {item[0].toUpperCase() + item.slice(1)}
+              {strings.tabs[item]}
             </button>
           ))}
         </div>
@@ -799,10 +815,12 @@ export function StorefrontDesigner({
             >
               <div className={styles.panelIntro}>
                 <div>
-                  <h2 id="layout-panel-title">Page sections</h2>
-                  <p>Drag preview blocks or use these arrow controls.</p>
+                  <h2 id="layout-panel-title">{strings.pageSections}</h2>
+                  <p>{strings.pageSectionsHelp}</p>
                 </div>
-                <span>{document.visibleSections.length}/5 live</span>
+                <span>
+                  {strings.visibleCount(document.visibleSections.length, 5)}
+                </span>
               </div>
               <div className={styles.sectionList}>
                 {document.sectionOrder.map((section, index) => {
@@ -831,7 +849,7 @@ export function StorefrontDesigner({
                           setDropTarget(null);
                         }}
                         onClick={() => selectSection(section)}
-                        aria-label={`Select ${meta.label}. Drag this handle to reorder.`}
+                        aria-label={strings.selectSectionAria(meta.label)}
                       >
                         <ControlIcon name="drag" />
                       </button>
@@ -845,14 +863,22 @@ export function StorefrontDesigner({
                         </strong>
                         <small>{meta.description}</small>
                       </button>
-                      <span className={styles.laneBadge}>{meta.lane}</span>
+                      <span className={styles.laneBadge}>
+                        {meta.lane === "wide"
+                          ? strings.laneWide
+                          : strings.laneSide}
+                      </span>
                       <button
                         type="button"
                         className={styles.visibilityButton}
                         data-visible={visible || undefined}
                         onClick={() => toggleVisibility(section)}
                         aria-pressed={visible}
-                        aria-label={`${visible ? "Hide" : "Show"} ${meta.label}`}
+                        aria-label={
+                          visible
+                            ? strings.hideSectionAria(meta.label)
+                            : strings.showSectionAria(meta.label)
+                        }
                       >
                         <ControlIcon name={visible ? "visible" : "hidden"} />
                       </button>
@@ -861,7 +887,7 @@ export function StorefrontDesigner({
                           type="button"
                           onClick={() => moveSection(section, -1)}
                           disabled={index === 0}
-                          aria-label={`Move ${meta.label} up`}
+                          aria-label={strings.moveUpAria(meta.label)}
                         >
                           <ControlIcon name="up" />
                         </button>
@@ -869,7 +895,7 @@ export function StorefrontDesigner({
                           type="button"
                           onClick={() => moveSection(section, 1)}
                           disabled={index === document.sectionOrder.length - 1}
-                          aria-label={`Move ${meta.label} down`}
+                          aria-label={strings.moveDownAria(meta.label)}
                         >
                           <ControlIcon name="down" />
                         </button>
@@ -878,10 +904,7 @@ export function StorefrontDesigner({
                   );
                 })}
               </div>
-              <p className={styles.panelNote}>
-                Wide and side blocks keep their responsive lanes on desktop and
-                collapse into one ordered column on phones.
-              </p>
+              <p className={styles.panelNote}>{strings.layoutHelp}</p>
             </section>
           ) : null}
 
@@ -894,7 +917,9 @@ export function StorefrontDesigner({
             >
               <div className={styles.panelIntro}>
                 <div>
-                  <p className={styles.editorEyebrow}>Selected section</p>
+                  <p className={styles.editorEyebrow}>
+                    {strings.selectedSection}
+                  </p>
                   <h2 id="content-panel-title">{selectedMeta.label}</h2>
                   <p>{selectedMeta.description}</p>
                 </div>
@@ -902,11 +927,7 @@ export function StorefrontDesigner({
                   {selectedMeta.icon}
                 </span>
               </div>
-              <p className={styles.panelNote}>
-                Public text accepts{" "}
-                <code>[en]English[/en][vi]Tiếng Việt[/vi]</code>. Plain text
-                appears in both storefront languages.
-              </p>
+              <p className={styles.panelNote}>{strings.contentSyntax}</p>
 
               {selectedSection === "featured" ? (
                 <div className={styles.controlStack}>
@@ -917,11 +938,12 @@ export function StorefrontDesigner({
                     <div className={styles.featuredPickerHeading}>
                       <div>
                         <strong id="featured-products-heading">
-                          Slider products
+                          {strings.sliderProducts}
                         </strong>
                         <small>
-                          Choose and order up to{" "}
-                          {storefrontFeaturedProductLimit} public products.
+                          {strings.sliderPickerHelp(
+                            storefrontFeaturedProductLimit,
+                          )}
                         </small>
                       </div>
                       <span>
@@ -956,10 +978,11 @@ export function StorefrontDesigner({
                                 <span className={styles.featuredProductCopy}>
                                   <strong>{product.name}</strong>
                                   <small>
-                                    {money(product.priceCents)} /{" "}
+                                    {money(product.priceCents, document.locale)}{" "}
+                                    /{" "}
                                     {product.status === "SOLD_OUT"
-                                      ? "Sold out"
-                                      : "Live"}
+                                      ? strings.sliderStatusSoldOut
+                                      : strings.sliderStatusLive}
                                   </small>
                                 </span>
                                 <span className={styles.featuredProductActions}>
@@ -969,7 +992,9 @@ export function StorefrontDesigner({
                                       moveFeaturedProduct(product.id, -1)
                                     }
                                     disabled={index === 0}
-                                    aria-label={`Move ${product.name} earlier`}
+                                    aria-label={strings.moveEarlierAria(
+                                      product.name,
+                                    )}
                                   >
                                     <ControlIcon name="up" />
                                   </button>
@@ -982,7 +1007,9 @@ export function StorefrontDesigner({
                                       index ===
                                       selectedFeaturedProducts.length - 1
                                     }
-                                    aria-label={`Move ${product.name} later`}
+                                    aria-label={strings.moveLaterAria(
+                                      product.name,
+                                    )}
                                   >
                                     <ControlIcon name="down" />
                                   </button>
@@ -991,9 +1018,11 @@ export function StorefrontDesigner({
                                     onClick={() =>
                                       toggleFeaturedProduct(product.id)
                                     }
-                                    aria-label={`Remove ${product.name} from the slider`}
+                                    aria-label={strings.removeSliderAria(
+                                      product.name,
+                                    )}
                                   >
-                                    Remove
+                                    {strings.remove}
                                   </button>
                                 </span>
                               </li>
@@ -1001,8 +1030,7 @@ export function StorefrontDesigner({
                           </ol>
                         ) : (
                           <p className={styles.featuredPickerEmpty}>
-                            No slider products selected. Add one below or hide
-                            the Featured block from Layout.
+                            {strings.noSliderProducts}
                           </p>
                         )}
 
@@ -1037,10 +1065,14 @@ export function StorefrontDesigner({
                                   <span className={styles.featuredProductCopy}>
                                     <strong>{product.name}</strong>
                                     <small>
-                                      {money(product.priceCents)} /{" "}
+                                      {money(
+                                        product.priceCents,
+                                        document.locale,
+                                      )}{" "}
+                                      /{" "}
                                       {product.status === "SOLD_OUT"
-                                        ? "Sold out"
-                                        : "Live"}
+                                        ? strings.sliderStatusSoldOut
+                                        : strings.sliderStatusLive}
                                     </small>
                                   </span>
                                   <button
@@ -1053,7 +1085,7 @@ export function StorefrontDesigner({
                                       storefrontFeaturedProductLimit
                                     }
                                   >
-                                    Add product
+                                    {strings.addProduct}
                                   </button>
                                 </div>
                               ))}
@@ -1062,17 +1094,15 @@ export function StorefrontDesigner({
                       </>
                     ) : (
                       <div className={styles.featuredPickerEmpty}>
-                        <strong>No public products yet</strong>
-                        <span>
-                          Make a product Live before adding it to the slider.
-                        </span>
+                        <strong>{strings.noPublicProducts}</strong>
+                        <span>{strings.makeProductLive}</span>
                         <a href={`/manage/${boothId}/products`}>
-                          Open Products
+                          {strings.openProducts}
                         </a>
                       </div>
                     )}
                   </section>
-                  <Field label="Announcement">
+                  <Field label={strings.announcement}>
                     <input
                       value={document.announcement}
                       maxLength={180}
@@ -1081,7 +1111,7 @@ export function StorefrontDesigner({
                       }
                     />
                   </Field>
-                  <Field label="Spotlight headline">
+                  <Field label={strings.spotlightHeadline}>
                     <input
                       value={document.tagline}
                       required
@@ -1092,21 +1122,21 @@ export function StorefrontDesigner({
                     />
                   </Field>
                   <BilingualField
-                    label="Welcome copy (EN + VI)"
+                    label={strings.welcomeCopy}
+                    locale={workspaceLocale}
                     value={document.introduction}
                     required
                     onChange={(value) => updateDocument("introduction", value)}
                   />
                   <p className={styles.panelNote}>
-                    Saving updates the draft selection. Visitors see the new
-                    slider only after you publish the saved draft.
+                    {strings.sliderPublishHelp}
                   </p>
                 </div>
               ) : null}
 
               {selectedSection === "booth-info" ? (
                 <div className={styles.controlStack}>
-                  <Field label="Public booth name">
+                  <Field label={strings.publicBoothName}>
                     <input
                       value={document.name}
                       required
@@ -1117,7 +1147,7 @@ export function StorefrontDesigner({
                     />
                   </Field>
                   <div className={styles.fieldGrid}>
-                    <Field label="Creator name">
+                    <Field label={strings.creatorName}>
                       <input
                         value={document.creatorName}
                         required
@@ -1126,7 +1156,7 @@ export function StorefrontDesigner({
                         }
                       />
                     </Field>
-                    <Field label="Pronouns">
+                    <Field label={strings.pronouns}>
                       <input
                         value={document.creatorPronouns}
                         onChange={(event) =>
@@ -1135,7 +1165,7 @@ export function StorefrontDesigner({
                       />
                     </Field>
                   </div>
-                  <Field label="Creator bio">
+                  <Field label={strings.creatorBio}>
                     <textarea
                       value={document.creatorBio}
                       onChange={(event) =>
@@ -1144,7 +1174,7 @@ export function StorefrontDesigner({
                     />
                   </Field>
                   <div className={styles.fieldGrid}>
-                    <Field label="Event name">
+                    <Field label={strings.eventName}>
                       <input
                         value={document.eventName}
                         onChange={(event) =>
@@ -1152,7 +1182,7 @@ export function StorefrontDesigner({
                         }
                       />
                     </Field>
-                    <Field label="Booth label">
+                    <Field label={strings.boothLabel}>
                       <input
                         value={document.eventBoothLabel}
                         onChange={(event) =>
@@ -1161,7 +1191,7 @@ export function StorefrontDesigner({
                       />
                     </Field>
                   </div>
-                  <Field label="Venue">
+                  <Field label={strings.venue}>
                     <input
                       value={document.eventVenue}
                       onChange={(event) =>
@@ -1170,7 +1200,7 @@ export function StorefrontDesigner({
                     />
                   </Field>
                   <div className={styles.fieldGrid}>
-                    <Field label="Display hours">
+                    <Field label={strings.displayHours}>
                       <input
                         value={document.eventHours}
                         onChange={(event) =>
@@ -1178,7 +1208,7 @@ export function StorefrontDesigner({
                         }
                       />
                     </Field>
-                    <Field label="Status label">
+                    <Field label={strings.statusLabel}>
                       <input
                         value={document.eventStatusLabel}
                         onChange={(event) =>
@@ -1187,7 +1217,7 @@ export function StorefrontDesigner({
                       />
                     </Field>
                   </div>
-                  <Field label="Location">
+                  <Field label={strings.location}>
                     <input
                       value={document.creatorLocation}
                       onChange={(event) =>
@@ -1202,11 +1232,8 @@ export function StorefrontDesigner({
                 <div className={styles.informationCard}>
                   <span aria-hidden="true">B</span>
                   <div>
-                    <strong>Visitor controls are ready</strong>
-                    <p>
-                      Search and recommended sorting follow the active public
-                      product catalogue. Reorder or hide this block from Layout.
-                    </p>
+                    <strong>{strings.browseReady}</strong>
+                    <p>{strings.browseHelp}</p>
                   </div>
                 </div>
               ) : null}
@@ -1216,14 +1243,13 @@ export function StorefrontDesigner({
                   <div className={styles.informationCard}>
                     <span aria-hidden="true">P</span>
                     <div>
-                      <strong>{products.length} public catalogue items</strong>
-                      <p>
-                        Product content, stock, pricing, and featured status are
-                        managed in the Products workspace.
-                      </p>
+                      <strong>
+                        {strings.publicCatalogueItems(products.length)}
+                      </strong>
+                      <p>{strings.productsManagedHelp}</p>
                     </div>
                   </div>
-                  <Field label="Fulfilment note">
+                  <Field label={strings.fulfilmentNote}>
                     <textarea
                       value={document.eventFulfillment}
                       onChange={(event) =>
@@ -1239,15 +1265,12 @@ export function StorefrontDesigner({
                   <div className={styles.informationCard}>
                     <span aria-hidden="true">C</span>
                     <div>
-                      <strong>Shown after reservation</strong>
-                      <p>
-                        Customers see these manual bank-transfer instructions
-                        only after submitting their contact details.
-                      </p>
+                      <strong>{strings.shownAfterReservation}</strong>
+                      <p>{strings.paymentOnlyAfterReservation}</p>
                     </div>
                   </div>
                   <div className={styles.fieldGrid}>
-                    <Field label="Payment label">
+                    <Field label={strings.paymentLabel}>
                       <input
                         value={payment.paymentLabel}
                         required
@@ -1257,10 +1280,7 @@ export function StorefrontDesigner({
                         }
                       />
                     </Field>
-                    <Field
-                      label="Bank"
-                      hint="Choose the receiving bank. Its six-digit BIN is filled automatically for VietQR."
-                    >
+                    <Field label={strings.bank} hint={strings.bankHint}>
                       <select
                         value={payment.bankCode}
                         required
@@ -1274,7 +1294,7 @@ export function StorefrontDesigner({
                           setDirty(true);
                         }}
                       >
-                        <option value="">Select a bank</option>
+                        <option value="">{strings.selectBank}</option>
                         {vietQrBanks.map((bank) => (
                           <option key={bank.bin} value={bank.bin}>
                             {bank.shortName} — {bank.name}
@@ -1282,7 +1302,7 @@ export function StorefrontDesigner({
                         ))}
                       </select>
                     </Field>
-                    <Field label="Account name">
+                    <Field label={strings.accountName}>
                       <input
                         value={payment.accountName}
                         required
@@ -1291,7 +1311,7 @@ export function StorefrontDesigner({
                         }
                       />
                     </Field>
-                    <Field label="Account number">
+                    <Field label={strings.accountNumber}>
                       <input
                         value={payment.accountNumber}
                         required
@@ -1301,8 +1321,8 @@ export function StorefrontDesigner({
                       />
                     </Field>
                     <Field
-                      label="Transfer message template"
-                      hint="Supports {code}, {item}, and {amount}. References longer than VietQR's 25-character limit safely fall back to the reservation code. {ORDER} remains available for existing booths."
+                      label={strings.transferTemplate}
+                      hint={strings.transferTemplateHint}
                     >
                       <input
                         value={payment.transferReferenceTemplate}
@@ -1323,41 +1343,36 @@ export function StorefrontDesigner({
                     <div className={styles.qrCopy}>
                       <div>
                         <strong id="payment-qr-heading">
-                          Payment QR image
+                          {strings.paymentQr}
                         </strong>
-                        <small>
-                          Upload a PNG, JPEG, or WebP image up to 5 MB. It is
-                          stored securely in Oracle Object Storage when you
-                          save.
-                        </small>
+                        <small>{strings.paymentQrHelp}</small>
                       </div>
                       <span>
                         {qrFile
-                          ? "Ready to save"
+                          ? strings.readyToSave
                           : hasStoredQr
-                            ? "Uploaded"
-                            : "Optional"}
+                            ? strings.uploaded
+                            : workspaceStrings.common.optional}
                       </span>
                     </div>
 
                     <div className={styles.qrPreview}>
                       {visibleQrUrl ? (
-                        <img src={visibleQrUrl} alt="Payment QR preview" />
+                        <img
+                          src={visibleQrUrl}
+                          alt={strings.paymentQrPreviewAlt}
+                        />
                       ) : hasStoredQr ? (
                         <div>
                           <span aria-hidden="true">OK</span>
-                          <strong>QR image saved</strong>
-                          <small>
-                            Public preview needs the Oracle delivery URL.
-                          </small>
+                          <strong>{strings.qrImageSaved}</strong>
+                          <small>{strings.publicPreviewNeedsUrl}</small>
                         </div>
                       ) : (
                         <div>
                           <span aria-hidden="true">QR</span>
-                          <strong>No QR image yet</strong>
-                          <small>
-                            Customers can still use the account details.
-                          </small>
+                          <strong>{strings.noQr}</strong>
+                          <small>{strings.accountStillWorks}</small>
                         </div>
                       )}
                     </div>
@@ -1385,12 +1400,12 @@ export function StorefrontDesigner({
                         aria-disabled={!qrUploadConfigured}
                       >
                         {qrFile || hasStoredQr
-                          ? "Replace image"
-                          : "Choose image"}
+                          ? strings.replaceImage
+                          : strings.chooseImage}
                       </label>
                       {qrFile ? (
                         <button type="button" onClick={discardQrSelection}>
-                          Discard selection
+                          {strings.discardSelection}
                         </button>
                       ) : hasStoredQr ? (
                         <button
@@ -1400,7 +1415,7 @@ export function StorefrontDesigner({
                             setDirty(true);
                           }}
                         >
-                          Remove QR
+                          {strings.removeQr}
                         </button>
                       ) : removeQr && payment.qrObjectKey ? (
                         <button
@@ -1410,14 +1425,13 @@ export function StorefrontDesigner({
                             setDirty(true);
                           }}
                         >
-                          Undo remove
+                          {strings.undoRemove}
                         </button>
                       ) : null}
                     </div>
                     {!qrUploadConfigured ? (
                       <p className={styles.qrHelp}>
-                        Uploads are unavailable until the site owner completes
-                        Oracle Object Storage configuration.
+                        {strings.uploadUnavailable}
                       </p>
                     ) : null}
                     {qrSelectionError ? (
@@ -1426,7 +1440,7 @@ export function StorefrontDesigner({
                       </p>
                     ) : null}
                   </section>
-                  <Field label="Customer payment instructions">
+                  <Field label={strings.customerInstructions}>
                     <textarea
                       value={payment.instructions}
                       required
@@ -1435,7 +1449,7 @@ export function StorefrontDesigner({
                       }
                     />
                   </Field>
-                  <Field label="Manual-review disclaimer">
+                  <Field label={strings.manualDisclaimer}>
                     <textarea
                       value={payment.disclaimer}
                       required
@@ -1455,6 +1469,7 @@ export function StorefrontDesigner({
               initialLogoObjectKey={identity.logoObjectKey}
               initialLogoUrl={identity.logoUrl}
               initialSocialLinks={identity.socialLinks}
+              locale={workspaceLocale}
               uploadConfigured={qrUploadConfigured}
               onBusyChange={setLogoUploadBusy}
               onDirty={() => setDirty(true)}
@@ -1470,15 +1485,15 @@ export function StorefrontDesigner({
             >
               <div className={styles.panelIntro}>
                 <div>
-                  <h2 id="style-panel-title">Look & feel</h2>
-                  <p>Changes update the preview immediately.</p>
+                  <h2 id="style-panel-title">{strings.lookAndFeel}</h2>
+                  <p>{strings.lookAndFeelHelp}</p>
                 </div>
                 <span className={styles.selectedIcon} aria-hidden="true">
                   S
                 </span>
               </div>
               <div className={styles.controlStack}>
-                <Field label="Theme preset">
+                <Field label={strings.themePreset}>
                   <select
                     value={document.themePreset}
                     onChange={(event) =>
@@ -1488,13 +1503,13 @@ export function StorefrontDesigner({
                       )
                     }
                   >
-                    <option value="lantern">Lantern paper</option>
-                    <option value="meadow">Meadow mint</option>
-                    <option value="midnight">Midnight blue</option>
+                    <option value="lantern">{strings.themeLantern}</option>
+                    <option value="meadow">{strings.themeMeadow}</option>
+                    <option value="midnight">{strings.themeMidnight}</option>
                   </select>
                 </Field>
                 <div className={styles.fieldGrid}>
-                  <Field label="Accent color">
+                  <Field label={strings.accentColor}>
                     <input
                       type="color"
                       value={document.accentColor}
@@ -1503,7 +1518,7 @@ export function StorefrontDesigner({
                       }
                     />
                   </Field>
-                  <Field label="Card corners">
+                  <Field label={strings.cardCorners}>
                     <select
                       value={document.cornerRadius}
                       onChange={(event) =>
@@ -1514,13 +1529,13 @@ export function StorefrontDesigner({
                         )
                       }
                     >
-                      <option value="soft">Soft</option>
-                      <option value="round">Round</option>
-                      <option value="pill">Pill</option>
+                      <option value="soft">{strings.cornerSoft}</option>
+                      <option value="round">{strings.cornerRound}</option>
+                      <option value="pill">{strings.cornerPill}</option>
                     </select>
                   </Field>
                 </div>
-                <Field label="Storefront language">
+                <Field label={strings.storefrontLanguage}>
                   <select
                     value={document.locale}
                     onChange={(event) =>
@@ -1530,8 +1545,8 @@ export function StorefrontDesigner({
                       )
                     }
                   >
-                    <option value="en">English</option>
-                    <option value="vi">Tiếng Việt</option>
+                    <option value="en">{strings.english}</option>
+                    <option value="vi">{strings.vietnamese}</option>
                   </select>
                 </Field>
               </div>
@@ -1546,32 +1561,35 @@ export function StorefrontDesigner({
         ) : null}
         <div className={styles.saveBar}>
           <span>
-            {dirty ? "Unsaved draft changes" : `Draft v${editVersion}`}
+            {dirty ? strings.unsavedDraft : strings.draftVersion(editVersion)}
           </span>
           <SubmitButton
             className={styles.saveButton}
             disabled={logoUploadBusy}
-            pendingLabel="Saving draft..."
+            pendingLabel={strings.savingDraft}
           >
-            Save draft
+            {strings.saveDraft}
           </SubmitButton>
         </div>
       </form>
 
-      <section className={styles.previewPanel} aria-label="Storefront preview">
+      <section className={styles.previewPanel} aria-label={strings.previewAria}>
         <div className={styles.previewToolbar}>
           <div>
             <strong>{selectedMeta.label}</strong>
-            <small>Draft preview / click a block to edit</small>
+            <small>{strings.previewHeader}</small>
           </div>
-          <div className={styles.deviceSwitch} aria-label="Preview device">
+          <div
+            className={styles.deviceSwitch}
+            aria-label={strings.previewDeviceAria}
+          >
             <button
               type="button"
               data-active={previewMode === "desktop" || undefined}
               aria-pressed={previewMode === "desktop"}
               onClick={() => setPreviewMode("desktop")}
             >
-              Desktop
+              {strings.desktop}
             </button>
             <button
               type="button"
@@ -1579,7 +1597,7 @@ export function StorefrontDesigner({
               aria-pressed={previewMode === "phone"}
               onClick={() => setPreviewMode("phone")}
             >
-              Phone
+              {strings.phone}
             </button>
           </div>
           <form action={publishStorefrontAction} className={styles.publishForm}>
@@ -1588,9 +1606,9 @@ export function StorefrontDesigner({
               type="submit"
               className={styles.publishButton}
               disabled={dirty}
-              title={dirty ? "Save the draft before publishing" : undefined}
+              title={dirty ? strings.saveBeforePublish : undefined}
             >
-              Publish saved
+              {strings.publishSaved}
             </button>
           </form>
         </div>
@@ -1611,7 +1629,7 @@ export function StorefrontDesigner({
                 <small>{previewText(document.eventStatusLabel)}</small>
               </span>
               <button type="button" onClick={() => selectSection("booth-info")}>
-                Edit info
+                {strings.editInfo}
               </button>
             </div>
             <div className={styles.previewGrid}>
@@ -1649,7 +1667,7 @@ export function StorefrontDesigner({
                     <button
                       type="button"
                       className={styles.previewSelectButton}
-                      aria-label={`Edit ${meta.label}`}
+                      aria-label={strings.editSectionAria(meta.label)}
                       aria-pressed={selected}
                       onClick={() => selectSection(section)}
                     />
@@ -1658,7 +1676,7 @@ export function StorefrontDesigner({
                         type="button"
                         className={styles.previewDragHandle}
                         draggable
-                        aria-label={`Drag ${meta.label} to reorder`}
+                        aria-label={strings.dragSectionAria(meta.label)}
                         onDragStart={(event) => handleDragStart(event, section)}
                         onDragEnd={() => {
                           setDraggedSection(null);

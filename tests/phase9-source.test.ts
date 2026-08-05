@@ -62,9 +62,9 @@ test("Phase 9 keeps immutable promotion evidence visible after checkout", async 
   assert.match(schema, /promotionNameSnapshot\s+String\?/);
   assert.match(migration, /OrderItem_promotion_reward_snapshot_check/);
   assert.match(migration, /"unitPriceCents" = 0/);
-  assert.match(orders, /Promotion reward/);
+  assert.match(orders, /strings\.promotionReward/);
   assert.match(orders, /originalUnitPriceCents/);
-  assert.match(orders, /parseBilingual\(item\.promotionNameSnapshot, "en"\)/);
+  assert.match(orders, /parseBilingual\(item\.promotionNameSnapshot, locale\)/);
   assert.match(reservation, /promotionRewardLabel/);
   assert.match(reservation, /summaryPromotionSavings/);
 });

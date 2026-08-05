@@ -306,7 +306,7 @@ test("uses one trusted bank selection for VietQR beneficiary details", async () 
 
   assert.match(designer, /<select\s+value=\{payment\.bankCode\}/);
   assert.match(designer, /const paymentFieldNames = \[\s*"bankCode"/);
-  assert.match(designer, /Select a bank/);
+  assert.match(designer, /strings\.selectBank/);
   assert.doesNotMatch(designer, /label="Bank name"|label="Bank BIN\/code"/);
   assert.match(
     action,

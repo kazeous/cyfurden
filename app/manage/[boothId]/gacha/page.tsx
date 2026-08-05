@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
   PageHeading,
@@ -9,8 +10,13 @@ import { requireBoothSection } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { compileGachaDocument } from "@/lib/gacha-document";
 import { DEFAULT_GACHA_RATES, readGachaRates } from "@/lib/gacha-rates";
+import { parseBilingual } from "@/lib/i18n";
+import { localizeGachaCompilationError } from "@/lib/i18n/gacha-errors";
+import { readLocaleCookie } from "@/lib/i18n/server-locale";
+import { getWorkspaceStrings } from "@/lib/i18n/workspace";
 import { eventDateInput } from "@/lib/order-events";
 import { readStorefrontDocument } from "@/lib/storefront-document";
+import { defaultGachaContent } from "@/lib/system-content";
 import {
   publishGachaAction,
   saveGachaAction,
@@ -19,6 +25,14 @@ import {
   unpublishGachaAction,
 } from "../actions";
 import styles from "./gacha.module.css";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const strings = getWorkspaceStrings(await readLocaleCookie()).gacha;
+  return {
+    title: strings.metadataTitle,
+    robots: { index: false, follow: false },
+  };
+}
 
 export default async function GachaPage({
   params,
@@ -37,7 +51,7 @@ export default async function GachaPage({
   const { boothId } = await params;
   const filters = await searchParams;
   const { booth } = await requireBoothSection(boothId, "gacha");
-  const [config, banners, products, storefront] = await Promise.all([
+  const [config, banners, products, storefront, locale] = await Promise.all([
     db.gachaConfig.findUnique({ where: { boothId } }),
     db.gachaBanner.findMany({
       where: { boothId },
@@ -55,7 +69,10 @@ export default async function GachaPage({
       orderBy: { name: "asc" },
     }),
     db.storefrontConfig.findUnique({ where: { boothId } }),
+    readLocaleCookie(),
   ]);
+  const workspaceStrings = getWorkspaceStrings(locale);
+  const strings = workspaceStrings.gacha;
   const selectedBanner = filters.new
     ? null
     : (banners.find((banner) => banner.id === filters.banner) ?? null);
@@ -82,59 +99,56 @@ export default async function GachaPage({
   return (
     <>
       <PageHeading
-        eyebrow="Public booth feature"
-        title="Free reveal game"
-        description="Build a scheduled, transparent digital reveal game, preview the saved draft, then publish it to the booth."
+        eyebrow={strings.eyebrow}
+        title={strings.title}
+        description={strings.description}
         actions={
           <span
             className={admin.statusBadge}
             data-status={isPublished ? "ACTIVE" : "DRAFT"}
           >
-            {isPublished ? "Published" : "Draft only"}
+            {isPublished ? strings.published : strings.draftOnly}
           </span>
         }
       />
 
       <div className={styles.scopeNotice} role="note">
-        <strong>Free digital reveal only</strong>
-        <span>
-          A play never creates an order or claim, debits stock, stores value, or
-          asks for payment. Publishing exposes only the saved snapshot.
-        </span>
+        <strong>{strings.scopeTitle}</strong>
+        <span>{strings.scopeBody}</span>
       </div>
 
       {filters.saved ? (
         <p className={admin.successNotice} role="status">
-          Game configuration saved.
+          {strings.configSaved}
         </p>
       ) : null}
       {filters.poolSaved ? (
         <p className={admin.successNotice} role="status">
-          Reward pool saved.
+          {strings.poolSaved}
         </p>
       ) : null}
       {filters.published ? (
         <p className={admin.successNotice} role="status">
-          Game published. Visitors now see this saved revision.
+          {strings.publishedNotice}
         </p>
       ) : null}
       {filters.unpublished ? (
         <p className={admin.successNotice} role="status">
-          Game unpublished. Its saved draft is still available here.
+          {strings.unpublishedNotice}
         </p>
       ) : null}
 
       <section className={admin.panel} aria-labelledby="game-setup-title">
         <div className={admin.panelHeader}>
           <div>
-            <h2 id="game-setup-title">Game setup</h2>
-            <p>Control the draft copy and guarantee rule.</p>
+            <h2 id="game-setup-title">{strings.setupTitle}</h2>
+            <p>{strings.setupBody}</p>
           </div>
         </div>
         <form action={saveGachaAction} className={styles.setupForm}>
           <input type="hidden" name="boothId" value={boothId} />
           <div className={styles.formSection}>
-            <h3>Availability</h3>
+            <h3>{strings.availability}</h3>
             <label className={admin.checkboxField}>
               <input
                 name="enabled"
@@ -142,10 +156,8 @@ export default async function GachaPage({
                 defaultChecked={config?.enabled ?? false}
               />
               <span>
-                Include the game in the next publish
-                <small>
-                  Saving remains a draft until you use the publish footer.
-                </small>
+                {strings.includeGame}
+                <small>{strings.includeGameHelp}</small>
               </span>
             </label>
             <label className={admin.checkboxField}>
@@ -155,12 +167,12 @@ export default async function GachaPage({
                 defaultChecked={config?.pityEnabled ?? true}
               />
               <span>
-                Use a guaranteed reward rule
-                <small>Sets a transparent maximum number of free draws.</small>
+                {strings.useGuarantee}
+                <small>{strings.useGuaranteeHelp}</small>
               </span>
             </label>
             <label className={admin.field}>
-              Guaranteed by draw
+              {strings.guaranteedBy}
               <input
                 name="guaranteedAt"
                 type="number"
@@ -170,62 +182,59 @@ export default async function GachaPage({
               />
             </label>
             <label className={admin.field}>
-              Guaranteed rarity
+              {strings.guaranteedRarity}
               <select
                 name="guaranteedRarity"
                 defaultValue={config?.guaranteedRarity ?? "EPIC"}
               >
-                <option value="RARE">Rare or better</option>
-                <option value="EPIC">Epic or better</option>
-                <option value="LEGENDARY">Legendary</option>
+                <option value="RARE">{strings.rareOrBetter}</option>
+                <option value="EPIC">{strings.epicOrBetter}</option>
+                <option value="LEGENDARY">{strings.legendary}</option>
               </select>
             </label>
           </div>
 
           <div className={styles.formSection}>
-            <h3>Presentation</h3>
+            <h3>{strings.presentation}</h3>
             <label className={admin.field}>
-              Game title
+              {strings.gameTitle}
               <input
                 name="title"
-                defaultValue={config?.title ?? "Wish upon the shelf"}
+                defaultValue={config?.title ?? defaultGachaContent.title}
                 maxLength={80}
                 required
               />
             </label>
             <label className={admin.field}>
-              Introduction
+              {strings.introduction}
               <textarea
                 name="introduction"
                 defaultValue={
-                  config?.introduction ?? "Meet a surprise from this booth."
+                  config?.introduction ?? defaultGachaContent.introduction
                 }
                 maxLength={240}
                 required
               />
             </label>
             <label className={admin.field}>
-              Visual theme
+              {strings.visualTheme}
               <select
                 name="gameTheme"
                 defaultValue={config?.gameTheme ?? "anemo"}
               >
-                <option value="anemo">Breeze</option>
-                <option value="ember">Ember</option>
-                <option value="starlight">Starlight</option>
+                <option value="anemo">{strings.breeze}</option>
+                <option value="ember">{strings.ember}</option>
+                <option value="starlight">{strings.starlight}</option>
               </select>
             </label>
           </div>
 
           <div className={styles.formSection}>
-            <h3>Tier odds</h3>
-            <p className={styles.sectionHelp}>
-              Whole percentages across all four tiers must total 100. Item
-              weights inside a tier are edited in each banner lineup.
-            </p>
+            <h3>{strings.tierOdds}</h3>
+            <p className={styles.sectionHelp}>{strings.oddsHelp}</p>
             <div className={styles.oddsGrid}>
               <label className={admin.field}>
-                Common %
+                {strings.commonPercent}
                 <input
                   name="rateCommon"
                   type="number"
@@ -236,7 +245,7 @@ export default async function GachaPage({
                 />
               </label>
               <label className={admin.field}>
-                Rare %
+                {strings.rarePercent}
                 <input
                   name="rateRare"
                   type="number"
@@ -247,7 +256,7 @@ export default async function GachaPage({
                 />
               </label>
               <label className={admin.field}>
-                Epic %
+                {strings.epicPercent}
                 <input
                   name="rateEpic"
                   type="number"
@@ -258,7 +267,7 @@ export default async function GachaPage({
                 />
               </label>
               <label className={admin.field}>
-                Legendary %
+                {strings.legendaryPercent}
                 <input
                   name="rateLegendary"
                   type="number"
@@ -270,16 +279,18 @@ export default async function GachaPage({
               </label>
             </div>
             <strong className={styles.oddsTotal}>
-              Total: {rates.common + rates.rare + rates.epic + rates.legendary}%
+              {strings.totalPercent(
+                rates.common + rates.rare + rates.epic + rates.legendary,
+              )}
             </strong>
           </div>
 
           <div className={styles.formActions}>
             <SubmitButton
               className={admin.buttonPrimary}
-              pendingLabel="Saving setup…"
+              pendingLabel={strings.savingSetup}
             >
-              Save setup
+              {strings.saveSetup}
             </SubmitButton>
           </div>
         </form>
@@ -291,25 +302,28 @@ export default async function GachaPage({
       >
         <div className={admin.panelHeader}>
           <div>
-            <h2 id="banners-title">Reward banners</h2>
-            <p>Group product variants into a clear free-play reward pool.</p>
+            <h2 id="banners-title">{strings.bannersTitle}</h2>
+            <p>{strings.bannersBody}</p>
           </div>
           <Link
             className={admin.buttonPrimary}
             href={`/manage/${boothId}/gacha?new=1`}
           >
-            Add banner
+            {strings.addBanner}
           </Link>
         </div>
 
         {staleSelection ? (
           <p className={admin.errorNotice} role="alert">
-            That banner no longer exists. Choose another banner below.
+            {strings.staleBanner}
           </p>
         ) : null}
 
         <div className={styles.bannerWorkspace}>
-          <aside className={styles.bannerIndex} aria-label="Reward banners">
+          <aside
+            className={styles.bannerIndex}
+            aria-label={strings.bannersAria}
+          >
             {banners.length ? (
               <ul>
                 {banners.map((banner) => {
@@ -323,14 +337,18 @@ export default async function GachaPage({
                         href={`/manage/${boothId}/gacha?banner=${banner.id}`}
                       >
                         <span>
-                          <strong>{banner.title}</strong>
-                          <small>{banner.pool.length} rewards</small>
+                          <strong>
+                            {parseBilingual(banner.title, locale)}
+                          </strong>
+                          <small>
+                            {strings.rewardCount(banner.pool.length)}
+                          </small>
                         </span>
                         <span
                           className={admin.statusBadge}
                           data-status={banner.active ? "ACTIVE" : "DRAFT"}
                         >
-                          {banner.active ? "active" : "draft"}
+                          {banner.active ? strings.active : strings.draft}
                         </span>
                       </Link>
                     </li>
@@ -339,10 +357,8 @@ export default async function GachaPage({
               </ul>
             ) : (
               <div className={styles.compactEmpty}>
-                <h3>No banners yet</h3>
-                <p>
-                  Create one, then choose which variants belong in its pool.
-                </p>
+                <h3>{strings.noBanners}</h3>
+                <p>{strings.noBannersBody}</p>
               </div>
             )}
           </aside>
@@ -362,20 +378,28 @@ export default async function GachaPage({
                   />
                   <div className={styles.editorHeading}>
                     <div>
-                      <p>{selectedBanner ? "Edit banner" : "New banner"}</p>
-                      <h3>{selectedBanner?.title ?? "Banner details"}</h3>
+                      <p>
+                        {selectedBanner
+                          ? strings.editBanner
+                          : strings.newBanner}
+                      </p>
+                      <h3>
+                        {selectedBanner
+                          ? parseBilingual(selectedBanner.title, locale)
+                          : strings.bannerDetails}
+                      </h3>
                     </div>
                     {filters.new ? (
                       <Link
                         className={admin.button}
                         href={`/manage/${boothId}/gacha`}
                       >
-                        Cancel
+                        {strings.cancel}
                       </Link>
                     ) : null}
                   </div>
                   <label className={admin.field}>
-                    Banner title
+                    {strings.bannerTitle}
                     <input
                       name="bannerTitle"
                       defaultValue={selectedBanner?.title ?? ""}
@@ -384,7 +408,7 @@ export default async function GachaPage({
                     />
                   </label>
                   <label className={admin.field}>
-                    Description
+                    {strings.descriptionLabel}
                     <textarea
                       name="bannerCopy"
                       defaultValue={selectedBanner?.copy ?? ""}
@@ -394,29 +418,29 @@ export default async function GachaPage({
                   </label>
                   <div className={admin.formGridThree}>
                     <label className={admin.field}>
-                      Banner type
+                      {strings.bannerType}
                       <select
                         name="bannerType"
                         defaultValue={selectedBanner?.type ?? "COLLECTION"}
                       >
-                        <option value="CHARACTER">Character</option>
-                        <option value="WEAPON">Object</option>
-                        <option value="COLLECTION">Collection</option>
+                        <option value="CHARACTER">{strings.character}</option>
+                        <option value="WEAPON">{strings.object}</option>
+                        <option value="COLLECTION">{strings.collection}</option>
                       </select>
                     </label>
                     <label className={admin.field}>
-                      Theme
+                      {strings.theme}
                       <select
                         name="bannerTheme"
                         defaultValue={selectedBanner?.theme ?? "anemo"}
                       >
-                        <option value="anemo">Breeze</option>
-                        <option value="ember">Ember</option>
-                        <option value="starlight">Starlight</option>
+                        <option value="anemo">{strings.breeze}</option>
+                        <option value="ember">{strings.ember}</option>
+                        <option value="starlight">{strings.starlight}</option>
                       </select>
                     </label>
                     <label className={admin.field}>
-                      Featured rewards
+                      {strings.featuredRewards}
                       <input
                         name="featuredCount"
                         type="number"
@@ -428,7 +452,7 @@ export default async function GachaPage({
                   </div>
                   <div className={styles.dateGrid}>
                     <label className={admin.field}>
-                      Starts on (optional)
+                      {strings.startsOptional}
                       <input
                         name="startDate"
                         type="date"
@@ -440,7 +464,7 @@ export default async function GachaPage({
                       />
                     </label>
                     <label className={admin.field}>
-                      Ends on (optional)
+                      {strings.endsOptional}
                       <input
                         name="endDate"
                         type="date"
@@ -459,18 +483,15 @@ export default async function GachaPage({
                       defaultChecked={selectedBanner?.active ?? false}
                     />
                     <span>
-                      Include this banner when publishing
-                      <small>
-                        Leave both dates empty to keep it open whenever the game
-                        is published.
-                      </small>
+                      {strings.includeBanner}
+                      <small>{strings.includeBannerHelp}</small>
                     </span>
                   </label>
                   <SubmitButton
                     className={admin.buttonPrimary}
-                    pendingLabel="Saving banner…"
+                    pendingLabel={strings.savingBanner}
                   >
-                    Save banner
+                    {strings.saveBanner}
                   </SubmitButton>
                 </form>
 
@@ -487,18 +508,14 @@ export default async function GachaPage({
                     />
                     <div className={styles.editorHeading}>
                       <div>
-                        <p>Reward pool</p>
-                        <h3>Choose product variants</h3>
+                        <p>{strings.rewardPool}</p>
+                        <h3>{strings.chooseVariants}</h3>
                       </div>
                       <span className={admin.pill}>
-                        {selectedEntries.size} selected
+                        {strings.selectedCount(selectedEntries.size)}
                       </span>
                     </div>
-                    <p className={styles.sectionHelp}>
-                      Tier odds choose a rarity first; weight chooses among
-                      reveals inside that rarity. Higher weight means more
-                      frequent.
-                    </p>
+                    <p className={styles.sectionHelp}>{strings.poolHelp}</p>
                     {products.some((product) => product.variants.length) ? (
                       <div className={styles.variantList}>
                         {products.flatMap((product) =>
@@ -518,30 +535,39 @@ export default async function GachaPage({
                                   />
                                   <span>
                                     <strong>
-                                      {product.name} · {variant.label}
+                                      {parseBilingual(product.name, locale)} ·{" "}
+                                      {parseBilingual(variant.label, locale)}
                                     </strong>
                                     <small>
-                                      {variant.status.toLocaleLowerCase()}
+                                      {workspaceStrings.common
+                                        .variantStatusLabels[variant.status] ??
+                                        variant.status}
                                     </small>
                                   </span>
                                 </label>
                                 <div className={styles.variantControls}>
                                   <label>
-                                    Rarity
+                                    {strings.rarity}
                                     <select
                                       name={`rarity:${variant.id}`}
                                       defaultValue={entry?.rarity ?? "COMMON"}
                                     >
-                                      <option value="COMMON">Common</option>
-                                      <option value="RARE">Rare</option>
-                                      <option value="EPIC">Epic</option>
+                                      <option value="COMMON">
+                                        {strings.common}
+                                      </option>
+                                      <option value="RARE">
+                                        {strings.rare}
+                                      </option>
+                                      <option value="EPIC">
+                                        {strings.epic}
+                                      </option>
                                       <option value="LEGENDARY">
-                                        Legendary
+                                        {strings.legendary}
                                       </option>
                                     </select>
                                   </label>
                                   <label>
-                                    Weight
+                                    {strings.weight}
                                     <input
                                       name={`weight:${variant.id}`}
                                       type="number"
@@ -556,7 +582,7 @@ export default async function GachaPage({
                                       type="checkbox"
                                       defaultChecked={entry?.featured ?? false}
                                     />
-                                    Featured
+                                    {strings.featured}
                                   </label>
                                 </div>
                               </div>
@@ -566,42 +592,36 @@ export default async function GachaPage({
                       </div>
                     ) : (
                       <div className={styles.compactEmpty}>
-                        <h3>No eligible variants</h3>
-                        <p>
-                          Add a draft or live product before building a pool.
-                        </p>
+                        <h3>{strings.noVariants}</h3>
+                        <p>{strings.noVariantsBody}</p>
                         <Link
                           className={admin.button}
                           href={`/manage/${boothId}/products?new=1`}
                         >
-                          Add product
+                          {strings.addProduct}
                         </Link>
                       </div>
                     )}
                     <SubmitButton
                       className={admin.button}
-                      pendingLabel="Saving pool…"
+                      pendingLabel={strings.savingPool}
                     >
-                      Save reward pool
+                      {strings.savePool}
                     </SubmitButton>
                   </form>
                 ) : (
-                  <p className={styles.helperText}>
-                    Save the banner before choosing its reward pool.
-                  </p>
+                  <p className={styles.helperText}>{strings.saveBannerFirst}</p>
                 )}
               </>
             ) : (
               <div className={styles.editorEmpty}>
-                <h3>Select a banner to edit</h3>
-                <p>
-                  Banner details and reward choices stay together in this panel.
-                </p>
+                <h3>{strings.selectBanner}</h3>
+                <p>{strings.selectBannerBody}</p>
                 <Link
                   className={admin.buttonPrimary}
                   href={`/manage/${boothId}/gacha?new=1`}
                 >
-                  Create banner
+                  {strings.createBanner}
                 </Link>
               </div>
             )}
@@ -615,17 +635,14 @@ export default async function GachaPage({
       >
         <div className={admin.panelHeader}>
           <div>
-            <h2 id="gacha-preview-title">Saved draft preview</h2>
-            <p>
-              This uses the same game component as the public booth. Save each
-              form before checking the preview.
-            </p>
+            <h2 id="gacha-preview-title">{strings.previewTitle}</h2>
+            <p>{strings.previewBody}</p>
           </div>
           <span
             className={admin.statusBadge}
             data-status={compilation.success ? "ACTIVE" : "DRAFT"}
           >
-            {compilation.success ? "Ready to publish" : "Needs attention"}
+            {compilation.success ? strings.ready : strings.needsAttention}
           </span>
         </div>
 
@@ -640,27 +657,34 @@ export default async function GachaPage({
           </div>
         ) : (
           <div className={styles.readiness} role="note">
-            <h3>Finish the saved draft</h3>
+            <h3>{strings.finishDraft}</h3>
             <ul>
               {compilation.errors.map((error) => (
-                <li key={error}>{error}</li>
+                <li key={error}>
+                  {localizeGachaCompilationError(error, strings, (value) =>
+                    parseBilingual(value, locale),
+                  )}
+                </li>
               ))}
             </ul>
           </div>
         )}
       </section>
 
-      <aside className={styles.publishBar} aria-label="Game publishing">
+      <aside className={styles.publishBar} aria-label={strings.publishingAria}>
         <div>
           <strong>
-            {isPublished ? "Game is published" : "Draft is private"}
+            {isPublished ? strings.gamePublished : strings.draftPrivate}
           </strong>
           <span>
             {isPublished && config?.publishedAt
-              ? `Published ${config.publishedAt.toLocaleString("en-GB", {
-                  timeZone: "Asia/Ho_Chi_Minh",
-                })}`
-              : "Publishing creates a public snapshot; later edits stay private."}
+              ? strings.publishedAt(
+                  config.publishedAt.toLocaleString(
+                    locale === "vi" ? "vi-VN" : "en-GB",
+                    { timeZone: "Asia/Ho_Chi_Minh" },
+                  ),
+                )
+              : strings.publishSnapshot}
           </span>
         </div>
         <div className={styles.publishActions}>
@@ -669,9 +693,9 @@ export default async function GachaPage({
               <input type="hidden" name="boothId" value={boothId} />
               <SubmitButton
                 className={admin.button}
-                pendingLabel="Unpublishing…"
+                pendingLabel={strings.unpublishing}
               >
-                Unpublish
+                {strings.unpublish}
               </SubmitButton>
             </form>
           ) : null}
@@ -679,10 +703,10 @@ export default async function GachaPage({
             <input type="hidden" name="boothId" value={boothId} />
             <SubmitButton
               className={admin.buttonPrimary}
-              pendingLabel="Publishing…"
+              pendingLabel={strings.publishing}
               disabled={!compilation.success}
             >
-              {isPublished ? "Publish saved changes" : "Publish game"}
+              {isPublished ? strings.publishChanges : strings.publishGame}
             </SubmitButton>
           </form>
         </div>

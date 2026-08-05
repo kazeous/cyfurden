@@ -2,6 +2,8 @@
 
 import { useId } from "react";
 import styles from "./bilingual-field.module.css";
+import type { Locale } from "@/lib/i18n";
+import { getWorkspaceStrings } from "@/lib/i18n/workspace";
 import { parseBilingual } from "@/lib/i18n/parser";
 
 type BilingualFieldProps = {
@@ -12,6 +14,7 @@ type BilingualFieldProps = {
   maxLength?: number;
   placeholder?: string;
   required?: boolean;
+  locale?: Locale;
 };
 
 /**
@@ -31,8 +34,10 @@ export function BilingualField({
   maxLength,
   placeholder,
   required,
+  locale = "en",
 }: BilingualFieldProps) {
   const inputId = useId();
+  const strings = getWorkspaceStrings(locale).bilingualField;
 
   return (
     <div className={styles.field}>
@@ -48,7 +53,7 @@ export function BilingualField({
         className={styles.textarea}
       />
       <details className={styles.preview}>
-        <summary>Preview both languages</summary>
+        <summary>{strings.preview}</summary>
         <p>
           <strong>EN:</strong> {parseBilingual(value, "en") || "—"}
         </p>

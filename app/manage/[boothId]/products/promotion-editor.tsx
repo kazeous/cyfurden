@@ -6,6 +6,8 @@ import {
   type PromotionSaveState,
 } from "@/app/manage/[boothId]/actions";
 import { SubmitButton } from "@/components/admin/form-controls";
+import { parseBilingual, type Locale } from "@/lib/i18n";
+import { getWorkspaceStrings } from "@/lib/i18n/workspace";
 import styles from "./products.module.css";
 
 type PromotionEditorProduct = {
@@ -34,13 +36,17 @@ function ProductPicker({
   name,
   products,
   selectedProductIds,
+  locale,
 }: {
   legend: string;
   hint: string;
   name: "buyProductIds" | "rewardProductIds";
   products: PromotionEditorProduct[];
   selectedProductIds: string[];
+  locale: Locale;
 }) {
+  const workspaceStrings = getWorkspaceStrings(locale);
+  const strings = workspaceStrings.promotion;
   const selected = new Set(selectedProductIds);
   return (
     <fieldset className={styles.promotionPicker}>
@@ -57,19 +63,19 @@ function ProductPicker({
                 defaultChecked={selected.has(product.id)}
               />
               <span>
-                <strong>{product.name}</strong>
+                <strong>{parseBilingual(product.name, locale)}</strong>
                 <small>
-                  {product.sku || "No SKU"} ·{" "}
-                  {product.status.toLowerCase().replaceAll("_", " ")}
+                  {product.sku || workspaceStrings.common.noSku} ·{" "}
+                  {workspaceStrings.common.productStatusLabels[
+                    product.status as keyof typeof workspaceStrings.common.productStatusLabels
+                  ] ?? product.status}
                 </small>
               </span>
             </label>
           ))}
         </div>
       ) : (
-        <p className={styles.promotionEmpty}>
-          Create a product before choosing qualifying or reward items.
-        </p>
+        <p className={styles.promotionEmpty}>{strings.emptyProducts}</p>
       )}
     </fieldset>
   );
@@ -77,13 +83,16 @@ function ProductPicker({
 
 export function PromotionEditor({
   boothId,
+  locale,
   promotion,
   products,
 }: {
   boothId: string;
+  locale: Locale;
   promotion: PromotionEditorValue;
   products: PromotionEditorProduct[];
 }) {
+  const strings = getWorkspaceStrings(locale).promotion;
   const [state, action] = useActionState(savePromotionAction, initialState);
   const buyCount = promotion.buyProductIds.length;
   const rewardCount = promotion.rewardProductIds.length;
@@ -95,15 +104,12 @@ export function PromotionEditor({
     >
       <div className={styles.promotionHeader}>
         <div>
-          <p className={styles.promotionEyebrow}>Cart offer</p>
-          <h2 id="quantity-promotion-heading">Quantity promotion</h2>
-          <p>
-            Reward selected cart items after the customer adds enough qualifying
-            products. Pricing is finalized when stock is reserved.
-          </p>
+          <p className={styles.promotionEyebrow}>{strings.eyebrow}</p>
+          <h2 id="quantity-promotion-heading">{strings.title}</h2>
+          <p>{strings.description}</p>
         </div>
         <span className={styles.promotionStatus} data-active={promotion.active}>
-          {promotion.active ? "Active" : "Paused"}
+          {promotion.active ? strings.active : strings.paused}
         </span>
       </div>
 
@@ -114,7 +120,7 @@ export function PromotionEditor({
         ) : null}
 
         <label className={styles.field}>
-          Offer copy
+          {strings.offerCopy}
           <input
             name="name"
             required
@@ -122,15 +128,12 @@ export function PromotionEditor({
             maxLength={160}
             defaultValue={promotion.name}
           />
-          <small>
-            Public copy supports{" "}
-            <code>[en]English[/en][vi]Tiếng Việt[/vi]</code>.
-          </small>
+          <small>{strings.bilingualHelp}</small>
         </label>
 
         <div className={styles.promotionQuantities}>
           <label className={styles.field}>
-            Buy quantity
+            {strings.buyQuantity}
             <input
               name="buyQuantity"
               type="number"
@@ -142,7 +145,7 @@ export function PromotionEditor({
             />
           </label>
           <label className={styles.field}>
-            Free quantity
+            {strings.freeQuantity}
             <input
               name="rewardQuantity"
               type="number"
@@ -157,15 +160,17 @@ export function PromotionEditor({
 
         <div className={styles.promotionPickers}>
           <ProductPicker
-            legend={`Qualifying products · ${buyCount} selected`}
-            hint="Paid units from these products unlock the reward."
+            legend={strings.qualifyingLegend(buyCount)}
+            hint={strings.qualifyingHint}
+            locale={locale}
             name="buyProductIds"
             products={products}
             selectedProductIds={promotion.buyProductIds}
           />
           <ProductPicker
-            legend={`Reward products · ${rewardCount} selected`}
-            hint="Eligible units from these products become free."
+            legend={strings.rewardLegend(rewardCount)}
+            hint={strings.rewardHint}
+            locale={locale}
             name="rewardProductIds"
             products={products}
             selectedProductIds={promotion.rewardProductIds}
@@ -180,10 +185,8 @@ export function PromotionEditor({
               defaultChecked={promotion.active}
             />
             <span>
-              Active
-              <small>
-                Show the nudge and apply rewards to new reservations.
-              </small>
+              {strings.active}
+              <small>{strings.activeHelp}</small>
             </span>
           </label>
           <label className={styles.checkbox}>
@@ -193,8 +196,8 @@ export function PromotionEditor({
               defaultChecked={promotion.repeatable}
             />
             <span>
-              Repeatable
-              <small>Let one cart unlock the offer more than once.</small>
+              {strings.repeatable}
+              <small>{strings.repeatableHelp}</small>
             </span>
           </label>
         </div>
@@ -206,15 +209,12 @@ export function PromotionEditor({
           {state.error}
         </p>
         <div className={styles.promotionActions}>
-          <p>
-            Same-product offers are supported: buy 3, get 1 requires four units
-            in the cart.
-          </p>
+          <p>{strings.sameProductHelp}</p>
           <SubmitButton
             className={styles.saveButton}
-            pendingLabel="Saving offer…"
+            pendingLabel={strings.saving}
           >
-            Save promotion
+            {strings.save}
           </SubmitButton>
         </div>
       </form>

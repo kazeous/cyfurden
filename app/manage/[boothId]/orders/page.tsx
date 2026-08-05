@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { requireBoothSection } from "@/lib/authorization";
 import { db } from "@/lib/db";
-import { parseBilingual } from "@/lib/i18n";
+import { parseBilingual, type Locale } from "@/lib/i18n";
+import { readLocaleCookie } from "@/lib/i18n/server-locale";
+import { getWorkspaceStrings } from "@/lib/i18n/workspace";
 import {
   eventDateInput,
   eventPeriod,
@@ -32,33 +35,23 @@ type OrderStatus = (typeof orderStatuses)[number];
 type StatusFilter = OrderStatus | "ALL";
 type DateRange = "7" | "30" | "90" | "all";
 
-const statusFilters: Array<{ value: StatusFilter; label: string }> = [
-  { value: "ALL", label: "All" },
-  { value: "PENDING", label: "Needs review" },
-  { value: "CONFIRMED", label: "Confirmed" },
-  { value: "FULFILLED", label: "Fulfilled" },
-  { value: "CANCELLED", label: "Cancelled" },
-  { value: "EXPIRED", label: "Expired" },
-];
-
-const dateRanges: Array<{ value: DateRange; label: string }> = [
-  { value: "7", label: "7 days" },
-  { value: "30", label: "30 days" },
-  { value: "90", label: "90 days" },
-  { value: "all", label: "All time" },
-];
+const dateRangeValues: DateRange[] = ["7", "30", "90", "all"];
 
 const PAGE_SIZE = 25;
 
-const formatMoney = (priceCents: number | bigint, currency: string) =>
-  new Intl.NumberFormat("vi-VN", {
+const formatMoney = (
+  priceCents: number | bigint,
+  currency: string,
+  locale: Locale,
+) =>
+  new Intl.NumberFormat(locale === "vi" ? "vi-VN" : "en-GB", {
     style: "currency",
     currency,
     maximumFractionDigits: 0,
   }).format(BigInt(priceCents) / BigInt(100));
 
-const formatDate = (date: Date) =>
-  new Intl.DateTimeFormat("en-GB", {
+const formatDate = (date: Date, locale: Locale) =>
+  new Intl.DateTimeFormat(locale === "vi" ? "vi-VN" : "en-GB", {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -77,9 +70,7 @@ const parseStatus = (value: string | undefined): StatusFilter => {
 };
 
 const parseDateRange = (value: string | undefined): DateRange =>
-  dateRanges.some((range) => range.value === value)
-    ? (value as DateRange)
-    : "7";
+  dateRangeValues.includes(value as DateRange) ? (value as DateRange) : "7";
 
 const getDateCutoff = (range: DateRange) => {
   if (range === "all") return undefined;
@@ -107,20 +98,28 @@ const buildOrdersHref = (
   return `/manage/${boothId}/orders?${query.toString()}`;
 };
 
-const statusLabel = (status: OrderStatus) =>
-  statusFilters.find((filter) => filter.value === status)?.label ?? status;
-
-const formatEventRange = (startsAt: Date, endsAt: Date) => {
-  const formatter = new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "Asia/Ho_Chi_Minh",
-  });
+const formatEventRange = (startsAt: Date, endsAt: Date, locale: Locale) => {
+  const formatter = new Intl.DateTimeFormat(
+    locale === "vi" ? "vi-VN" : "en-GB",
+    {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      timeZone: "Asia/Ho_Chi_Minh",
+    },
+  );
   return `${formatter.format(startsAt)} – ${formatter.format(
     new Date(endsAt.getTime() - 1),
   )}`;
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  const strings = getWorkspaceStrings(await readLocaleCookie()).orders;
+  return {
+    title: strings.metadataTitle,
+    robots: { index: false, follow: false },
+  };
+}
 
 export default async function OrdersPage({
   params,
@@ -138,7 +137,28 @@ export default async function OrdersPage({
 }) {
   const { boothId } = await params;
   const query = await searchParams;
-  const { membership } = await requireBoothSection(boothId, "orders");
+  const [{ membership }, locale] = await Promise.all([
+    requireBoothSection(boothId, "orders"),
+    readLocaleCookie(),
+  ]);
+  const workspaceStrings = getWorkspaceStrings(locale);
+  const strings = workspaceStrings.orders;
+  const statusFilters: Array<{ value: StatusFilter; label: string }> = [
+    { value: "ALL", label: strings.filterAll },
+    { value: "PENDING", label: strings.filterNeedsReview },
+    { value: "CONFIRMED", label: strings.filterConfirmed },
+    { value: "FULFILLED", label: strings.filterFulfilled },
+    { value: "CANCELLED", label: strings.filterCancelled },
+    { value: "EXPIRED", label: strings.filterExpired },
+  ];
+  const dateRanges: Array<{ value: DateRange; label: string }> = [
+    { value: "7", label: strings.range7 },
+    { value: "30", label: strings.range30 },
+    { value: "90", label: strings.range90 },
+    { value: "all", label: strings.rangeAll },
+  ];
+  const statusLabel = (status: OrderStatus) =>
+    workspaceStrings.common.orderStatusLabels[status];
   await expireStaleOrders(boothId);
 
   const selectedMode = parseOrderViewMode(query.mode);
@@ -252,7 +272,7 @@ export default async function OrdersPage({
     membership.role === "OWNER" || membership.role === "ADMIN";
   const activeStatusLabel =
     statusFilters.find((filter) => filter.value === selectedStatus)?.label ??
-    "orders";
+    strings.filterAll;
 
   const payment = boothWithSettings?.paymentInstructions;
   const storefrontDoc = boothWithSettings?.storefront?.publishedDocument
@@ -276,16 +296,16 @@ export default async function OrdersPage({
     <div className={styles.ordersPage}>
       <header className={styles.pageHeader}>
         <div>
-          <p className={styles.eyebrow}>Live operations</p>
-          <h1>Orders</h1>
-          <p>
-            Review reservations, confirm bank transfers manually, and prepare
-            fulfilment.
-          </p>
+          <p className={styles.eyebrow}>{strings.eyebrow}</p>
+          <h1>{strings.title}</h1>
+          <p>{strings.description}</p>
         </div>
         <OrdersLiveRefresh
           boothId={boothId}
-          boothName={boothWithSettings?.name ?? "this booth"}
+          boothName={
+            parseBilingual(boothWithSettings?.name, locale) || strings.thisBooth
+          }
+          locale={locale}
           latestOrder={
             latestOrder
               ? {
@@ -297,32 +317,31 @@ export default async function OrdersPage({
         />
       </header>
 
-      <aside className={styles.manualNotice} aria-label="Payment review policy">
+      <aside
+        className={styles.manualNotice}
+        aria-label={strings.paymentPolicyAria}
+      >
         <span className={styles.noticeIcon} aria-hidden="true">
           i
         </span>
         <div>
-          <strong>Manual bank-transfer review</strong>
-          <p>
-            Cyfurden does not verify payments. Confirm an order only after booth
-            staff checks the transfer outside Cyfurden.
-          </p>
+          <strong>{strings.manualReviewTitle}</strong>
+          <p>{strings.manualReviewBody}</p>
         </div>
       </aside>
 
       {hasChecklist ? (
         <aside
           className={styles.setupChecklist}
-          aria-label="Booth setup checklist"
+          aria-label={strings.checklistAria}
         >
           <header>
             <span className={styles.noticeIcon} aria-hidden="true">
               ⚠
             </span>
-            <strong>Attention needed</strong>
+            <strong>{strings.attentionNeeded}</strong>
             <span className={styles.checklistCount}>
-              {incompleteChecklistCount}{" "}
-              {incompleteChecklistCount === 1 ? "item" : "items"} remaining
+              {strings.checklistBody(incompleteChecklistCount)}
             </span>
           </header>
           <ul>
@@ -332,10 +351,10 @@ export default async function OrdersPage({
                   {item.complete ? "✓" : "○"}
                 </span>
                 {item.complete ? (
-                  <span>{item.label}</span>
+                  <span>{strings.checklistLabels[item.key]}</span>
                 ) : (
                   <Link href={`/manage/${boothId}/${item.destination}`}>
-                    {item.label}
+                    {strings.checklistLabels[item.key]}
                   </Link>
                 )}
               </li>
@@ -344,12 +363,12 @@ export default async function OrdersPage({
         </aside>
       ) : null}
 
-      <nav className={styles.orderModes} aria-label="Orders view">
+      <nav className={styles.orderModes} aria-label={strings.ordersViewAria}>
         <Link
           href={buildOrdersHref(boothId, selectedStatus, selectedDate)}
           aria-current={selectedMode === "queue" ? "page" : undefined}
         >
-          Queue
+          {strings.queue}
           <span>{totalOrderCount}</span>
         </Link>
         <Link
@@ -364,7 +383,7 @@ export default async function OrdersPage({
           )}
           aria-current={selectedMode === "events" ? "page" : undefined}
         >
-          Events
+          {strings.events}
           <span>{events.length}</span>
         </Link>
       </nav>
@@ -376,16 +395,11 @@ export default async function OrdersPage({
         >
           <header className={styles.eventWorkspaceHeader}>
             <div>
-              <p className={styles.eyebrow}>Event mode</p>
-              <h2 id="events-title">Booth events</h2>
-              <p>
-                Reservations are attributed when they are placed. Existing
-                attribution stays attached when an event is edited.
-              </p>
+              <p className={styles.eyebrow}>{strings.eventMode}</p>
+              <h2 id="events-title">{strings.boothEvents}</h2>
+              <p>{strings.eventIntro}</p>
             </div>
-            <span>
-              {events.length} {events.length === 1 ? "event" : "events"}
-            </span>
+            <span>{strings.eventCount(events.length)}</span>
           </header>
 
           {events.length ? (
@@ -400,21 +414,25 @@ export default async function OrdersPage({
                           className={styles.eventPeriod}
                           data-period={period}
                         >
-                          {period}
+                          {strings.periodLabels[period]}
                         </span>
                         <h3>{event.name}</h3>
-                        <p>{formatEventRange(event.startsAt, event.endsAt)}</p>
+                        <p>
+                          {formatEventRange(
+                            event.startsAt,
+                            event.endsAt,
+                            locale,
+                          )}
+                        </p>
                       </div>
-                      <strong>
-                        {event._count.orders}{" "}
-                        {event._count.orders === 1 ? "order" : "orders"}
-                      </strong>
+                      <strong>{strings.orderCount(event._count.orders)}</strong>
                     </div>
                     {canManageEvents ? (
                       <details className={styles.eventEdit}>
-                        <summary>Edit event</summary>
+                        <summary>{strings.editEvent}</summary>
                         <EventEditor
                           boothId={boothId}
+                          locale={locale}
                           event={{
                             id: event.id,
                             name: event.name,
@@ -429,21 +447,16 @@ export default async function OrdersPage({
               })}
             </div>
           ) : (
-            <p className={styles.noEvents}>
-              No events are defined yet. Reservations will remain available in
-              Queue without an event attribution.
-            </p>
+            <p className={styles.noEvents}>{strings.noEvents}</p>
           )}
 
           {canManageEvents ? (
             <details className={styles.createEvent} open={!events.length}>
-              <summary>Create an event</summary>
-              <EventEditor boothId={boothId} />
+              <summary>{strings.createEvent}</summary>
+              <EventEditor boothId={boothId} locale={locale} />
             </details>
           ) : (
-            <p className={styles.eventReadOnly}>
-              Event dates are managed by booth owners and admins.
-            </p>
+            <p className={styles.eventReadOnly}>{strings.eventOwnerOnly}</p>
           )}
         </section>
       ) : null}
@@ -452,23 +465,28 @@ export default async function OrdersPage({
         <div className={styles.filterHeader}>
           <div>
             <h2 id="order-filters-title">
-              {selectedMode === "events" ? "Event orders" : "Order queue"}
+              {selectedMode === "events"
+                ? strings.eventOrders
+                : strings.orderQueue}
             </h2>
             <p>
               {selectedMode === "events"
-                ? "Choose an event and narrow its orders by status."
-                : "Narrow the queue by status and reservation date."}
+                ? strings.eventFilterIntro
+                : strings.queueFilterIntro}
             </p>
           </div>
           <span className={styles.resultCount} aria-live="polite">
-            {filteredOrderCount} {filteredOrderCount === 1 ? "order" : "orders"}
+            {strings.orderCount(filteredOrderCount)}
           </span>
         </div>
 
         {selectedMode === "events" ? (
           <div className={styles.filterGroup}>
-            <span className={styles.filterLabel}>Event</span>
-            <nav className={styles.eventFilters} aria-label="Order event">
+            <span className={styles.filterLabel}>{strings.eventLabel}</span>
+            <nav
+              className={styles.eventFilters}
+              aria-label={strings.orderEventAria}
+            >
               <Link
                 href={buildOrdersHref(
                   boothId,
@@ -482,7 +500,7 @@ export default async function OrdersPage({
                 className={styles.eventFilter}
                 aria-current={selectedEvent === "ALL" ? "page" : undefined}
               >
-                <span>All events</span>
+                <span>{strings.allEvents}</span>
                 <span className={styles.filterCount}>
                   {events.reduce(
                     (total, event) => total + event._count.orders,
@@ -516,8 +534,8 @@ export default async function OrdersPage({
         ) : null}
 
         <div className={styles.filterGroup}>
-          <span className={styles.filterLabel}>Status</span>
-          <nav className={styles.statusFilters} aria-label="Order status">
+          <span className={styles.filterLabel}>{strings.statusLabel}</span>
+          <nav className={styles.statusFilters} aria-label={strings.statusAria}>
             {statusFilters.map((filter) => {
               const count =
                 filter.value === "ALL"
@@ -549,8 +567,11 @@ export default async function OrdersPage({
 
         {selectedMode === "queue" ? (
           <div className={styles.filterGroup}>
-            <span className={styles.filterLabel}>Placed</span>
-            <nav className={styles.dateFilters} aria-label="Order date range">
+            <span className={styles.filterLabel}>{strings.placedLabel}</span>
+            <nav
+              className={styles.dateFilters}
+              aria-label={strings.dateRangeAria}
+            >
               <Link
                 href={buildOrdersHref(
                   boothId,
@@ -562,7 +583,7 @@ export default async function OrdersPage({
                 className={styles.dateFilter}
                 aria-current={selectedToday ? "page" : undefined}
               >
-                Today
+                {strings.today}
               </Link>
               {dateRanges.map((range) => {
                 const selected = !selectedToday && range.value === selectedDate;
@@ -583,23 +604,29 @@ export default async function OrdersPage({
       </section>
 
       {filteredOrderCount > 0 ? (
-        <dl className={styles.metrics} aria-label="Filtered order summary">
+        <dl className={styles.metrics} aria-label={strings.summaryAria}>
           <div>
-            <dt>Orders shown</dt>
+            <dt>{strings.ordersShown}</dt>
             <dd>{orders.length}</dd>
             <small>
-              {firstVisible}–{lastVisible} of {filteredOrderCount} matching
+              {strings.ordersShownHelp(
+                firstVisible,
+                lastVisible,
+                filteredOrderCount,
+              )}
             </small>
           </div>
           <div>
-            <dt>Page value</dt>
-            <dd>{formatMoney(pageValue, orders[0]?.currency ?? "VND")}</dd>
-            <small>Current page total</small>
+            <dt>{strings.pageValue}</dt>
+            <dd>
+              {formatMoney(pageValue, orders[0]?.currency ?? "VND", locale)}
+            </dd>
+            <small>{strings.pageValueHelp}</small>
           </div>
           <div>
-            <dt>Units requested</dt>
+            <dt>{strings.unitsRequested}</dt>
             <dd>{pageUnits}</dd>
-            <small>Across orders shown</small>
+            <small>{strings.unitsHelp}</small>
           </div>
         </dl>
       ) : null}
@@ -613,30 +640,31 @@ export default async function OrdersPage({
             <div>
               <h2 id="results-title">{activeStatusLabel}</h2>
               <p>
-                Showing {firstVisible}–{lastVisible} of {filteredOrderCount}
+                {strings.showing(firstVisible, lastVisible, filteredOrderCount)}
               </p>
             </div>
-            <span>25 rows per page</span>
+            <span>{strings.rowsPerPage(PAGE_SIZE)}</span>
           </div>
 
           <div className={styles.tableWrap}>
             <table className={styles.orderTable}>
               <caption className={styles.srOnly}>
-                Orders matching the selected{" "}
-                {selectedMode === "events"
-                  ? "event and status"
-                  : "status and date range"}
+                {strings.tableCaption(
+                  selectedMode === "events"
+                    ? `${strings.eventLabel} / ${strings.statusLabel}`
+                    : `${strings.statusLabel} / ${strings.placedLabel}`,
+                )}
               </caption>
               <thead>
                 <tr>
-                  <th scope="col">Order</th>
-                  <th scope="col">Placed</th>
-                  <th scope="col">Items</th>
+                  <th scope="col">{strings.orderColumn}</th>
+                  <th scope="col">{strings.placedColumn}</th>
+                  <th scope="col">{strings.itemsColumn}</th>
                   <th scope="col" className={styles.numericCell}>
-                    Total
+                    {strings.totalColumn}
                   </th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Update status</th>
+                  <th scope="col">{strings.statusColumn}</th>
+                  <th scope="col">{strings.updateColumn}</th>
                 </tr>
               </thead>
               <tbody>
@@ -662,14 +690,14 @@ export default async function OrdersPage({
                       ) : null}
                     </th>
                     <td className={styles.dateCell}>
-                      {formatDate(order.placedAt)}
+                      {formatDate(order.placedAt, locale)}
                     </td>
                     <td>
-                      <OrderDetails order={order} />
+                      <OrderDetails order={order} locale={locale} />
                     </td>
                     <td className={styles.numericCell}>
                       <strong>
-                        {formatMoney(order.totalCents, order.currency)}
+                        {formatMoney(order.totalCents, order.currency, locale)}
                       </strong>
                     </td>
                     <td>
@@ -686,6 +714,7 @@ export default async function OrdersPage({
                         orderId={order.id}
                         orderCode={order.code}
                         currentStatus={order.status}
+                        locale={locale}
                       />
                     </td>
                   </tr>
@@ -694,7 +723,7 @@ export default async function OrdersPage({
             </table>
           </div>
 
-          <ul className={styles.mobileCards} aria-label="Orders">
+          <ul className={styles.mobileCards} aria-label={strings.ordersAria}>
             {orders.map((order) => (
               <li key={order.id} className={styles.mobileCard}>
                 <div className={styles.mobileCardHeader}>
@@ -716,15 +745,17 @@ export default async function OrdersPage({
                 </div>
                 <dl className={styles.mobileDetails}>
                   <div>
-                    <dt>Placed</dt>
-                    <dd>{formatDate(order.placedAt)}</dd>
+                    <dt>{strings.placedColumn}</dt>
+                    <dd>{formatDate(order.placedAt, locale)}</dd>
                   </div>
                   <div>
-                    <dt>Total</dt>
-                    <dd>{formatMoney(order.totalCents, order.currency)}</dd>
+                    <dt>{strings.totalColumn}</dt>
+                    <dd>
+                      {formatMoney(order.totalCents, order.currency, locale)}
+                    </dd>
                   </div>
                 </dl>
-                <OrderDetails order={order} />
+                <OrderDetails order={order} locale={locale} />
                 <div className={styles.contactLinks}>
                   <a
                     className={styles.emailLink}
@@ -743,6 +774,7 @@ export default async function OrdersPage({
                   orderId={order.id}
                   orderCode={order.code}
                   currentStatus={order.status}
+                  locale={locale}
                 />
               </li>
             ))}
@@ -750,10 +782,10 @@ export default async function OrdersPage({
 
           <div className={styles.pagination}>
             <p>
-              Showing {firstVisible}–{lastVisible} of {filteredOrderCount}{" "}
-              matching orders
+              {strings.showing(firstVisible, lastVisible, filteredOrderCount)}{" "}
+              {strings.matchingOrders}
             </p>
-            <nav aria-label="Order pages">
+            <nav aria-label={strings.pagesAria}>
               {hasPreviousPage ? (
                 <Link
                   href={buildOrdersHref(
@@ -766,14 +798,12 @@ export default async function OrdersPage({
                     selectedEvent,
                   )}
                 >
-                  Previous
+                  {strings.previous}
                 </Link>
               ) : (
-                <span aria-disabled="true">Previous</span>
+                <span aria-disabled="true">{strings.previous}</span>
               )}
-              <strong>
-                Page {currentPage} of {totalPages}
-              </strong>
+              <strong>{strings.pageOf(currentPage, totalPages)}</strong>
               {hasNextPage ? (
                 <Link
                   href={buildOrdersHref(
@@ -786,10 +816,10 @@ export default async function OrdersPage({
                     selectedEvent,
                   )}
                 >
-                  Next
+                  {strings.next}
                 </Link>
               ) : (
-                <span aria-disabled="true">Next</span>
+                <span aria-disabled="true">{strings.next}</span>
               )}
             </nav>
           </div>
@@ -799,16 +829,16 @@ export default async function OrdersPage({
           <span aria-hidden="true">◎</span>
           <div>
             <h2 id="empty-title">
-              {isFirstUse ? "No orders yet" : "No matching orders"}
+              {isFirstUse ? strings.noOrdersTitle : strings.noMatchingTitle}
             </h2>
             <p>
               {isFirstUse
-                ? "Reservations from the public storefront will appear here. Payment remains pending until booth staff reviews the bank transfer manually."
+                ? strings.firstUseBody
                 : selectedMode === "events"
                   ? events.length
-                    ? "Try a different event or status. Reservations placed outside an event remain available in Queue."
-                    : "Create an event to begin attributing new reservations. Existing reservations remain available in Queue."
-                  : "Try a different status or a wider date range to find the order you need."}
+                    ? strings.noEventMatchBody
+                    : strings.noEventsBody
+                  : strings.noMatchBody}
             </p>
             {isFirstUse ? null : (
               <Link
@@ -827,7 +857,7 @@ export default async function OrdersPage({
                     : buildOrdersHref(boothId, "ALL", "all")
                 }
               >
-                Clear filters
+                {strings.clearFilters}
               </Link>
             )}
           </div>
@@ -839,7 +869,9 @@ export default async function OrdersPage({
 
 function OrderDetails({
   order,
+  locale,
 }: {
+  locale: Locale;
   order: {
     code: string;
     customerName: string;
@@ -866,6 +898,7 @@ function OrderDetails({
     }>;
   };
 }) {
+  const strings = getWorkspaceStrings(locale).orders;
   const visibleItems = order.items.slice(0, 2);
   const unitCount = order.items.reduce(
     (total, item) => total + item.quantity,
@@ -875,27 +908,28 @@ function OrderDetails({
     <div className={styles.itemList}>
       {visibleItems.map((item) => (
         <span key={item.id}>
-          {item.titleSnapshot}
-          {item.variantSnapshot ? ` · ${item.variantSnapshot}` : ""} ×
-          {item.quantity}
-          {item.promotionNameSnapshot ? " · promotion reward" : ""}
+          {parseBilingual(item.titleSnapshot, locale)}
+          {item.variantSnapshot
+            ? ` · ${parseBilingual(item.variantSnapshot, locale)}`
+            : ""}{" "}
+          ×{item.quantity}
+          {item.promotionNameSnapshot
+            ? ` · ${strings.promotionRewardShort}`
+            : ""}
         </span>
       ))}
       {order.items.length > visibleItems.length ? (
         <small>
-          +{order.items.length - visibleItems.length} more
-          {order.items.length - visibleItems.length === 1 ? " line" : " lines"}
+          {strings.moreLines(order.items.length - visibleItems.length)}
         </small>
       ) : null}
-      <small>
-        {unitCount} {unitCount === 1 ? "unit" : "units"} requested
-      </small>
+      <small>{strings.unitsRequestedCount(unitCount)}</small>
       <details className={styles.orderDetail}>
-        <summary>View full order</summary>
+        <summary>{strings.viewFullOrder}</summary>
         <div className={styles.orderDetailBody}>
           <dl className={styles.orderDetailMeta}>
             <div>
-              <dt>Customer</dt>
+              <dt>{strings.customer}</dt>
               <dd>{order.customerName}</dd>
               <dd>
                 <a href={`mailto:${order.customerEmail}`}>
@@ -911,54 +945,72 @@ function OrderDetails({
               ) : null}
             </div>
             <div>
-              <dt>Transfer message</dt>
+              <dt>{strings.transferMessage}</dt>
               <dd className={styles.referenceValue}>
                 {order.transferReference}
               </dd>
             </div>
             <div>
-              <dt>Customer bank reference</dt>
+              <dt>{strings.customerBankReference}</dt>
               <dd className={styles.referenceValue}>
-                {order.customerTransferReference ?? "Not submitted"}
+                {order.customerTransferReference ?? strings.notSubmitted}
               </dd>
             </div>
             <div>
-              <dt>Timeline</dt>
-              <dd>Placed {formatDate(order.placedAt)}</dd>
+              <dt>{strings.timeline}</dt>
+              <dd>
+                {strings.timelinePlaced} {formatDate(order.placedAt, locale)}
+              </dd>
               {order.expiresAt ? (
-                <dd>Reservation limit {formatDate(order.expiresAt)}</dd>
+                <dd>
+                  {strings.reservationLimit}{" "}
+                  {formatDate(order.expiresAt, locale)}
+                </dd>
               ) : null}
               {order.confirmedAt ? (
-                <dd>Confirmed {formatDate(order.confirmedAt)}</dd>
+                <dd>
+                  {strings.confirmed} {formatDate(order.confirmedAt, locale)}
+                </dd>
               ) : null}
               {order.fulfilledAt ? (
-                <dd>Fulfilled {formatDate(order.fulfilledAt)}</dd>
+                <dd>
+                  {strings.fulfilled} {formatDate(order.fulfilledAt, locale)}
+                </dd>
               ) : null}
             </div>
           </dl>
 
           <section
             className={styles.orderLines}
-            aria-label="Complete item list"
+            aria-label={strings.completeItemsAria}
           >
-            <h3>Items</h3>
+            <h3>{strings.items}</h3>
             <ul>
               {order.items.map((item) => (
                 <li key={item.id}>
                   <div>
-                    <strong>{item.titleSnapshot}</strong>
+                    <strong>
+                      {parseBilingual(item.titleSnapshot, locale)}
+                    </strong>
                     <span>
-                      {item.variantSnapshot ?? "Standard"} · {item.quantity} ×{" "}
-                      {formatMoney(item.unitPriceCents, order.currency)}
+                      {item.variantSnapshot
+                        ? parseBilingual(item.variantSnapshot, locale)
+                        : strings.standardVariant}{" "}
+                      · {item.quantity} ×{" "}
+                      {formatMoney(item.unitPriceCents, order.currency, locale)}
                     </span>
                     {item.promotionNameSnapshot ? (
                       <span className={styles.promotionReward}>
-                        Promotion reward ·{" "}
-                        {parseBilingual(item.promotionNameSnapshot, "en")}
+                        {strings.promotionReward(
+                          parseBilingual(item.promotionNameSnapshot, locale),
+                        )}
                         {item.originalUnitPriceCents !== null
-                          ? ` · regular price ${formatMoney(
-                              item.originalUnitPriceCents,
-                              order.currency,
+                          ? ` · ${strings.originalPrice(
+                              formatMoney(
+                                item.originalUnitPriceCents,
+                                order.currency,
+                                locale,
+                              ),
                             )}`
                           : ""}
                       </span>
@@ -968,6 +1020,7 @@ function OrderDetails({
                     {formatMoney(
                       item.unitPriceCents * BigInt(item.quantity),
                       order.currency,
+                      locale,
                     )}
                   </strong>
                 </li>
@@ -976,32 +1029,38 @@ function OrderDetails({
           </section>
 
           {order.customerNote ? (
-            <section className={styles.orderNote} aria-label="Customer note">
-              <h3>Customer note</h3>
+            <section
+              className={styles.orderNote}
+              aria-label={strings.customerNoteAria}
+            >
+              <h3>{strings.customerNote}</h3>
               <p>{order.customerNote}</p>
             </section>
           ) : null}
 
           <dl className={styles.orderTotals}>
             <div>
-              <dt>Subtotal</dt>
-              <dd>{formatMoney(order.subtotalCents, order.currency)}</dd>
+              <dt>{strings.subtotal}</dt>
+              <dd>
+                {formatMoney(order.subtotalCents, order.currency, locale)}
+              </dd>
             </div>
             {order.subtotalCents > order.totalCents ? (
               <div className={styles.promotionSavings}>
-                <dt>Promotion savings</dt>
+                <dt>{strings.promotionSavings}</dt>
                 <dd>
                   −
                   {formatMoney(
                     order.subtotalCents - order.totalCents,
                     order.currency,
+                    locale,
                   )}
                 </dd>
               </div>
             ) : null}
             <div>
-              <dt>Order total</dt>
-              <dd>{formatMoney(order.totalCents, order.currency)}</dd>
+              <dt>{strings.orderTotal}</dt>
+              <dd>{formatMoney(order.totalCents, order.currency, locale)}</dd>
             </div>
           </dl>
         </div>

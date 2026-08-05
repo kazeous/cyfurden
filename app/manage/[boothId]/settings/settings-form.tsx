@@ -8,6 +8,8 @@ import {
 } from "@/app/manage/[boothId]/actions";
 import { BoothIdentityControls } from "@/components/admin/booth-identity-controls";
 import { SubmitButton } from "@/components/admin/form-controls";
+import type { Locale } from "@/lib/i18n";
+import { getWorkspaceStrings } from "@/lib/i18n/workspace";
 import { resolveOracleImageUrl } from "@/lib/oracle-images";
 import { PAYMENT_QR_MAX_BYTES, paymentQrAccept } from "@/lib/payment-qr";
 import type { BoothSocialLinks } from "@/lib/shop-settings";
@@ -30,6 +32,7 @@ const initialState: BoothSettingsSaveState = { error: null };
 
 export function SettingsForm({
   booth,
+  locale,
   identity,
   payment: initialPayment,
   uploadConfigured,
@@ -40,6 +43,7 @@ export function SettingsForm({
     slug: string;
     status: string;
   };
+  locale: Locale;
   identity: {
     logoObjectKey: string;
     logoUrl?: string;
@@ -48,6 +52,7 @@ export function SettingsForm({
   payment: SettingsPaymentDraft;
   uploadConfigured: boolean;
 }) {
+  const strings = getWorkspaceStrings(locale).settings;
   const [state, action] = useActionState(saveBoothSettingsAction, initialState);
   const [payment, setPayment] = useState(() => {
     const bank = resolveVietQrBank(
@@ -96,12 +101,12 @@ export function SettingsForm({
     setQrSelectionError(null);
     if (!file) return;
     if (file.size > PAYMENT_QR_MAX_BYTES) {
-      setQrSelectionError("QR images must be 5 MB or smaller.");
+      setQrSelectionError(strings.qrTooLarge);
       setQrInputVersion((current) => current + 1);
       return;
     }
     if (file.type && !paymentQrAccept.split(",").includes(file.type)) {
-      setQrSelectionError("Choose a PNG, JPEG, or WebP image.");
+      setQrSelectionError(strings.qrInvalidType);
       setQrInputVersion((current) => current + 1);
       return;
     }
@@ -133,21 +138,22 @@ export function SettingsForm({
         <header className={styles.cardHeader}>
           <span className={styles.cardIndex}>01</span>
           <div>
-            <p>Public identity</p>
-            <h2 id="booth-info-title">Booth info</h2>
-            <span>
-              Keep the workspace identity, public address, logo, and social
-              links together.
-            </span>
+            <p>{strings.publicIdentity}</p>
+            <h2 id="booth-info-title">{strings.boothInfo}</h2>
+            <span>{strings.boothInfoDescription}</span>
           </div>
           <strong data-status={booth.status}>
-            {booth.status.toLowerCase()}
+            {getWorkspaceStrings(locale).common.boothStatusLabels[
+              booth.status as keyof ReturnType<
+                typeof getWorkspaceStrings
+              >["common"]["boothStatusLabels"]
+            ] ?? booth.status}
           </strong>
         </header>
 
         <div className={styles.fieldGrid}>
           <label className={styles.field}>
-            <span>Booth name</span>
+            <span>{strings.boothName}</span>
             <input
               name="boothName"
               value={boothName}
@@ -159,19 +165,14 @@ export function SettingsForm({
                 setDirty(true);
               }}
             />
-            <small>
-              This updates the workspace name and storefront draft. Publish the
-              draft when visitors should see the new name.
-            </small>
+            <small>{strings.boothNameHelp}</small>
           </label>
           <label className={styles.field}>
-            <span>Public booth address</span>
+            <span>{strings.publicAddress}</span>
             <span className={styles.readonlyField}>
               cyfurden · /s/{booth.slug}
             </span>
-            <small>
-              The slug is permanent so printed convention links keep working.
-            </small>
+            <small>{strings.publicAddressHelp}</small>
           </label>
         </div>
 
@@ -181,6 +182,7 @@ export function SettingsForm({
           initialLogoUrl={identity.logoUrl}
           initialSocialLinks={identity.socialLinks}
           uploadConfigured={uploadConfigured}
+          locale={locale}
           onBusyChange={setLogoUploadBusy}
           onDirty={() => setDirty(true)}
         />
@@ -193,25 +195,20 @@ export function SettingsForm({
         <header className={styles.cardHeader}>
           <span className={styles.cardIndex}>02</span>
           <div>
-            <p>Manual transfer handoff</p>
-            <h2 id="payment-settings-title">Payment &amp; QR</h2>
-            <span>
-              Configure the receiving account shown only after a reservation is
-              created. Cyfurden never verifies a transfer automatically.
-            </span>
+            <p>{strings.manualHandoff}</p>
+            <h2 id="payment-settings-title">{strings.paymentQr}</h2>
+            <span>{strings.paymentDescription}</span>
           </div>
-          <strong>Manual only</strong>
+          <strong>{strings.manualOnly}</strong>
         </header>
 
         <aside className={styles.paymentBoundary}>
-          Generated VietQR uses the selected bank and exact reservation
-          reference. An uploaded QR remains an optional fallback image; neither
-          path connects to a payment gateway.
+          {strings.paymentBoundary}
         </aside>
 
         <div className={styles.fieldGrid}>
           <label className={styles.field}>
-            <span>Payment label</span>
+            <span>{strings.paymentLabel}</span>
             <input
               name="paymentLabel"
               value={payment.paymentLabel}
@@ -223,7 +220,7 @@ export function SettingsForm({
             />
           </label>
           <label className={styles.field}>
-            <span>Receiving bank</span>
+            <span>{strings.receivingBank}</span>
             <select
               name="bankCode"
               value={payment.bankCode}
@@ -238,17 +235,17 @@ export function SettingsForm({
                 setDirty(true);
               }}
             >
-              <option value="">Select a bank</option>
+              <option value="">{strings.selectBank}</option>
               {vietQrBanks.map((bank) => (
                 <option key={bank.bin} value={bank.bin}>
                   {bank.shortName} — {bank.name}
                 </option>
               ))}
             </select>
-            <small>The bank BIN is resolved locally for VietQR.</small>
+            <small>{strings.bankBinHelp}</small>
           </label>
           <label className={styles.field}>
-            <span>Account name</span>
+            <span>{strings.accountName}</span>
             <input
               name="accountName"
               value={payment.accountName}
@@ -260,7 +257,7 @@ export function SettingsForm({
             />
           </label>
           <label className={styles.field}>
-            <span>Account number</span>
+            <span>{strings.accountNumber}</span>
             <input
               name="accountNumber"
               value={payment.accountNumber}
@@ -273,7 +270,7 @@ export function SettingsForm({
             />
           </label>
           <label className={`${styles.field} ${styles.fieldWide}`}>
-            <span>Transfer message template</span>
+            <span>{strings.transferTemplate}</span>
             <input
               name="transferReferenceTemplate"
               value={payment.transferReferenceTemplate}
@@ -282,10 +279,7 @@ export function SettingsForm({
                 updatePayment("transferReferenceTemplate", event.target.value)
               }
             />
-            <small>
-              Supports {"{code}"}, {"{item}"}, and {"{amount}"}. Long VietQR
-              messages safely fall back to the reservation code.
-            </small>
+            <small>{strings.transferTemplateHelp}</small>
           </label>
         </div>
 
@@ -295,27 +289,28 @@ export function SettingsForm({
         >
           <div className={styles.qrCopy}>
             <div>
-              <strong id="payment-qr-title">Fallback QR image</strong>
-              <small>
-                PNG, JPEG, or WebP up to 5 MB, stored in Oracle Object Storage
-                when you save.
-              </small>
+              <strong id="payment-qr-title">{strings.fallbackQr}</strong>
+              <small>{strings.fallbackQrHelp}</small>
             </div>
             <span>
-              {qrFile ? "Ready to save" : hasStoredQr ? "Uploaded" : "Optional"}
+              {qrFile
+                ? strings.readyToSave
+                : hasStoredQr
+                  ? strings.uploaded
+                  : getWorkspaceStrings(locale).common.optional}
             </span>
           </div>
           <div className={styles.qrWorkspace}>
             <div className={styles.qrPreview}>
               {visibleQrUrl ? (
-                <img src={visibleQrUrl} alt="Payment QR preview" />
+                <img src={visibleQrUrl} alt={strings.paymentQrPreviewAlt} />
               ) : (
                 <span>
                   <strong>QR</strong>
                   <small>
                     {hasStoredQr
-                      ? "Image saved; public delivery URL unavailable here."
-                      : "No fallback image"}
+                      ? strings.savedImageUnavailable
+                      : strings.noFallbackImage}
                   </small>
                 </span>
               )}
@@ -341,11 +336,13 @@ export function SettingsForm({
                   htmlFor="settings-payment-qr"
                   aria-disabled={!uploadConfigured}
                 >
-                  {qrFile || hasStoredQr ? "Replace image" : "Choose image"}
+                  {qrFile || hasStoredQr
+                    ? strings.replaceImage
+                    : strings.chooseImage}
                 </label>
                 {qrFile ? (
                   <button type="button" onClick={discardQrSelection}>
-                    Discard selection
+                    {strings.discardSelection}
                   </button>
                 ) : hasStoredQr ? (
                   <button
@@ -355,7 +352,7 @@ export function SettingsForm({
                       setDirty(true);
                     }}
                   >
-                    Remove QR
+                    {strings.removeQr}
                   </button>
                 ) : removeQr && payment.qrObjectKey ? (
                   <button
@@ -365,14 +362,14 @@ export function SettingsForm({
                       setDirty(true);
                     }}
                   >
-                    Undo remove
+                    {strings.undoRemove}
                   </button>
                 ) : null}
               </div>
               <small>
                 {!uploadConfigured
-                  ? "Uploads are unavailable until Oracle Object Storage is configured."
-                  : "Generated VietQR remains preferred when bank details are complete."}
+                  ? strings.uploadsUnavailable
+                  : strings.generatedPreferred}
               </small>
               {qrSelectionError ? <p role="alert">{qrSelectionError}</p> : null}
             </div>
@@ -381,7 +378,7 @@ export function SettingsForm({
 
         <div className={styles.textareaGrid}>
           <label className={styles.field}>
-            <span>Customer payment instructions</span>
+            <span>{strings.customerInstructions}</span>
             <textarea
               name="paymentInstructions"
               value={payment.instructions}
@@ -391,10 +388,10 @@ export function SettingsForm({
                 updatePayment("instructions", event.target.value)
               }
             />
-            <small>Inline [en]…[/en][vi]…[/vi] content is supported.</small>
+            <small>{strings.bilingualHelp}</small>
           </label>
           <label className={styles.field}>
-            <span>Manual-review disclaimer</span>
+            <span>{strings.manualDisclaimer}</span>
             <textarea
               name="paymentDisclaimer"
               value={payment.disclaimer}
@@ -415,13 +412,13 @@ export function SettingsForm({
       ) : null}
 
       <div className={styles.saveBar}>
-        <span>{dirty ? "Unsaved settings" : "Settings are up to date"}</span>
+        <span>{dirty ? strings.unsaved : strings.upToDate}</span>
         <SubmitButton
           className={styles.saveButton}
           disabled={logoUploadBusy}
-          pendingLabel="Saving settings…"
+          pendingLabel={strings.savingSettings}
         >
-          Save settings
+          {strings.saveSettings}
         </SubmitButton>
       </div>
     </form>

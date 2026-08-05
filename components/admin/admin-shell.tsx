@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { getDefaultBoothSection } from "@/lib/booth-sections";
-import type { Locale } from "@/lib/i18n";
+import { parseBilingual, type Locale } from "@/lib/i18n";
 import { getAdminShellStrings } from "@/lib/i18n/admin-shell";
 import { AdminNav } from "./admin-nav";
 import { AdminOverflowMenu } from "./admin-overflow-menu";
@@ -59,18 +59,19 @@ function BoothSwitcher({
   role: string;
 }) {
   const strings = getAdminShellStrings(locale);
+  const activeBoothName = parseBilingual(booth.name, locale);
 
   return (
     <details className={styles.boothSwitcher}>
       <summary
         className={styles.boothSelector}
-        aria-label={`${strings.switchBooth}: ${booth.name}`}
+        aria-label={`${strings.switchBooth}: ${activeBoothName}`}
       >
         <span className={styles.boothMark} aria-hidden="true">
-          {booth.name.trim().slice(0, 1).toUpperCase() || "C"}
+          {activeBoothName.trim().slice(0, 1).toUpperCase() || "C"}
         </span>
         <span>
-          <strong>{booth.name}</strong>
+          <strong>{activeBoothName}</strong>
           <small>{strings.activeBooth(role)}</small>
         </span>
         <span className={styles.switcherChevron}>
@@ -84,6 +85,7 @@ function BoothSwitcher({
           {booths.map((option) => {
             const current = option.id === booth.id;
             const section = getDefaultBoothSection(option.role, option.status);
+            const optionName = parseBilingual(option.name, locale);
             return (
               <Link
                 href={`/manage/${option.id}/${section}`}
@@ -91,10 +93,10 @@ function BoothSwitcher({
                 aria-current={current ? "page" : undefined}
               >
                 <span className={styles.switcherBoothMark} aria-hidden="true">
-                  {option.name.trim().slice(0, 1).toUpperCase() || "C"}
+                  {optionName.trim().slice(0, 1).toUpperCase() || "C"}
                 </span>
                 <span>
-                  <strong>{option.name}</strong>
+                  <strong>{optionName}</strong>
                   <small>
                     {current
                       ? strings.currentBooth

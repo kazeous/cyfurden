@@ -2,12 +2,15 @@ import type { Metadata } from "next";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { requireBoothMember } from "@/lib/authorization";
 import { db } from "@/lib/db";
+import { getAdminShellStrings } from "@/lib/i18n/admin-shell";
 import { readLocaleCookie } from "@/lib/i18n/server-locale";
 
-export const metadata: Metadata = {
-  title: "Booth management",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: getAdminShellStrings(await readLocaleCookie()).metadataTitle,
+    robots: { index: false, follow: false },
+  };
+}
 
 export default async function ManageLayout({
   children,

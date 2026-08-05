@@ -1,22 +1,24 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { PageHeading } from "@/components/admin/admin-shell";
 import { requireBoothSection } from "@/lib/authorization";
+import { parseBilingual, type Locale } from "@/lib/i18n";
+import { readLocaleCookie } from "@/lib/i18n/server-locale";
+import { getWorkspaceStrings } from "@/lib/i18n/workspace";
 import { resolveOracleImageUrl } from "@/lib/oracle-images";
 import { db } from "@/lib/db";
 import { productAttentionWhere } from "@/lib/product-inventory";
+import {
+  defaultProductVariantLabel,
+  defaultPromotionName,
+} from "@/lib/system-content";
 import { ProductForm, type ProductEditorValue } from "./product-form";
 import { PromotionEditor } from "./promotion-editor";
 import styles from "./products.module.css";
 
 const productStatuses = ["DRAFT", "LIVE", "SOLD_OUT", "HIDDEN"] as const;
 const productFilterIds = [...productStatuses, "ATTENTION"] as const;
-const productFilterOptions = [
-  { id: "LIVE", label: "Live" },
-  { id: "ATTENTION", label: "Low / sold out" },
-  { id: "HIDDEN", label: "Hidden" },
-] as const;
-
 type ProductStatus = (typeof productStatuses)[number];
 type ProductFilter = (typeof productFilterIds)[number];
 type VariantStatus =
@@ -26,8 +28,20 @@ type VariantStatus =
   | "SOLD_OUT"
   | "HIDDEN";
 
-function displayStatus(status: string) {
-  return status.toLowerCase().replaceAll("_", " ");
+export async function generateMetadata(): Promise<Metadata> {
+  const strings = getWorkspaceStrings(await readLocaleCookie()).products;
+  return {
+    title: strings.metadataTitle,
+    robots: { index: false, follow: false },
+  };
+}
+
+function formatMoney(priceCents: bigint, locale: Locale) {
+  return new Intl.NumberFormat(locale === "vi" ? "vi-VN" : "en-GB", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  }).format(priceCents / BigInt(100));
 }
 
 function productHref(
@@ -88,7 +102,7 @@ function normalizeEditorValue(
     featured: product?.featured ?? false,
     variantId: variant?.id ?? null,
     variantStatus: variant?.status ?? "AVAILABLE",
-    variantLabel: variant?.label ?? "Standard",
+    variantLabel: variant?.label ?? defaultProductVariantLabel,
     stockQuantity: variant?.stockQuantity ?? null,
     fulfillmentNote: variant?.fulfillmentNote ?? "",
     images:
@@ -142,7 +156,18 @@ export default async function ProductsPage({
 }) {
   const { boothId } = await params;
   const filters = await searchParams;
-  await requireBoothSection(boothId, "products");
+  const [, locale] = await Promise.all([
+    requireBoothSection(boothId, "products"),
+    readLocaleCookie(),
+  ]);
+  const workspaceStrings = getWorkspaceStrings(locale);
+  const strings = workspaceStrings.products;
+  const common = workspaceStrings.common;
+  const productFilterOptions = [
+    { id: "LIVE", label: strings.filterLive },
+    { id: "ATTENTION", label: strings.filterAttention },
+    { id: "HIDDEN", label: strings.filterHidden },
+  ] as const;
   const canEdit = true;
   const activeFilter = productFilterIds.includes(
     filters.status as ProductFilter,
@@ -231,24 +256,18 @@ export default async function ProductsPage({
   return (
     <div className={styles.page}>
       <PageHeading
-        eyebrow="Catalogue management"
-        title="Products"
-        description="Keep listings, stock signals, and public images ready for visitors."
+        eyebrow={strings.eyebrow}
+        title={strings.title}
+        description={strings.description}
         actions={
           total > 0 ? (
             <div
               className={styles.headerSummary}
-              aria-label="Catalogue summary"
+              aria-label={strings.summaryAria}
             >
-              <span>
-                <strong>{total}</strong> total
-              </span>
-              <span>
-                <strong>{attention}</strong> need attention
-              </span>
-              <span>
-                <strong>{hidden}</strong> hidden
-              </span>
+              <span>{strings.totalCount(total)}</span>
+              <span>{strings.attentionCount(attention)}</span>
+              <span>{strings.hiddenCount(hidden)}</span>
             </div>
           ) : undefined
         }
@@ -256,29 +275,27 @@ export default async function ProductsPage({
 
       {filters.saved ? (
         <p className={styles.notice} role="status">
-          Product saved. The public storefront updates when its status is Live
-          and the booth has been published.
+          {strings.savedNotice}
         </p>
       ) : null}
       {filters.promotionSaved ? (
         <p className={styles.notice} role="status">
-          Quantity promotion saved. Active offers now update the public cart and
-          new reservation totals.
+          {strings.promotionSavedNotice}
         </p>
       ) : null}
       {!canEdit ? (
         <p className={styles.notice} role="status">
-          You have read-only access. Ask an owner or admin to change catalogue
-          data.
+          {strings.readOnlyNotice}
         </p>
       ) : null}
 
       <PromotionEditor
         boothId={boothId}
+        locale={locale}
         products={promotionProducts}
         promotion={{
           id: promotion?.id ?? null,
-          name: promotion?.name ?? "Buy 3, get 1",
+          name: promotion?.name ?? defaultPromotionName,
           buyQuantity: promotion?.buyQuantity ?? 3,
           rewardQuantity: promotion?.rewardQuantity ?? 1,
           active: promotion?.active ?? false,
@@ -301,7 +318,7 @@ export default async function ProductsPage({
         <div className={styles.toolbar}>
           <form className={styles.searchForm} method="get">
             <label className={styles.srOnly} htmlFor="product-search">
-              Search products
+              {strings.searchLabel}
             </label>
             <input
               id="product-search"
@@ -309,29 +326,29 @@ export default async function ProductsPage({
               type="search"
               name="query"
               defaultValue={query}
-              placeholder="Search by name, SKU, or tag"
+              placeholder={strings.searchPlaceholder}
             />
             {activeFilter ? (
               <input type="hidden" name="status" value={activeFilter} />
             ) : null}
             <button className={styles.clearButton} type="submit">
-              Search
+              {strings.search}
             </button>
           </form>
           <Link
             className={styles.newButton}
             href={productHref(boothId, { newProduct: true })}
           >
-            New product
+            {strings.newProduct}
           </Link>
         </div>
-        <div className={styles.filterLinks} aria-label="Product status filters">
+        <div className={styles.filterLinks} aria-label={strings.filtersAria}>
           <Link
             className={styles.filterLink}
             href={productHref(boothId, { query })}
             aria-current={!activeFilter ? "page" : undefined}
           >
-            All {total}
+            {strings.filterAll} {total}
           </Link>
           {productFilterOptions.map((entry) => (
             <Link
@@ -349,7 +366,7 @@ export default async function ProductsPage({
         </div>
 
         <h2 id="product-index-heading" className={styles.srOnly}>
-          Product catalogue
+          {strings.catalogueHeading}
         </h2>
         {products.length ? (
           <>
@@ -357,12 +374,14 @@ export default async function ProductsPage({
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th scope="col">Product</th>
-                    <th scope="col">Status</th>
-                    <th scope="col">Price</th>
-                    <th scope="col">Stock</th>
+                    <th scope="col">{strings.productColumn}</th>
+                    <th scope="col">{strings.statusColumn}</th>
+                    <th scope="col">{strings.priceColumn}</th>
+                    <th scope="col">{strings.stockColumn}</th>
                     <th scope="col">
-                      <span className={styles.srOnly}>Action</span>
+                      <span className={styles.srOnly}>
+                        {strings.actionColumn}
+                      </span>
                     </th>
                   </tr>
                 </thead>
@@ -383,11 +402,13 @@ export default async function ProductsPage({
                             <ProductThumbnail
                               objectKey={product.images[0]?.objectKey}
                               alt={product.images[0]?.alt}
-                              name={product.name}
+                              name={parseBilingual(product.name, locale)}
                             />
                             <span className={styles.productCopy}>
-                              <strong>{product.name}</strong>
-                              <small>{product.sku || "No SKU"}</small>
+                              <strong>
+                                {parseBilingual(product.name, locale)}
+                              </strong>
+                              <small>{product.sku || common.noSku}</small>
                             </span>
                           </Link>
                         </td>
@@ -396,17 +417,15 @@ export default async function ProductsPage({
                             className={styles.status}
                             data-status={product.status}
                           >
-                            {displayStatus(product.status)}
+                            {common.productStatusLabels[product.status] ??
+                              product.status}
                           </span>
                         </td>
                         <td className={styles.price}>
-                          {(Number(product.priceCents) / 100).toLocaleString(
-                            "vi-VN",
-                          )}{" "}
-                          ₫
+                          {formatMoney(product.priceCents, locale)}
                         </td>
                         <td className={styles.muted}>
-                          {variant?.stockQuantity ?? "Untracked"}
+                          {variant?.stockQuantity ?? common.untracked}
                         </td>
                         <td>
                           <Link
@@ -417,7 +436,7 @@ export default async function ProductsPage({
                               status: activeFilter,
                             })}
                           >
-                            Edit
+                            {strings.edit}
                           </Link>
                         </td>
                       </tr>
@@ -441,33 +460,35 @@ export default async function ProductsPage({
                         <ProductThumbnail
                           objectKey={product.images[0]?.objectKey}
                           alt={product.images[0]?.alt}
-                          name={product.name}
+                          name={parseBilingual(product.name, locale)}
                         />
                         <span className={styles.productCopy}>
-                          <strong>{product.name}</strong>
-                          <small>{product.sku || "No SKU"}</small>
+                          <strong>
+                            {parseBilingual(product.name, locale)}
+                          </strong>
+                          <small>{product.sku || common.noSku}</small>
                         </span>
                       </span>
                       <span
                         className={styles.status}
                         data-status={product.status}
                       >
-                        {displayStatus(product.status)}
+                        {common.productStatusLabels[product.status] ??
+                          product.status}
                       </span>
                     </div>
                     <div className={styles.cardMeta}>
+                      <span>{formatMoney(product.priceCents, locale)}</span>
                       <span>
-                        {(Number(product.priceCents) / 100).toLocaleString(
-                          "vi-VN",
-                        )}{" "}
-                        ₫
-                      </span>
-                      <span>
-                        {variant?.stockQuantity ?? "Untracked"} in stock
+                        {strings.inStock(
+                          variant?.stockQuantity ?? common.untracked,
+                        )}
                       </span>
                     </div>
                     <div className={styles.cardActions}>
-                      <span className={styles.clearButton}>Edit product</span>
+                      <span className={styles.clearButton}>
+                        {strings.editProduct}
+                      </span>
                     </div>
                   </Link>
                 );
@@ -479,27 +500,27 @@ export default async function ProductsPage({
             <div>
               <h2>
                 {query || activeFilter
-                  ? "No matching products"
-                  : "No products yet"}
+                  ? strings.noMatchingTitle
+                  : strings.noProductsTitle}
               </h2>
               <p>
                 {query || activeFilter
-                  ? "Try a different search or clear the current filter."
-                  : "Create the first listing to start building this booth catalogue."}
+                  ? strings.noMatchingBody
+                  : strings.noProductsBody}
               </p>
               {query || activeFilter ? (
                 <Link
                   className={styles.clearButton}
                   href={productHref(boothId, {})}
                 >
-                  Clear filters
+                  {strings.clearFilters}
                 </Link>
               ) : canEdit ? (
                 <Link
                   className={styles.newButton}
                   href={productHref(boothId, { newProduct: true })}
                 >
-                  Create product
+                  {strings.createProduct}
                 </Link>
               ) : null}
             </div>
@@ -509,15 +530,14 @@ export default async function ProductsPage({
 
       {staleSelection ? (
         <p className={styles.staleNotice} role="status">
-          This product is outside the current filter, so it remains selected
-          while you edit it.
+          {strings.staleSelection}
           <Link
             href={productHref(boothId, {
               query,
               status: activeFilter,
             })}
           >
-            Clear selection
+            {strings.clearSelection}
           </Link>
         </p>
       ) : null}
@@ -526,6 +546,7 @@ export default async function ProductsPage({
         <ProductForm
           key={selected?.id ?? "new"}
           boothId={boothId}
+          locale={locale}
           value={normalizeEditorValue(selected)}
           canEdit={canEdit}
           cancelHref={cancelHref}

@@ -22,7 +22,7 @@ test("public booth and reservation routes use the published booth language", () 
   );
 });
 
-test("workspace routes remain correctly marked as English", () => {
+test("workspace routes use the private-workspace locale scope", () => {
   assert.deepEqual(localeRouteForPath("/dashboard"), { scope: "admin" });
   assert.deepEqual(localeRouteForPath("/manage/booth/orders"), {
     scope: "admin",

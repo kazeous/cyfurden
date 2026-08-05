@@ -5,6 +5,8 @@ import {
 } from "@/components/admin/admin-shell";
 import { requireBoothSection } from "@/lib/authorization";
 import { db } from "@/lib/db";
+import { readLocaleCookie } from "@/lib/i18n/server-locale";
+import { getWorkspaceStrings } from "@/lib/i18n/workspace";
 import {
   InviteMemberForm,
   MemberAccessForm,
@@ -13,10 +15,13 @@ import {
 } from "./team-controls";
 import styles from "./team.module.css";
 
-export const metadata: Metadata = {
-  title: "Team access",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const strings = getWorkspaceStrings(await readLocaleCookie()).team;
+  return {
+    title: strings.metadataTitle,
+    robots: { index: false, follow: false },
+  };
+}
 
 export default async function TeamPage({
   params,
@@ -29,7 +34,7 @@ export default async function TeamPage({
     "team",
   );
   const isOwner = viewerMembership.role === "OWNER";
-  const [members, invitations] = await Promise.all([
+  const [members, invitations, locale] = await Promise.all([
     db.boothMembership.findMany({
       where: { boothId },
       include: { user: true },
@@ -39,7 +44,12 @@ export default async function TeamPage({
       where: { boothId, status: "PENDING", expiresAt: { gt: new Date() } },
       orderBy: { createdAt: "desc" },
     }),
+    readLocaleCookie(),
   ]);
+  const workspaceStrings = getWorkspaceStrings(locale);
+  const strings = workspaceStrings.team;
+  const common = workspaceStrings.common;
+  const dateLocale = locale === "vi" ? "vi-VN" : "en-GB";
   const activeMembers = members.filter((member) => member.status === "ACTIVE");
   const usedSlots = activeMembers.length + invitations.length;
   const remainingSlots = Math.max(0, 10 - usedSlots);
@@ -47,23 +57,20 @@ export default async function TeamPage({
   return (
     <div className={styles.teamPage}>
       <PageHeading
-        eyebrow="Access management"
-        title="Team"
-        description="Keep booth access clear, intentional, and easy to hand off."
+        eyebrow={strings.eyebrow}
+        title={strings.title}
+        description={strings.description}
         actions={
           <span className={admin.pill}>
-            {activeMembers.length} active / {invitations.length} pending
+            {strings.activePending(activeMembers.length, invitations.length)}
           </span>
         }
       />
 
       {!isOwner ? (
         <div className={styles.readOnlyNotice} role="status">
-          <strong>Read-only access</strong>
-          <span>
-            You can see the people in this booth, but only the owner can invite
-            teammates or change access.
-          </span>
+          <strong>{strings.readOnlyTitle}</strong>
+          <span>{strings.readOnlyBody}</span>
         </div>
       ) : null}
 
@@ -72,16 +79,14 @@ export default async function TeamPage({
           {isOwner ? (
             <InviteMemberForm
               boothId={boothId}
+              locale={locale}
               remainingSlots={remainingSlots}
             />
           ) : (
             <div className={styles.readOnlyCard}>
-              <p className={styles.cardEyebrow}>Owner controls</p>
-              <h2>Invite a teammate</h2>
-              <p>
-                Ask the booth owner to create an invitation link. You cannot
-                change access from a staff or admin account.
-              </p>
+              <p className={styles.cardEyebrow}>{strings.ownerControls}</p>
+              <h2>{strings.inviteTitle}</h2>
+              <p>{strings.ownerOnlyInvite}</p>
             </div>
           )}
 
@@ -91,8 +96,8 @@ export default async function TeamPage({
           >
             <div className={styles.sectionHeading}>
               <div>
-                <p className={styles.cardEyebrow}>Open links</p>
-                <h2 id="pending-title">Pending invitations</h2>
+                <p className={styles.cardEyebrow}>{strings.openLinks}</p>
+                <h2 id="pending-title">{strings.pendingInvitations}</h2>
               </div>
               <span className={styles.countBadge}>{invitations.length}</span>
             </div>
@@ -103,27 +108,28 @@ export default async function TeamPage({
                     <div className={styles.itemIdentity}>
                       <strong>{invitation.email}</strong>
                       <span>
-                        {invitation.role === "ADMIN" ? "Admin" : "Staff"} ·
-                        expires{" "}
-                        {invitation.expiresAt.toLocaleDateString("en-GB")}
+                        {strings.roleExpires(
+                          common.roleLabels[invitation.role],
+                          invitation.expiresAt.toLocaleDateString(dateLocale),
+                        )}
                       </span>
                     </div>
                     {isOwner ? (
                       <RevokeInvitationForm
                         boothId={boothId}
                         invitationId={invitation.id}
+                        locale={locale}
                       />
                     ) : (
-                      <span className={styles.statusBadge}>Pending</span>
+                      <span className={styles.statusBadge}>
+                        {common.pending}
+                      </span>
                     )}
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className={styles.emptyCopy}>
-                No open invitations. New links appear here until they are used,
-                revoked, or expire.
-              </p>
+              <p className={styles.emptyCopy}>{strings.noInvitations}</p>
             )}
           </section>
         </aside>
@@ -131,15 +137,12 @@ export default async function TeamPage({
         <section className={styles.membersCard} aria-labelledby="members-title">
           <div className={styles.sectionHeading}>
             <div>
-              <p className={styles.cardEyebrow}>People with access</p>
-              <h2 id="members-title">Members</h2>
+              <p className={styles.cardEyebrow}>{strings.peopleWithAccess}</p>
+              <h2 id="members-title">{strings.members}</h2>
             </div>
             <span className={styles.countBadge}>{members.length}</span>
           </div>
-          <p className={styles.cardIntro}>
-            Owners cannot be removed. Disabled members keep their history but
-            cannot open this booth until re-enabled.
-          </p>
+          <p className={styles.cardIntro}>{strings.membersIntro}</p>
 
           <ul className={styles.memberList}>
             {members.map((member) => {
@@ -157,8 +160,10 @@ export default async function TeamPage({
                   </div>
                   {member.role === "OWNER" ? (
                     <div className={styles.memberBadges}>
-                      <span className={styles.statusBadge}>Owner</span>
-                      <span className={styles.statusBadge}>Always active</span>
+                      <span className={styles.statusBadge}>{common.owner}</span>
+                      <span className={styles.statusBadge}>
+                        {common.alwaysActive}
+                      </span>
                     </div>
                   ) : isOwner ? (
                     <div className={styles.memberActions}>
@@ -168,22 +173,26 @@ export default async function TeamPage({
                         role={member.role}
                         status={member.status}
                         memberName={memberName}
+                        locale={locale}
                       />
                       <RemoveMemberForm
                         boothId={boothId}
                         membershipId={member.id}
                         memberName={memberName}
+                        locale={locale}
                       />
                     </div>
                   ) : (
                     <div className={styles.memberBadges}>
                       <span className={styles.statusBadge}>
-                        {member.role === "ADMIN" ? "Admin" : "Staff"}
+                        {common.roleLabels[member.role]}
                       </span>
                       <span
                         className={`${styles.statusBadge} ${member.status === "DISABLED" ? styles.disabledBadge : ""}`}
                       >
-                        {member.status === "ACTIVE" ? "Active" : "Disabled"}
+                        {member.status === "ACTIVE"
+                          ? common.active
+                          : common.disabled}
                       </span>
                     </div>
                   )}

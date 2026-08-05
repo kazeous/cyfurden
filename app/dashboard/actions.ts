@@ -4,36 +4,36 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { requireUser } from "@/lib/authorization";
-import {
-  canOwnAnotherBooth,
-  OWNED_BOOTH_LIMIT_MESSAGE,
-} from "@/lib/booth-limit";
+import { canOwnAnotherBooth } from "@/lib/booth-limit";
 import { db } from "@/lib/db";
 import { isReservedBoothSlug } from "@/lib/demo-booth";
 import { DEFAULT_GACHA_RATES } from "@/lib/gacha-rates";
+import { readLocaleCookie } from "@/lib/i18n/server-locale";
+import { getWorkspaceStrings } from "@/lib/i18n/workspace";
 import { createDefaultStorefrontDocument } from "@/lib/storefront-document";
+import {
+  defaultPaymentContent,
+  defaultPromotionName,
+} from "@/lib/system-content";
 
-const boothSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(2, "Use at least 2 characters for the booth name.")
-    .max(80, "Keep the booth name under 80 characters."),
-  slug: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .min(3, "Use at least 3 characters for the booth address.")
-    .max(48, "Keep the booth address under 48 characters.")
-    .regex(
-      /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
-      "Use lowercase letters, numbers, and single hyphens only.",
-    )
-    .refine(
-      (slug) => !isReservedBoothSlug(slug),
-      "That booth address is reserved for the Cyfurden demo.",
-    ),
-});
+const boothSchema = (
+  strings: ReturnType<typeof getWorkspaceStrings>["actions"],
+) =>
+  z.object({
+    name: z
+      .string()
+      .trim()
+      .min(2, strings.boothNameMin)
+      .max(80, strings.boothNameMax),
+    slug: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .min(3, strings.boothSlugMin)
+      .max(48, strings.boothSlugMax)
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, strings.boothSlugPattern)
+      .refine((slug) => !isReservedBoothSlug(slug), strings.boothSlugReserved),
+  });
 
 export type CreateBoothState = {
   message?: string;
@@ -47,15 +47,19 @@ export async function createBooth(
   _previousState: CreateBoothState,
   formData: FormData,
 ): Promise<CreateBoothState> {
-  const session = await requireUser("/dashboard/new");
-  const parsed = boothSchema.safeParse({
+  const [session, locale] = await Promise.all([
+    requireUser("/dashboard/new"),
+    readLocaleCookie(),
+  ]);
+  const strings = getWorkspaceStrings(locale).actions;
+  const parsed = boothSchema(strings).safeParse({
     name: formData.get("name"),
     slug: formData.get("slug"),
   });
 
   if (!parsed.success) {
     return {
-      message: "Check the highlighted fields and try again.",
+      message: strings.checkFields,
       fieldErrors: parsed.error.flatten().fieldErrors,
     };
   }
@@ -108,11 +112,9 @@ export async function createBooth(
                   bankCode: null,
                   accountName: "",
                   accountNumber: "",
-                  paymentLabel: "Bank transfer",
-                  instructions:
-                    "Add your bank-transfer instructions before accepting orders.",
-                  disclaimer:
-                    "Bank transfers are reviewed manually and are never verified automatically.",
+                  paymentLabel: defaultPaymentContent.label,
+                  instructions: defaultPaymentContent.instructions,
+                  disclaimer: defaultPaymentContent.disclaimer,
                 },
               }),
               transaction.gachaConfig.create({
@@ -125,7 +127,7 @@ export async function createBooth(
               transaction.quantityPromotion.create({
                 data: {
                   boothId: booth.id,
-                  name: "Buy 3, get 1",
+                  name: defaultPromotionName,
                   active: false,
                 },
               }),
@@ -150,7 +152,7 @@ export async function createBooth(
 
     if (!boothId) {
       return {
-        message: OWNED_BOOTH_LIMIT_MESSAGE,
+        message: strings.boothLimit,
       };
     }
   } catch (error) {
@@ -159,16 +161,16 @@ export async function createBooth(
       error.code === "P2002"
     ) {
       return {
-        message: "That booth address is already in use. Try another one.",
+        message: strings.boothSlugUsed,
         fieldErrors: {
-          slug: ["Choose a different booth address."],
+          slug: [strings.chooseDifferentSlug],
         },
       };
     }
 
     console.error("Failed to create booth", error);
     return {
-      message: "We could not create the booth right now. Please try again.",
+      message: strings.boothCreateFailed,
     };
   }
 

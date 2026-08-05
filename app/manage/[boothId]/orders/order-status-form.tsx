@@ -9,15 +9,9 @@ import {
   type OrderStatusName,
   orderStatusTransitions,
 } from "@/lib/order-rules";
+import type { Locale } from "@/lib/i18n";
+import { getWorkspaceStrings } from "@/lib/i18n/workspace";
 import styles from "./orders.module.css";
-
-const actionLabels: Record<OrderStatusName, string> = {
-  PENDING: "Return to review",
-  CONFIRMED: "Confirm transfer",
-  FULFILLED: "Mark fulfilled",
-  CANCELLED: "Cancel reservation",
-  EXPIRED: "Expire now",
-};
 
 const initialState: OrderStatusActionState = {
   status: "idle",
@@ -29,12 +23,22 @@ export function OrderStatusForm({
   orderId,
   orderCode,
   currentStatus,
+  locale,
 }: {
   boothId: string;
   orderId: string;
   orderCode: string;
   currentStatus: OrderStatusName;
+  locale: Locale;
 }) {
+  const strings = getWorkspaceStrings(locale).orders;
+  const actionLabels: Record<OrderStatusName, string> = {
+    PENDING: strings.actionReturnReview,
+    CONFIRMED: strings.actionConfirm,
+    FULFILLED: strings.actionFulfil,
+    CANCELLED: strings.actionCancel,
+    EXPIRED: strings.actionExpire,
+  };
   const [state, formAction, pending] = useActionState(
     updateOrderStatusAction,
     initialState,
@@ -49,12 +53,12 @@ export function OrderStatusForm({
       className={styles.statusForm}
       aria-busy={pending}
       aria-describedby={state.message ? messageId : undefined}
-      aria-label={`Actions for order ${orderCode}`}
+      aria-label={strings.actionsAria(orderCode)}
     >
       <input type="hidden" name="boothId" value={boothId} />
       <input type="hidden" name="orderId" value={orderId} />
       {terminal ? (
-        <p className={styles.terminalStatus}>No further actions</p>
+        <p className={styles.terminalStatus}>{strings.noFurtherActions}</p>
       ) : (
         <div className={styles.statusControls}>
           {availableTransitions.map((nextStatus) => (
@@ -66,7 +70,7 @@ export function OrderStatusForm({
               data-transition={nextStatus}
               disabled={pending}
             >
-              {pending ? "Saving…" : actionLabels[nextStatus]}
+              {pending ? strings.savingStatus : actionLabels[nextStatus]}
             </button>
           ))}
         </div>

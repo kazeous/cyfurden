@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { defaultStorefrontContent } from "@/lib/system-content";
 
 export const storefrontSectionIds = [
   "featured",
@@ -69,21 +70,19 @@ export function createDefaultStorefrontDocument(
 ): StorefrontDocument {
   return {
     name,
-    tagline: "Small wonders, gathered with care.",
-    introduction:
-      "Welcome to our pocket-sized convention booth. Browse the latest pieces and save your favourites for pickup.",
-    announcement: "Pre-orders are open for the next convention weekend.",
+    tagline: defaultStorefrontContent.tagline,
+    introduction: defaultStorefrontContent.introduction,
+    announcement: defaultStorefrontContent.announcement,
     creatorName: name,
     creatorPronouns: "",
-    creatorLocation: "Online and at selected conventions",
-    creatorBio:
-      "An independent artist making cheerful objects for everyday rituals.",
-    eventName: "Next convention",
-    eventVenue: "Details coming soon",
-    eventBoothLabel: "Booth TBA",
-    eventHours: "Hours to be announced",
-    eventStatusLabel: "Pre-orders open",
-    eventFulfillment: "Convention pickup and pre-order delivery details vary.",
+    creatorLocation: defaultStorefrontContent.creatorLocation,
+    creatorBio: defaultStorefrontContent.creatorBio,
+    eventName: defaultStorefrontContent.eventName,
+    eventVenue: defaultStorefrontContent.eventVenue,
+    eventBoothLabel: defaultStorefrontContent.eventBoothLabel,
+    eventHours: defaultStorefrontContent.eventHours,
+    eventStatusLabel: defaultStorefrontContent.eventStatusLabel,
+    eventFulfillment: defaultStorefrontContent.eventFulfillment,
     locale: "en",
     themePreset: "lantern",
     accentColor: "#d45a61",
