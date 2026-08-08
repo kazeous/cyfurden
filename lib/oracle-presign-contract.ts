@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 
 /** Maximum object size accepted by the protected booth-image upload endpoint. */
-export const PRESIGNED_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
+export const PRESIGNED_UPLOAD_MAX_BYTES = 20 * 1024 * 1024;
 export const PRESIGNED_UPLOAD_EXPIRES_IN_SECONDS = 5 * 60;
 
 export const presignedUploadContentTypes = [

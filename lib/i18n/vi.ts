@@ -54,8 +54,11 @@ export const viCatalogue: Catalogue = {
     cartReadyForReservation: (amount) =>
       `${amount} sẵn sàng để đặt trước thủ công.`,
     cartEmptyHint: "Chọn một món từ bộ sưu tập để bắt đầu.",
-    cartReview: "Xem giỏ",
+    cartReview: "Xem giỏ & đặt trước",
     cartOpen: "Mở giỏ",
+    cartContentsAria: "Sản phẩm trong giỏ",
+    cartCheckout: "Tiếp tục đặt trước",
+    cartBackToBag: "Quay lại giỏ",
     cartManualNote: "Chuyển khoản thủ công · không xác minh tự động",
     cartPausedNote:
       "Tạm dừng nhận đặt trước cho đến khi cấu hình thanh toán xong",
@@ -109,6 +112,7 @@ export const viCatalogue: Catalogue = {
       `Đã xoá ${name}, ${variant}, khỏi giỏ.`,
     cartClose: "Đóng giỏ",
     bagHeading: "Giỏ của bạn",
+    checkoutHeading: "Thông tin khách hàng",
     cartSubmit: "Đặt trước các món này",
     cartSubmitPending: "Đang lưu đặt trước…",
     cartNameLabel: "Tên của bạn",

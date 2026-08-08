@@ -11,10 +11,15 @@ import {
   type ProductSaveState,
 } from "../actions";
 import {
+  IMAGE_SOURCE_MAX_BYTES,
   PRODUCT_IMAGE_MAX_BYTES,
   PRODUCT_IMAGE_MAX_COUNT,
   productImageAccept,
 } from "@/lib/payment-qr";
+import {
+  ImagePreparationError,
+  prepareOrdinaryImage,
+} from "@/lib/image-preparation";
 import type { Locale } from "@/lib/i18n";
 import { getWorkspaceStrings } from "@/lib/i18n/workspace";
 import styles from "./products.module.css";
@@ -221,7 +226,7 @@ export function ProductForm({
       return;
     }
     for (const file of selected) {
-      if (file.size > PRODUCT_IMAGE_MAX_BYTES) {
+      if (file.size > IMAGE_SOURCE_MAX_BYTES) {
         setImageError(strings.imageTooLarge);
         setInputKey((current) => current + 1);
         return;
@@ -237,29 +242,43 @@ export function ProductForm({
     try {
       for (const [index, file] of selected.entries()) {
         setUploadMessage(strings.uploadingImage(index + 1, selected.length));
-        const objectKey = await uploadProductImageDirect(file, boothId, {
-          start: strings.uploadStartFailed,
-          rejected: strings.uploadRejected,
-        });
+        const preparedFile = await prepareOrdinaryImage(
+          file,
+          PRODUCT_IMAGE_MAX_BYTES,
+        );
+        const objectKey = await uploadProductImageDirect(
+          preparedFile,
+          boothId,
+          {
+            start: strings.uploadStartFailed,
+            rejected: strings.uploadRejected,
+          },
+        );
         const uploaded: EditableProductImage = {
           clientId: `uploaded-${objectKey}`,
           source: "uploaded",
           objectKey,
-          url: URL.createObjectURL(file),
+          url: URL.createObjectURL(preparedFile),
           alt: "",
         };
         setImages((current) => [...current, uploaded]);
       }
       setUploadMessage(strings.uploadComplete);
     } catch (error) {
-      Sentry.captureException(error, {
-        tags: {
-          "cyfurden.operation": "product.image_presign_upload",
-          "cyfurden.failure_surface": "direct_oci_upload",
-        },
-      });
+      if (!(error instanceof ImagePreparationError)) {
+        Sentry.captureException(error, {
+          tags: {
+            "cyfurden.operation": "product.image_presign_upload",
+            "cyfurden.failure_surface": "direct_oci_upload",
+          },
+        });
+      }
       setImageError(
-        error instanceof Error ? error.message : strings.uploadFailed,
+        error instanceof ImagePreparationError
+          ? strings.imagePreparationFailed
+          : error instanceof Error
+            ? error.message
+            : strings.uploadFailed,
       );
     } finally {
       setUploading(false);
@@ -375,8 +394,8 @@ export function ProductForm({
                 defaultValue={value.sku}
                 required
                 maxLength={80}
-                pattern="[A-Za-z0-9][A-Za-z0-9._-]*"
               />
+              <small>{strings.skuHelp}</small>
             </label>
           </div>
         </section>
@@ -394,7 +413,7 @@ export function ProductForm({
                 type="number"
                 min="0"
                 max="9000000000000"
-                step="1000"
+                step="1"
                 defaultValue={value.priceVnd}
                 required
               />

@@ -4,8 +4,16 @@
 import { useEffect, useState } from "react";
 import type { Locale } from "@/lib/i18n";
 import { getWorkspaceStrings } from "@/lib/i18n/workspace";
+import {
+  ImagePreparationError,
+  prepareOrdinaryImage,
+} from "@/lib/image-preparation";
 import { type BoothSocialLinks, socialPlatforms } from "@/lib/shop-settings";
-import { PAYMENT_QR_MAX_BYTES, paymentQrAccept } from "@/lib/payment-qr";
+import {
+  IMAGE_SOURCE_MAX_BYTES,
+  PRODUCT_IMAGE_MAX_BYTES,
+  paymentQrAccept,
+} from "@/lib/payment-qr";
 import { createSocialQrDataUrl } from "@/lib/social-qr";
 import styles from "./storefront-designer.module.css";
 
@@ -114,7 +122,7 @@ export function BoothIdentityControls({
     setUploadError(null);
     setUploadMessage(null);
     if (!file) return;
-    if (file.size > PAYMENT_QR_MAX_BYTES) {
+    if (file.size > IMAGE_SOURCE_MAX_BYTES) {
       setUploadError(strings.logoTooLarge);
       return;
     }
@@ -125,14 +133,18 @@ export function BoothIdentityControls({
 
     setUploadBusy(true);
     try {
+      const preparedFile = await prepareOrdinaryImage(
+        file,
+        PRODUCT_IMAGE_MAX_BYTES,
+      );
       const response = await fetch("/api/uploads/presign", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           boothId,
           purpose: "logo",
-          contentType: file.type,
-          contentLength: file.size,
+          contentType: preparedFile.type,
+          contentLength: preparedFile.size,
         }),
       });
       const presign = (await response.json()) as PresignResponse;
@@ -142,21 +154,25 @@ export function BoothIdentityControls({
 
       const upload = await fetch(presign.uploadUrl, {
         method: "PUT",
-        headers: { "content-type": file.type },
-        body: file,
+        headers: { "content-type": preparedFile.type },
+        body: preparedFile,
       });
       if (!upload.ok) {
         throw new Error(strings.logoUploadRejected);
       }
 
       if (logoPreviewUrl) URL.revokeObjectURL(logoPreviewUrl);
-      setLogoPreviewUrl(URL.createObjectURL(file));
+      setLogoPreviewUrl(URL.createObjectURL(preparedFile));
       setLogoObjectKey(presign.objectKey);
       setUploadMessage(strings.logoUploaded);
       onDirty();
     } catch (error) {
       setUploadError(
-        error instanceof Error ? error.message : strings.logoUploadFailed,
+        error instanceof ImagePreparationError
+          ? strings.logoPreparationFailed
+          : error instanceof Error
+            ? error.message
+            : strings.logoUploadFailed,
       );
     } finally {
       setUploadBusy(false);

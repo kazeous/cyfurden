@@ -182,7 +182,7 @@ const englishWorkspaceCatalogue = {
       "Supports {code}, {item}, and {amount}. Long VietQR messages safely fall back to the reservation code.",
     fallbackQr: "Fallback QR image",
     fallbackQrHelp:
-      "PNG, JPEG, or WebP up to 5 MB, stored in Oracle Object Storage when you save.",
+      "PNG, JPEG, or WebP up to 20 MiB, stored losslessly in Oracle Object Storage when you save.",
     readyToSave: "Ready to save",
     uploaded: "Uploaded",
     paymentQrPreviewAlt: "Payment QR preview",
@@ -198,7 +198,7 @@ const englishWorkspaceCatalogue = {
       "Uploads are unavailable until Oracle Object Storage is configured.",
     generatedPreferred:
       "Generated VietQR remains preferred when bank details are complete.",
-    qrTooLarge: "QR images must be 5 MB or smaller.",
+    qrTooLarge: "QR images must be 20 MiB or smaller.",
     qrInvalidType: "Choose a PNG, JPEG, or WebP image.",
     customerInstructions: "Customer payment instructions",
     bilingualHelp: "Inline [en]…[/en][vi]…[/vi] content is supported.",
@@ -212,16 +212,18 @@ const englishWorkspaceCatalogue = {
     socialQrAlt: (label: string) => `${label} profile QR code preview`,
     qrReady: "High-correction QR preview",
     qrAddLink: "Add a link to generate",
-    logoTooLarge: "Logo images must be 5 MB or smaller.",
+    logoTooLarge: "Logo source images must be 20 MiB or smaller.",
     logoInvalidType: "Choose a PNG, JPEG, or WebP logo image.",
     logoUploadStartFailed: "The logo upload could not start.",
     logoUploadRejected: "Oracle Object Storage rejected the logo upload.",
+    logoPreparationFailed:
+      "The logo could not be prepared in this browser. Choose another PNG, JPEG, or WebP image.",
     logoUploaded: "Logo uploaded. Save changes to attach it to this booth.",
     logoUploadFailed: "The logo could not be uploaded.",
     logoWillRemove: "Logo will be removed when you save.",
     logoTitle: "Booth logo",
     logoHelp:
-      "PNG, JPEG, or WebP up to 5 MB. Uploads use a short-lived, booth-scoped Oracle URL.",
+      "PNG, JPEG, or WebP up to 20 MiB. Images are prepared before upload through a short-lived, booth-scoped Oracle URL.",
     logoPreviewAlt: "Booth logo preview",
     uploading: "Uploading…",
     replaceLogo: "Replace logo",
@@ -297,7 +299,7 @@ const englishWorkspaceCatalogue = {
     featuredMoved: (position: number) =>
       `Featured slide moved to position ${position}.`,
     moving: (label: string) => `Moving ${label}.`,
-    qrTooLarge: "QR images must be 5 MB or smaller.",
+    qrTooLarge: "QR images must be 20 MiB or smaller.",
     qrInvalidType: "Choose a PNG, JPEG, or WebP image.",
     previewSoldOut: "Sold out",
     previewAvailable: "Available",
@@ -387,7 +389,7 @@ const englishWorkspaceCatalogue = {
       "Supports {code}, {item}, and {amount}. New transfer references use at most 10 printable characters; longer templates safely fall back to the generated short reference. {ORDER} remains available for existing booths.",
     paymentQr: "Payment QR image",
     paymentQrHelp:
-      "Upload a PNG, JPEG, or WebP image up to 5 MB. It is stored securely in Oracle Object Storage when you save.",
+      "Upload a PNG, JPEG, or WebP image up to 20 MiB. It is stored losslessly in Oracle Object Storage when you save.",
     readyToSave: "Ready to save",
     uploaded: "Uploaded",
     paymentQrPreviewAlt: "Payment QR preview",
@@ -483,9 +485,11 @@ const englishWorkspaceCatalogue = {
       "We could not send this product to the server. Your entries are still here. Check your connection and image size, then try again.",
     uploadStartFailed: "The product image upload could not start.",
     uploadRejected: "Oracle Object Storage rejected the product image.",
+    imagePreparationFailed:
+      "The product image could not be prepared in this browser. Choose another PNG, JPEG, or WebP image.",
     rejectedRemoved: "The rejected uploads were removed. Choose them again.",
     imageLimit: (count: number) => `A product can have up to ${count} images.`,
-    imageTooLarge: "Each product image must be 5 MB or smaller.",
+    imageTooLarge: "Each product source image must be 20 MiB or smaller.",
     imageInvalidType: "Choose PNG, JPEG, or WebP product images.",
     uploadingImage: (current: number, total: number) =>
       `Uploading image ${current} of ${total} directly to Oracle Object Storage…`,
@@ -502,8 +506,11 @@ const englishWorkspaceCatalogue = {
     productName: "Product name",
     urlSlug: "URL slug",
     slugPlaceholder: "generated-from-name",
-    slugHelp: "Lowercase letters and hyphens are used publicly.",
+    slugHelp:
+      "This becomes the product's public URL. Leave it blank to generate one from the product name; Cyfurden uses lowercase letters, numbers, and hyphens.",
     sku: "SKU",
+    skuHelp:
+      "Letters with Vietnamese diacritics, numbers, spaces, dots, underscores, and hyphens are accepted.",
     pricingStock: "Pricing & stock",
     priceVnd: "Price (VND)",
     priceHelp: "Enter whole đồng; the storefront formats the amount.",
@@ -538,7 +545,7 @@ const englishWorkspaceCatalogue = {
     uploading: "Uploading…",
     chooseImages: "Choose images",
     imageHelp:
-      "PNG, JPEG, or WebP, up to 5 MB each. Images upload directly to Oracle and are verified by Cyfurden when you save.",
+      "PNG, JPEG, or WebP source images up to 20 MiB each. Cyfurden prepares ordinary images before their direct Oracle upload and verifies the final bytes when you save.",
     publishing: "Publishing",
     featureItem: "Feature this item on the storefront",
     featureHelp:
@@ -557,6 +564,13 @@ const englishWorkspaceCatalogue = {
     hideProduct: "Hide product",
   },
   promotion: {
+    metadataTitle: "Promotions",
+    pageEyebrow: "Catalogue offers",
+    pageTitle: "Promotions",
+    pageDescription:
+      "Manage buy-X/get-Y offers separately from product catalogue editing.",
+    savedNotice:
+      "Quantity promotion saved. Active offers now update the public cart and new reservation totals.",
     eyebrow: "Cart offer",
     title: "Quantity promotion",
     description:
@@ -1063,7 +1077,7 @@ const englishWorkspaceCatalogue = {
       "This booth has order history and cannot be deleted. Archive support belongs to a later lifecycle milestone.",
     boothUnavailable: "The booth no longer exists or is no longer yours.",
     productCoreFields: (maximum: string) =>
-      `Use a 2-120 character name, a SKU made from letters, numbers, dots, underscores, or hyphens, and a whole-number price between 0 and ${maximum} VND.`,
+      `Use a 2-120 character name, a SKU made from letters (including Vietnamese diacritics), numbers, spaces, dots, underscores, or hyphens, and a whole-number price between 0 and ${maximum} VND.`,
     productCopyLimits:
       "Keep the description under 5,000 characters and the supporting labels within their displayed limits.",
     productStock: (maximum: string) =>
@@ -1333,7 +1347,7 @@ const vietnameseWorkspaceCatalogue: WorkspaceCatalogue = {
       "Hỗ trợ {code}, {item} và {amount}. Nội dung VietQR quá dài sẽ tự dùng mã đơn đặt trước.",
     fallbackQr: "Ảnh QR dự phòng",
     fallbackQrHelp:
-      "PNG, JPEG hoặc WebP tối đa 5 MB, được lưu trong Oracle Object Storage khi bạn bấm lưu.",
+      "PNG, JPEG hoặc WebP tối đa 20 MiB, được lưu nguyên vẹn trong Oracle Object Storage khi bạn bấm lưu.",
     readyToSave: "Sẵn sàng lưu",
     uploaded: "Đã tải lên",
     paymentQrPreviewAlt: "Xem trước QR thanh toán",
@@ -1350,7 +1364,7 @@ const vietnameseWorkspaceCatalogue: WorkspaceCatalogue = {
       "Chưa thể tải ảnh lên cho đến khi Oracle Object Storage được cấu hình.",
     generatedPreferred:
       "VietQR tạo tự động vẫn được ưu tiên khi thông tin ngân hàng đã đầy đủ.",
-    qrTooLarge: "Ảnh QR phải có dung lượng tối đa 5 MB.",
+    qrTooLarge: "Ảnh QR phải có dung lượng tối đa 20 MiB.",
     qrInvalidType: "Hãy chọn ảnh PNG, JPEG hoặc WebP.",
     customerInstructions: "Hướng dẫn thanh toán cho khách",
     bilingualHelp: "Hỗ trợ nội dung dạng [en]…[/en][vi]…[/vi].",
@@ -1364,16 +1378,18 @@ const vietnameseWorkspaceCatalogue: WorkspaceCatalogue = {
     socialQrAlt: (label) => `Xem trước mã QR hồ sơ ${label}`,
     qrReady: "Xem trước QR sửa lỗi cao",
     qrAddLink: "Thêm liên kết để tạo QR",
-    logoTooLarge: "Ảnh logo phải có dung lượng tối đa 5 MB.",
+    logoTooLarge: "Ảnh nguồn logo phải có dung lượng tối đa 20 MiB.",
     logoInvalidType: "Hãy chọn ảnh logo PNG, JPEG hoặc WebP.",
     logoUploadStartFailed: "Không thể bắt đầu tải logo lên.",
     logoUploadRejected: "Oracle Object Storage đã từ chối ảnh logo.",
+    logoPreparationFailed:
+      "Không thể chuẩn bị ảnh logo trong trình duyệt này. Hãy chọn ảnh PNG, JPEG hoặc WebP khác.",
     logoUploaded: "Đã tải logo lên. Hãy lưu để gắn logo vào booth này.",
     logoUploadFailed: "Không thể tải logo lên.",
     logoWillRemove: "Logo sẽ bị xóa khi bạn lưu.",
     logoTitle: "Logo booth",
     logoHelp:
-      "PNG, JPEG hoặc WebP tối đa 5 MB. Ảnh được tải qua URL Oracle ngắn hạn, giới hạn trong booth.",
+      "PNG, JPEG hoặc WebP tối đa 20 MiB. Ảnh được chuẩn bị trước khi tải qua URL Oracle ngắn hạn, giới hạn trong booth.",
     logoPreviewAlt: "Xem trước logo booth",
     uploading: "Đang tải lên…",
     replaceLogo: "Thay logo",
@@ -1447,7 +1463,7 @@ const vietnameseWorkspaceCatalogue: WorkspaceCatalogue = {
     featuredMoved: (position) =>
       `Slide nổi bật đã chuyển tới vị trí ${position}.`,
     moving: (label) => `Đang di chuyển ${label}.`,
-    qrTooLarge: "Ảnh QR phải có dung lượng tối đa 5 MB.",
+    qrTooLarge: "Ảnh QR phải có dung lượng tối đa 20 MiB.",
     qrInvalidType: "Hãy chọn ảnh PNG, JPEG hoặc WebP.",
     previewSoldOut: "Hết hàng",
     previewAvailable: "Còn hàng",
@@ -1539,7 +1555,7 @@ const vietnameseWorkspaceCatalogue: WorkspaceCatalogue = {
       "Hỗ trợ {code}, {item} và {amount}. Mã chuyển khoản mới có tối đa 10 ký tự in được; mẫu dài hơn sẽ dùng mã ngắn do hệ thống tạo. {ORDER} vẫn dùng được cho booth cũ.",
     paymentQr: "Ảnh QR thanh toán",
     paymentQrHelp:
-      "Tải ảnh PNG, JPEG hoặc WebP tối đa 5 MB. Ảnh được lưu an toàn trong Oracle Object Storage khi bạn bấm lưu.",
+      "Tải ảnh PNG, JPEG hoặc WebP tối đa 20 MiB. Ảnh được lưu nguyên vẹn và an toàn trong Oracle Object Storage khi bạn bấm lưu.",
     readyToSave: "Sẵn sàng lưu",
     uploaded: "Đã tải lên",
     paymentQrPreviewAlt: "Xem trước QR thanh toán",
@@ -1634,9 +1650,11 @@ const vietnameseWorkspaceCatalogue: WorkspaceCatalogue = {
       "Không thể gửi sản phẩm tới máy chủ. Nội dung bạn nhập vẫn còn ở đây. Hãy kiểm tra kết nối và kích thước ảnh rồi thử lại.",
     uploadStartFailed: "Không thể bắt đầu tải ảnh sản phẩm lên.",
     uploadRejected: "Oracle Object Storage đã từ chối ảnh sản phẩm.",
+    imagePreparationFailed:
+      "Không thể chuẩn bị ảnh sản phẩm trong trình duyệt này. Hãy chọn ảnh PNG, JPEG hoặc WebP khác.",
     rejectedRemoved: "Ảnh bị từ chối đã được xóa. Hãy chọn lại ảnh.",
     imageLimit: (count) => `Mỗi sản phẩm có thể có tối đa ${count} ảnh.`,
-    imageTooLarge: "Mỗi ảnh sản phẩm phải có dung lượng tối đa 5 MB.",
+    imageTooLarge: "Mỗi ảnh nguồn sản phẩm phải có dung lượng tối đa 20 MiB.",
     imageInvalidType: "Hãy chọn ảnh sản phẩm PNG, JPEG hoặc WebP.",
     uploadingImage: (current, total) =>
       `Đang tải ảnh ${current}/${total} trực tiếp lên Oracle Object Storage…`,
@@ -1653,8 +1671,11 @@ const vietnameseWorkspaceCatalogue: WorkspaceCatalogue = {
     productName: "Tên sản phẩm",
     urlSlug: "Slug URL",
     slugPlaceholder: "tao-tu-ten-san-pham",
-    slugHelp: "URL công khai dùng chữ thường và dấu gạch nối.",
+    slugHelp:
+      "Nội dung này trở thành URL công khai của sản phẩm. Để trống để tạo từ tên sản phẩm; Cyfurden dùng chữ thường, chữ số và dấu gạch nối.",
     sku: "SKU",
+    skuHelp:
+      "Chấp nhận chữ có dấu tiếng Việt, chữ số, khoảng trắng, dấu chấm, gạch dưới và gạch nối.",
     pricingStock: "Giá & tồn kho",
     priceVnd: "Giá (VND)",
     priceHelp: "Nhập số tiền đồng nguyên; storefront sẽ định dạng giá.",
@@ -1689,7 +1710,7 @@ const vietnameseWorkspaceCatalogue: WorkspaceCatalogue = {
     uploading: "Đang tải lên…",
     chooseImages: "Chọn ảnh",
     imageHelp:
-      "PNG, JPEG hoặc WebP, mỗi ảnh tối đa 5 MB. Ảnh được tải trực tiếp lên Oracle và Cyfurden xác minh khi bạn lưu.",
+      "Ảnh nguồn PNG, JPEG hoặc WebP tối đa 20 MiB mỗi ảnh. Cyfurden chuẩn bị ảnh thường trước khi tải trực tiếp lên Oracle và xác minh byte cuối khi bạn lưu.",
     publishing: "Xuất bản",
     featureItem: "Đặt sản phẩm này ở vị trí nổi bật trên storefront",
     featureHelp:
@@ -1707,6 +1728,13 @@ const vietnameseWorkspaceCatalogue: WorkspaceCatalogue = {
     hideProduct: "Ẩn sản phẩm",
   },
   promotion: {
+    metadataTitle: "Ưu đãi",
+    pageEyebrow: "Ưu đãi danh mục",
+    pageTitle: "Ưu đãi",
+    pageDescription:
+      "Quản lý ưu đãi mua-X-tặng-Y riêng khỏi phần chỉnh sửa danh mục sản phẩm.",
+    savedNotice:
+      "Đã lưu khuyến mãi số lượng. Ưu đãi đang hoạt động sẽ cập nhật giỏ hàng công khai và tổng tiền đơn đặt trước mới.",
     eyebrow: "Ưu đãi giỏ hàng",
     title: "Khuyến mãi số lượng",
     description:
@@ -2210,7 +2238,7 @@ const vietnameseWorkspaceCatalogue: WorkspaceCatalogue = {
       "Booth này có lịch sử đơn hàng nên không thể xóa. Tính năng lưu trữ thuộc một mốc vòng đời sau.",
     boothUnavailable: "Booth không còn tồn tại hoặc không còn thuộc về bạn.",
     productCoreFields: (maximum) =>
-      `Dùng tên dài 2–120 ký tự, SKU chỉ gồm chữ, số, dấu chấm, gạch dưới hoặc gạch nối và giá nguyên từ 0 đến ${maximum} VND.`,
+      `Dùng tên dài 2–120 ký tự, SKU gồm chữ có dấu tiếng Việt, chữ số, khoảng trắng, dấu chấm, gạch dưới hoặc gạch nối và giá nguyên từ 0 đến ${maximum} VND.`,
     productCopyLimits:
       "Giữ mô tả dưới 5.000 ký tự và các nhãn hỗ trợ trong giới hạn hiển thị.",
     productStock: (maximum) =>

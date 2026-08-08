@@ -6,9 +6,9 @@ const readSource = (path: string) =>
   readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("Phase 9 promotion configuration persists scoped product roles", async () => {
-  const [actions, productsPage, editor] = await Promise.all([
+  const [actions, promotionsPage, editor] = await Promise.all([
     readSource("app/manage/[boothId]/actions.ts"),
-    readSource("app/manage/[boothId]/products/page.tsx"),
+    readSource("app/manage/[boothId]/promotions/page.tsx"),
     readSource("app/manage/[boothId]/products/promotion-editor.tsx"),
   ]);
 
@@ -17,7 +17,7 @@ test("Phase 9 promotion configuration persists scoped product roles", async () =
   assert.match(actions, /transaction\.promotionProduct\.deleteMany/);
   assert.match(actions, /transaction\.promotionProduct\.createMany/);
   assert.match(actions, /action: "promotion\.saved"/);
-  assert.match(productsPage, /<PromotionEditor/);
+  assert.match(promotionsPage, /<PromotionEditor/);
   assert.match(editor, /name="buyProductIds"/);
   assert.match(editor, /name="rewardProductIds"/);
   assert.match(editor, /name="repeatable"/);

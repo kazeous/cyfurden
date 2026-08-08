@@ -48,6 +48,9 @@ export type PublicBoothStrings = {
   cartEmptyHint: string;
   cartReview: string;
   cartOpen: string;
+  cartContentsAria: string;
+  cartCheckout: string;
+  cartBackToBag: string;
   cartManualNote: string;
   cartPausedNote: string;
   topbarBag: string;
@@ -95,6 +98,7 @@ export type PublicBoothStrings = {
   cartLineRemovedAnnouncement: (name: string, variant: string) => string;
   cartClose: string;
   bagHeading: string;
+  checkoutHeading: string;
   cartSubmit: string;
   cartSubmitPending: string;
   cartNameLabel: string;

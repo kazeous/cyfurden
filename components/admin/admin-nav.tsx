@@ -17,12 +17,14 @@ const sections: Array<{
     | "storefrontLabel"
     | "ordersLabel"
     | "productsLabel"
+    | "promotionsLabel"
     | "gachaLabel"
     | "teamLabel";
   descriptionKey:
     | "storefrontDescription"
     | "ordersDescription"
     | "productsDescription"
+    | "promotionsDescription"
     | "gachaDescription"
     | "teamDescription";
   icon: ReactNode;
@@ -54,6 +56,16 @@ const sections: Array<{
     icon: (
       <svg aria-hidden="true" viewBox="0 0 24 24">
         <path d="m12 4 7 4v8l-7 4-7-4V8l7-4Z M5.5 8 12 12l6.5-4M12 12v8" />
+      </svg>
+    ),
+  },
+  {
+    id: "promotions",
+    labelKey: "promotionsLabel",
+    descriptionKey: "promotionsDescription",
+    icon: (
+      <svg aria-hidden="true" viewBox="0 0 24 24">
+        <path d="M4.5 7.5h15v9h-15zM12 7.5v9M9.5 7.5C7 7.5 6 4.5 8.2 4.5 10 4.5 12 7.5 12 7.5s2-3 3.8-3c2.2 0 1.2 3-1.3 3" />
       </svg>
     ),
   },

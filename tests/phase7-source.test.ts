@@ -54,8 +54,8 @@ test("Phase 7 cart and social QR accessibility wiring remains present", async ()
   assert.match(storefront, /removeCartLine\(current, variantId\)/);
   assert.match(storefront, /pendingCartFocusRef/);
   assert.match(storefront, /aria-live="polite"/);
-  assert.match(storefront, /SKU \{featuredProduct\.sku\}/);
-  assert.match(storefront, /SKU \{product\.sku\}/);
+  assert.doesNotMatch(storefront, /SKU \{featuredProduct\.sku\}/);
+  assert.doesNotMatch(storefront, /SKU \{product\.sku\}/);
   assert.match(storefront, /styles\.infoQrLogo/);
   assert.doesNotMatch(socialQr, /canvas|crossOrigin|centerLogoUrl/);
 });

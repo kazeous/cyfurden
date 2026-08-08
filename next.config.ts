@@ -11,8 +11,8 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   experimental: {
     serverActions: {
-      // Allows a 5 MB QR image plus the storefront form fields and multipart overhead.
-      bodySizeLimit: "6mb",
+      // Allows a 20 MiB lossless QR image plus multipart form overhead.
+      bodySizeLimit: "22mb",
     },
   },
   async headers() {

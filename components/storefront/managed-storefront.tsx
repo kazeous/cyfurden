@@ -137,8 +137,15 @@ function ProductArt({ product }: { product: ProductDto }) {
           <span className={styles.artHill} aria-hidden="true" />
         </>
       )}
-      <span className={styles.artLabel}>{product.name}</span>
     </div>
+  );
+}
+
+function CartIcon() {
+  return (
+    <svg className={styles.cartIcon} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 5h2l1.6 9h9.8l1.6-6H7M9 19h.01M17 19h.01" />
+    </svg>
   );
 }
 
@@ -286,6 +293,7 @@ export function ManagedStorefront({
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [detailProduct, setDetailProduct] = useState<ProductDto | null>(null);
   const [detailVariantId, setDetailVariantId] = useState<string | null>(null);
   const [detailImageIndex, setDetailImageIndex] = useState(0);
@@ -308,6 +316,7 @@ export function ManagedStorefront({
   const detailPanelRef = useRef<HTMLDivElement>(null);
   const infoPanelRef = useRef<HTMLDivElement>(null);
   const orderErrorRef = useRef<HTMLParagraphElement>(null);
+  const checkoutNameRef = useRef<HTMLInputElement>(null);
   const emptyCartRef = useRef<HTMLDivElement>(null);
   const cartLineControlRefs = useRef(new Map<string, HTMLButtonElement>());
   const pendingCartFocusRef = useRef<string | null | undefined>(undefined);
@@ -406,6 +415,10 @@ export function ManagedStorefront({
   useEffect(() => {
     if (orderState.status === "error") orderErrorRef.current?.focus();
   }, [orderState]);
+
+  useEffect(() => {
+    if (cartOpen && checkoutOpen) checkoutNameRef.current?.focus();
+  }, [cartOpen, checkoutOpen]);
 
   useEffect(() => {
     const focusTarget = pendingCartFocusRef.current;
@@ -542,7 +555,6 @@ export function ManagedStorefront({
             { productId: product.id, variantId: variant.id, quantity: 1 },
           ];
     });
-    setCartOpen(true);
   };
 
   const openDetails = (product: ProductDto) => {
@@ -592,7 +604,6 @@ export function ManagedStorefront({
           ];
     });
     setDetailProduct(null);
-    setCartOpen(true);
   };
 
   const prepareFocusAfterRemoval = (variantId: string) => {
@@ -645,10 +656,17 @@ export function ManagedStorefront({
     pendingCartFocusRef.current = null;
     setCartAnnouncement(t.cartClearedAnnouncement);
     updateCart(clearCartLines);
+    setCheckoutOpen(false);
+  };
+
+  const openCart = () => {
+    setCheckoutOpen(false);
+    setCartOpen(true);
   };
 
   const closeCart = () => {
     setCartAnnouncement("");
+    setCheckoutOpen(false);
     setCartOpen(false);
   };
 
@@ -832,11 +850,6 @@ export function ManagedStorefront({
                   {featuredProduct.eyebrow ?? t.featuredProductEyebrow}
                 </p>
                 <h1>{featuredProduct.name}</h1>
-                {featuredProduct.sku ? (
-                  <span className={styles.skuChip}>
-                    SKU {featuredProduct.sku}
-                  </span>
-                ) : null}
                 <p className={styles.featuredDescription}>
                   {featuredProduct.shortDescription ??
                     featuredProduct.description}
@@ -860,6 +873,7 @@ export function ManagedStorefront({
                       atStockLimit
                     }
                   >
+                    <CartIcon />
                     {!canAcceptReservations
                       ? t.productDetailReservationsPaused
                       : atStockLimit
@@ -1157,11 +1171,6 @@ export function ManagedStorefront({
                         >
                           {product.name}
                         </button>
-                        {product.sku ? (
-                          <span className={styles.skuChip}>
-                            SKU {product.sku}
-                          </span>
-                        ) : null}
                         <p>{product.shortDescription ?? product.description}</p>
                         {product.tags.length ? (
                           <div
@@ -1178,15 +1187,17 @@ export function ManagedStorefront({
                           <div className={styles.cardActions}>
                             <button
                               type="button"
-                              className={styles.detailsButton}
-                              onClick={() => openDetails(product)}
-                            >
-                              {t.productDetailDetails}
-                            </button>
-                            <button
-                              type="button"
-                              className={styles.addButton}
+                              className={`${styles.addButton} ${styles.cardAddButton}`}
                               onClick={() => add(product)}
+                              aria-label={
+                                !canAcceptReservations
+                                  ? t.productDetailReservationsPaused
+                                  : atStockLimit
+                                    ? t.productDetailStockLimitReached
+                                    : available
+                                      ? `${t.productDetailAddToBag}: ${product.name}`
+                                      : t.productDetailSoldOut
+                              }
                               disabled={
                                 !hydrated ||
                                 !available ||
@@ -1194,13 +1205,7 @@ export function ManagedStorefront({
                                 atStockLimit
                               }
                             >
-                              {!canAcceptReservations
-                                ? t.productDetailReservationsPaused
-                                : atStockLimit
-                                  ? t.productDetailStockLimitReached
-                                  : available
-                                    ? t.productDetailAddToBag
-                                    : t.productDetailSoldOut}
+                              <CartIcon />
                             </button>
                           </div>
                         </div>
@@ -1232,6 +1237,31 @@ export function ManagedStorefront({
                 ? t.cartReadyForReservation(money(totalCents, locale))
                 : t.cartEmptyHint}
             </p>
+            {cartDetails.length ? (
+              <ul
+                className={styles.cartSummaryLines}
+                aria-label={t.cartContentsAria}
+              >
+                {cartDetails.map(({ line, product, variant }) => {
+                  const pricedLine = promotionLineMap.get(variant.id);
+                  const lineTotal =
+                    pricedLine?.totalMinorUnits ??
+                    BigInt(variant.priceCents ?? product.priceCents) *
+                      BigInt(line.quantity);
+                  return (
+                    <li key={variant.id}>
+                      <span>
+                        <strong>{product.name}</strong>
+                        <small>
+                          {variant.label} · {t.cartLineUnits(line.quantity)}
+                        </small>
+                      </span>
+                      <strong>{money(lineTotal, locale)}</strong>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
             {cartCount && promotionPricing.progress.length ? (
               <ul
                 className={styles.promotionNudges}
@@ -1247,7 +1277,7 @@ export function ManagedStorefront({
             <button
               type="button"
               className={styles.addButton}
-              onClick={() => setCartOpen(true)}
+              onClick={openCart}
             >
               {cartCount ? t.cartReview : t.cartOpen}
             </button>
@@ -1301,11 +1331,7 @@ export function ManagedStorefront({
           >
             {t.boothInfoOpen}
           </button>
-          <button
-            className={styles.bagButton}
-            type="button"
-            onClick={() => setCartOpen(true)}
-          >
+          <button className={styles.bagButton} type="button" onClick={openCart}>
             {t.topbarBag} <span>{cartCount}</span>
           </button>
         </div>
@@ -1513,6 +1539,7 @@ export function ManagedStorefront({
                       !canAcceptReservations
                     }
                   >
+                    <CartIcon />
                     {!canAcceptReservations
                       ? t.productDetailReservationsPaused
                       : selectedDetailVariant &&
@@ -1635,9 +1662,21 @@ export function ManagedStorefront({
             <div className={styles.cartHeader}>
               <div>
                 <p className={styles.eyebrow}>{t.cartEyebrow}</p>
-                <h2 id="bag-heading">{t.bagHeading}</h2>
+                <h2 id="bag-heading">
+                  {checkoutOpen ? t.checkoutHeading : t.bagHeading}
+                </h2>
               </div>
               <div className={styles.cartHeaderActions}>
+                {checkoutOpen ? (
+                  <button
+                    type="button"
+                    className={styles.clearButton}
+                    onClick={() => setCheckoutOpen(false)}
+                    disabled={orderPending}
+                  >
+                    {t.cartBackToBag}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className={styles.clearButton}
@@ -1778,142 +1817,154 @@ export function ManagedStorefront({
                     <dd>{money(totalCents, locale)}</dd>
                   </div>
                 </dl>
-                <form
-                  action={orderAction}
-                  className={styles.orderForm}
-                  aria-busy={orderPending}
-                >
-                  <input type="hidden" name="boothId" value={booth.id} />
-                  <input type="hidden" name="slug" value={booth.slug} />
-                  <input type="hidden" name="locale" value={locale} />
-                  <input
-                    type="hidden"
-                    name="idempotencyKey"
-                    value={idempotencyKey}
-                  />
-                  <input
-                    type="hidden"
-                    name="lines"
-                    value={JSON.stringify(cart)}
-                  />
-                  <label>
-                    {t.cartNameLabel}
-                    <input
-                      name="customerName"
-                      required
-                      minLength={2}
-                      maxLength={100}
-                      placeholder={t.cartNamePlaceholder}
-                      disabled={orderPending}
-                    />
-                  </label>
-                  <label>
-                    {t.cartEmailLabel}
-                    <input
-                      name="customerEmail"
-                      type="email"
-                      required
-                      maxLength={254}
-                      placeholder={t.cartEmailPlaceholder}
-                      disabled={orderPending}
-                    />
-                  </label>
-                  <label>
-                    {t.cartPhoneLabel}
-                    <input
-                      name="customerPhone"
-                      type="tel"
-                      inputMode="numeric"
-                      autoComplete="tel"
-                      required
-                      minLength={1}
-                      maxLength={10}
-                      pattern="[0-9]{1,10}"
-                      placeholder={t.cartPhonePlaceholder}
-                      disabled={orderPending}
-                    />
-                  </label>
-                  <label>
-                    {t.cartSocialLabel}
-                    <input
-                      name="customerSocialContact"
-                      maxLength={200}
-                      placeholder={t.cartSocialPlaceholder}
-                      disabled={orderPending}
-                    />
-                  </label>
-                  <fieldset className={styles.fulfillmentFields}>
-                    <legend>{t.cartFulfillmentLegend}</legend>
-                    <label>
-                      <input
-                        type="radio"
-                        name="fulfillmentMethod"
-                        value="PICKUP"
-                        checked={fulfillmentMethod === "PICKUP"}
-                        onChange={() => setFulfillmentMethod("PICKUP")}
-                        disabled={orderPending}
-                      />
-                      {t.cartFulfillmentPickup}
-                    </label>
-                    <label>
-                      <input
-                        type="radio"
-                        name="fulfillmentMethod"
-                        value="SHIP"
-                        checked={fulfillmentMethod === "SHIP"}
-                        onChange={() => setFulfillmentMethod("SHIP")}
-                        disabled={orderPending}
-                      />
-                      {t.cartFulfillmentShip}
-                    </label>
-                  </fieldset>
-                  {fulfillmentMethod === "SHIP" ? (
-                    <label>
-                      {t.cartShippingAddressLabel}
-                      <textarea
-                        name="shippingAddress"
-                        required
-                        maxLength={500}
-                        autoComplete="street-address"
-                        placeholder={t.cartShippingAddressPlaceholder}
-                        disabled={orderPending}
-                      />
-                    </label>
-                  ) : (
-                    <input type="hidden" name="shippingAddress" value="" />
-                  )}
-                  <label>
-                    {t.cartNoteLabel}
-                    <textarea
-                      name="customerNote"
-                      maxLength={500}
-                      placeholder={t.cartNotePlaceholder}
-                      disabled={orderPending}
-                    />
-                  </label>
-                  <p
-                    id="bag-order-error"
-                    className={styles.orderError}
-                    ref={orderErrorRef}
-                    role={orderState.status === "error" ? "alert" : undefined}
-                    tabIndex={orderState.status === "error" ? -1 : undefined}
-                  >
-                    {orderState.message}
-                  </p>
+                {!checkoutOpen ? (
                   <button
-                    className={styles.addButton}
-                    type="submit"
-                    disabled={
-                      orderPending ||
-                      !hydrated ||
-                      !idempotencyKey ||
-                      !canAcceptReservations
-                    }
+                    className={`${styles.addButton} ${styles.checkoutButton}`}
+                    type="button"
+                    onClick={() => setCheckoutOpen(true)}
+                    disabled={!canAcceptReservations}
                   >
-                    {orderPending ? t.cartSubmitPending : t.cartSubmit}
+                    {t.cartCheckout}
                   </button>
-                  <p className={styles.disclaimer}>{t.cartFooter}</p>
-                </form>
+                ) : (
+                  <form
+                    action={orderAction}
+                    className={styles.orderForm}
+                    aria-busy={orderPending}
+                  >
+                    <input type="hidden" name="boothId" value={booth.id} />
+                    <input type="hidden" name="slug" value={booth.slug} />
+                    <input type="hidden" name="locale" value={locale} />
+                    <input
+                      type="hidden"
+                      name="idempotencyKey"
+                      value={idempotencyKey}
+                    />
+                    <input
+                      type="hidden"
+                      name="lines"
+                      value={JSON.stringify(cart)}
+                    />
+                    <label>
+                      {t.cartNameLabel}
+                      <input
+                        ref={checkoutNameRef}
+                        name="customerName"
+                        required
+                        minLength={2}
+                        maxLength={100}
+                        placeholder={t.cartNamePlaceholder}
+                        disabled={orderPending}
+                      />
+                    </label>
+                    <label>
+                      {t.cartEmailLabel}
+                      <input
+                        name="customerEmail"
+                        type="email"
+                        required
+                        maxLength={254}
+                        placeholder={t.cartEmailPlaceholder}
+                        disabled={orderPending}
+                      />
+                    </label>
+                    <label>
+                      {t.cartPhoneLabel}
+                      <input
+                        name="customerPhone"
+                        type="tel"
+                        inputMode="numeric"
+                        autoComplete="tel"
+                        required
+                        minLength={1}
+                        maxLength={10}
+                        pattern="[0-9]{1,10}"
+                        placeholder={t.cartPhonePlaceholder}
+                        disabled={orderPending}
+                      />
+                    </label>
+                    <label>
+                      {t.cartSocialLabel}
+                      <input
+                        name="customerSocialContact"
+                        maxLength={200}
+                        placeholder={t.cartSocialPlaceholder}
+                        disabled={orderPending}
+                      />
+                    </label>
+                    <fieldset className={styles.fulfillmentFields}>
+                      <legend>{t.cartFulfillmentLegend}</legend>
+                      <label>
+                        <input
+                          type="radio"
+                          name="fulfillmentMethod"
+                          value="PICKUP"
+                          checked={fulfillmentMethod === "PICKUP"}
+                          onChange={() => setFulfillmentMethod("PICKUP")}
+                          disabled={orderPending}
+                        />
+                        {t.cartFulfillmentPickup}
+                      </label>
+                      <label>
+                        <input
+                          type="radio"
+                          name="fulfillmentMethod"
+                          value="SHIP"
+                          checked={fulfillmentMethod === "SHIP"}
+                          onChange={() => setFulfillmentMethod("SHIP")}
+                          disabled={orderPending}
+                        />
+                        {t.cartFulfillmentShip}
+                      </label>
+                    </fieldset>
+                    {fulfillmentMethod === "SHIP" ? (
+                      <label>
+                        {t.cartShippingAddressLabel}
+                        <textarea
+                          name="shippingAddress"
+                          required
+                          maxLength={500}
+                          autoComplete="street-address"
+                          placeholder={t.cartShippingAddressPlaceholder}
+                          disabled={orderPending}
+                        />
+                      </label>
+                    ) : (
+                      <input type="hidden" name="shippingAddress" value="" />
+                    )}
+                    <label>
+                      {t.cartNoteLabel}
+                      <textarea
+                        name="customerNote"
+                        maxLength={500}
+                        placeholder={t.cartNotePlaceholder}
+                        disabled={orderPending}
+                      />
+                    </label>
+                    <p
+                      id="bag-order-error"
+                      className={styles.orderError}
+                      ref={orderErrorRef}
+                      role={orderState.status === "error" ? "alert" : undefined}
+                      tabIndex={orderState.status === "error" ? -1 : undefined}
+                    >
+                      {orderState.message}
+                    </p>
+                    <button
+                      className={styles.addButton}
+                      type="submit"
+                      disabled={
+                        orderPending ||
+                        !hydrated ||
+                        !idempotencyKey ||
+                        !canAcceptReservations
+                      }
+                    >
+                      {orderPending ? t.cartSubmitPending : t.cartSubmit}
+                    </button>
+                    <p className={styles.disclaimer}>{t.cartFooter}</p>
+                  </form>
+                )}
               </>
             ) : (
               <div className={styles.empty} ref={emptyCartRef} tabIndex={-1}>

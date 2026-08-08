@@ -79,6 +79,7 @@ test("all private-workspace entry pages resolve the locale catalogue", async () 
     "app/manage/[boothId]/orders/[orderId]/page.tsx",
     "app/manage/[boothId]/payments/page.tsx",
     "app/manage/[boothId]/products/page.tsx",
+    "app/manage/[boothId]/promotions/page.tsx",
     "app/manage/[boothId]/settings/page.tsx",
     "app/manage/[boothId]/storefront/page.tsx",
     "app/manage/[boothId]/shipping/page.tsx",

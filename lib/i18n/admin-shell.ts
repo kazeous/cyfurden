@@ -10,6 +10,8 @@ export type AdminShellStrings = {
   ordersDescription: string;
   productsLabel: string;
   productsDescription: string;
+  promotionsLabel: string;
+  promotionsDescription: string;
   gachaLabel: string;
   gachaDescription: string;
   teamLabel: string;
@@ -63,6 +65,8 @@ const catalogues: Record<Locale, AdminShellStrings> = {
     ordersDescription: "Review and prepare reservations",
     productsLabel: "Products",
     productsDescription: "Manage catalogue and stock",
+    promotionsLabel: "Promotions",
+    promotionsDescription: "Manage quantity offers",
     gachaLabel: "Gacha",
     gachaDescription: "Configure free play",
     teamLabel: "Team",
@@ -105,6 +109,8 @@ const catalogues: Record<Locale, AdminShellStrings> = {
     ordersDescription: "Duyệt và chuẩn bị đơn đặt trước",
     productsLabel: "Sản phẩm",
     productsDescription: "Quản lý danh mục và tồn kho",
+    promotionsLabel: "Ưu đãi",
+    promotionsDescription: "Quản lý khuyến mãi số lượng",
     gachaLabel: "Gacha",
     gachaDescription: "Cấu hình lượt chơi miễn phí",
     teamLabel: "Đội ngũ",

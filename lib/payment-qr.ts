@@ -1,4 +1,5 @@
-export const PAYMENT_QR_MAX_BYTES = 5 * 1024 * 1024;
+export const IMAGE_SOURCE_MAX_BYTES = 20 * 1024 * 1024;
+export const PAYMENT_QR_MAX_BYTES = IMAGE_SOURCE_MAX_BYTES;
 
 export const paymentQrAccept = "image/png,image/jpeg,image/webp";
 export const PRODUCT_IMAGE_MAX_BYTES = PAYMENT_QR_MAX_BYTES;
@@ -34,7 +35,7 @@ export function validatePaymentQrBytes(bytes: Uint8Array): PaymentQrImage {
   }
 
   if (bytes.byteLength > PAYMENT_QR_MAX_BYTES) {
-    throw new PaymentQrValidationError("QR images must be 5 MB or smaller.");
+    throw new PaymentQrValidationError("QR images must be 20 MiB or smaller.");
   }
 
   if (startsWith(bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) {
@@ -67,7 +68,7 @@ export function validateProductImageBytes(bytes: Uint8Array): PaymentQrImage {
     if (error instanceof PaymentQrValidationError) {
       const message =
         bytes.byteLength > PRODUCT_IMAGE_MAX_BYTES
-          ? "Product images must be 5 MB or smaller."
+          ? "Product images must be 20 MiB or smaller."
           : bytes.byteLength === 0
             ? "Choose a product image to upload."
             : "Use a PNG, JPEG, or WebP image for the product.";

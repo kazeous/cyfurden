@@ -8,6 +8,7 @@ import {
 } from "../lib/oracle-presign-contract";
 
 test("presigned upload requests enforce purpose, image type, and byte limits", () => {
+  assert.equal(PRESIGNED_UPLOAD_MAX_BYTES, 20 * 1024 * 1024);
   const valid = presignedUploadRequestSchema.parse({
     boothId: "booth_123",
     purpose: "logo",

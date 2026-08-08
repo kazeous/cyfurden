@@ -52,8 +52,11 @@ export const enCatalogue: Catalogue = {
     cartReadyForReservation: (amount) =>
       `${amount} ready for manual reservation.`,
     cartEmptyHint: "Add a piece from the collection to begin.",
-    cartReview: "Review bag",
+    cartReview: "Review & checkout",
     cartOpen: "Open bag",
+    cartContentsAria: "Items in your bag",
+    cartCheckout: "Continue to checkout",
+    cartBackToBag: "Back to bag",
     cartManualNote: "Manual bank transfer · no automatic verification",
     cartPausedNote:
       "Reservations are paused until payment instructions are ready",
@@ -107,6 +110,7 @@ export const enCatalogue: Catalogue = {
       `${name}, ${variant}, removed from bag.`,
     cartClose: "Close bag",
     bagHeading: "Your bag",
+    checkoutHeading: "Customer details",
     cartSubmit: "Reserve these pieces",
     cartSubmitPending: "Saving your reservation…",
     cartNameLabel: "Your name",

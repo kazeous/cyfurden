@@ -32,6 +32,12 @@ import {
 } from "@/lib/oracle-presign";
 import { isBoothProductImageObjectKey } from "@/lib/oracle-presign-contract";
 import { PRODUCT_IMAGE_MAX_COUNT } from "@/lib/payment-qr";
+import {
+  isValidProductSku,
+  MAX_PRODUCT_PRICE_VND,
+  normalizeProductSku,
+  parseWholeVndPrice,
+} from "@/lib/product-fields";
 import { synchronizeProductInventoryStatus } from "@/lib/product-inventory";
 import { MAX_PROMOTION_QUANTITY } from "@/lib/quantity-promotions";
 import {
@@ -62,7 +68,6 @@ import {
 
 const editorRoles = ["OWNER", "ADMIN"] as const;
 const orderRoles = ["OWNER", "ADMIN", "STAFF"] as const;
-const MAX_PRODUCT_PRICE_VND = 9_000_000_000_000;
 const MAX_STOCK_QUANTITY = 2_147_483_647;
 
 const readActionStrings = async () =>
@@ -733,9 +738,9 @@ async function saveProduct(
   const strings = await readActionStrings();
   const name = requiredText(formData, "name");
   const slug = slugify(requiredText(formData, "slug") || name);
-  const sku = requiredText(formData, "sku").toLocaleUpperCase();
+  const sku = normalizeProductSku(requiredText(formData, "sku"));
   const rawPrice = requiredText(formData, "priceVnd");
-  const priceVnd = Number(rawPrice);
+  const priceVnd = parseWholeVndPrice(rawPrice);
   const description = requiredText(formData, "description");
   const eyebrow = requiredText(formData, "eyebrow");
   const shortDescription = requiredText(formData, "shortDescription");
@@ -748,11 +753,8 @@ async function saveProduct(
     name.length < 2 ||
     name.length > 120 ||
     !slug ||
-    !/^[A-Z0-9][A-Z0-9._-]{0,79}$/.test(sku) ||
-    !rawPrice ||
-    !Number.isSafeInteger(priceVnd) ||
-    priceVnd < 0 ||
-    priceVnd > MAX_PRODUCT_PRICE_VND
+    !isValidProductSku(sku) ||
+    priceVnd === null
   ) {
     return {
       error: strings.productCoreFields(
@@ -808,7 +810,7 @@ async function saveProduct(
     return { error: strings.productImagesDuplicate };
   }
 
-  const priceCents = BigInt(Math.round(priceVnd * 100));
+  const priceCents = BigInt(priceVnd) * BigInt(100);
   const statusResult = productStatusSchema.safeParse(
     requiredText(formData, "status"),
   );
@@ -1235,9 +1237,9 @@ export async function savePromotionAction(
     return { error: strings.promotionSaveFailed };
   }
 
-  revalidatePath(`/manage/${boothId}/products`);
+  revalidatePath(`/manage/${boothId}/promotions`);
   revalidatePath(`/s/${booth.slug}`);
-  redirect(`/manage/${boothId}/products?promotionSaved=1`);
+  redirect(`/manage/${boothId}/promotions?saved=1`);
 }
 
 export type OrderStatusActionState = {

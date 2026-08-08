@@ -9,12 +9,8 @@ import { getWorkspaceStrings } from "@/lib/i18n/workspace";
 import { resolveOracleImageUrl } from "@/lib/oracle-images";
 import { db } from "@/lib/db";
 import { productAttentionWhere } from "@/lib/product-inventory";
-import {
-  defaultProductVariantLabel,
-  defaultPromotionName,
-} from "@/lib/system-content";
+import { defaultProductVariantLabel } from "@/lib/system-content";
 import { ProductForm, type ProductEditorValue } from "./product-form";
-import { PromotionEditor } from "./promotion-editor";
 import styles from "./products.module.css";
 
 const productStatuses = ["DRAFT", "LIVE", "SOLD_OUT", "HIDDEN"] as const;
@@ -151,7 +147,6 @@ export default async function ProductsPage({
     status?: string;
     new?: string;
     saved?: string;
-    promotionSaved?: string;
   }>;
 }) {
   const { boothId } = await params;
@@ -203,13 +198,7 @@ export default async function ProductsPage({
     },
     orderBy: [{ status: "asc" }, { updatedAt: "desc" }],
   });
-  const [
-    counts,
-    attentionCount,
-    requestedProduct,
-    promotion,
-    promotionProducts,
-  ] = await Promise.all([
+  const [counts, attentionCount, requestedProduct] = await Promise.all([
     db.product.groupBy({
       by: ["status"],
       where: { boothId },
@@ -225,16 +214,6 @@ export default async function ProductsPage({
           },
         })
       : Promise.resolve(null),
-    db.quantityPromotion.findFirst({
-      where: { boothId },
-      include: { products: true },
-      orderBy: { createdAt: "asc" },
-    }),
-    db.product.findMany({
-      where: { boothId },
-      select: { id: true, name: true, sku: true, status: true },
-      orderBy: [{ status: "asc" }, { name: "asc" }],
-    }),
   ]);
   const selectedFromResults = filters.product
     ? (products.find((product) => product.id === filters.product) ?? null)
@@ -278,38 +257,11 @@ export default async function ProductsPage({
           {strings.savedNotice}
         </p>
       ) : null}
-      {filters.promotionSaved ? (
-        <p className={styles.notice} role="status">
-          {strings.promotionSavedNotice}
-        </p>
-      ) : null}
       {!canEdit ? (
         <p className={styles.notice} role="status">
           {strings.readOnlyNotice}
         </p>
       ) : null}
-
-      <PromotionEditor
-        boothId={boothId}
-        locale={locale}
-        products={promotionProducts}
-        promotion={{
-          id: promotion?.id ?? null,
-          name: promotion?.name ?? defaultPromotionName,
-          buyQuantity: promotion?.buyQuantity ?? 3,
-          rewardQuantity: promotion?.rewardQuantity ?? 1,
-          active: promotion?.active ?? false,
-          repeatable: promotion?.repeatable ?? true,
-          buyProductIds:
-            promotion?.products.flatMap((product) =>
-              product.role === "BUY" ? [product.productId] : [],
-            ) ?? [],
-          rewardProductIds:
-            promotion?.products.flatMap((product) =>
-              product.role === "REWARD" ? [product.productId] : [],
-            ) ?? [],
-        }}
-      />
 
       <section
         className={styles.indexPanel}
