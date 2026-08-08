@@ -16,7 +16,7 @@ import {
   getWorkspaceStrings,
   type WorkspaceCatalogue,
 } from "@/lib/i18n/workspace";
-import { transitionOrderStatus } from "@/lib/order-admin";
+import { saveOrderShipment, transitionOrderStatus } from "@/lib/order-admin";
 import { parseEventDateRange } from "@/lib/order-events";
 import {
   discardUploadedPaymentQr,
@@ -1245,6 +1245,60 @@ export type OrderStatusActionState = {
   message: string;
 };
 
+export type OrderShipmentActionState = OrderStatusActionState;
+
+export async function saveOrderShipmentAction(
+  _previousState: OrderShipmentActionState,
+  formData: FormData,
+): Promise<OrderShipmentActionState> {
+  const strings = await readActionStrings();
+  const boothId = requiredText(formData, "boothId");
+  const orderId = requiredText(formData, "orderId");
+  if (!boothId || !orderId) {
+    return { status: "error", message: strings.shipmentInvalid };
+  }
+
+  try {
+    const { session } = await requireBoothRole(boothId, editorRoles);
+    const result = await saveOrderShipment({
+      boothId,
+      orderId,
+      actorUserId: session.user.id,
+      shipment: {
+        carrier: requiredText(formData, "carrier"),
+        trackingNumber: requiredText(formData, "trackingNumber"),
+        trackingUrl: requiredText(formData, "trackingUrl"),
+      },
+    });
+
+    if (result.kind === "invalid") {
+      return { status: "error", message: strings.shipmentInvalid };
+    }
+    if (result.kind === "not-shipping") {
+      return { status: "error", message: strings.shipmentPickupOnly };
+    }
+    if (result.kind === "missing") {
+      return { status: "error", message: strings.orderMissing };
+    }
+    if (result.kind === "forbidden") {
+      return { status: "error", message: strings.shipmentForbidden };
+    }
+    if (result.kind === "conflict") {
+      return { status: "error", message: strings.orderConflict };
+    }
+
+    revalidatePath(`/manage/${boothId}/shipping`);
+    revalidatePath(`/manage/${boothId}/orders/${orderId}`);
+    return { status: "success", message: strings.shipmentSaved };
+  } catch (error) {
+    Sentry.captureException(error, {
+      tags: { "cyfurden.operation": "order.shipment.save" },
+    });
+    console.error("Order shipment save failed", error);
+    return { status: "error", message: strings.shipmentSaveFailed };
+  }
+}
+
 export type OrderEventActionState = {
   status: "idle" | "success" | "error";
   message: string;
@@ -1443,6 +1497,9 @@ export async function updateOrderStatusAction(
 
     if (result.kind === "changed") {
       revalidatePath(`/manage/${boothId}/orders`);
+      revalidatePath(`/manage/${boothId}/orders/${orderId}`);
+      revalidatePath(`/manage/${boothId}/payments`);
+      revalidatePath(`/manage/${boothId}/shipping`);
       revalidatePath(`/s/${booth.slug}`);
     }
     const label = catalogue.common.orderStatusLabels[nextStatus];

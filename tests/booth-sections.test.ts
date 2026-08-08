@@ -11,6 +11,8 @@ test("staff can access Orders and no other booth-management section", () => {
     canAccessBoothSection("STAFF", section),
   );
   assert.deepEqual(staffSections, ["orders"]);
+  assert.equal(canAccessBoothSection("STAFF", "payments"), false);
+  assert.equal(canAccessBoothSection("STAFF", "shipping"), false);
   assert.equal(canAccessBoothSection("STAFF", "settings"), false);
 });
 

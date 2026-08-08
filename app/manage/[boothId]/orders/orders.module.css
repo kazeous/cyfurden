@@ -38,6 +38,49 @@
   line-height: 1.55;
 }
 
+.headerTools {
+  display: grid;
+  gap: 10px;
+  justify-items: end;
+}
+
+.operationsLinks {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.operationsLinks a,
+.openOrderLink {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border: 1px solid var(--orders-border);
+  border-radius: 9px;
+  color: var(--orders-ink);
+  background: var(--orders-surface);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.operationsLinks a:hover,
+.operationsLinks a:focus-visible,
+.openOrderLink:hover,
+.openOrderLink:focus-visible {
+  border-color: var(--color-rule-strong);
+  background: var(--orders-subtle);
+}
+
+.orderCodeLink {
+  color: inherit;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
 .eyebrow {
   margin: 0;
   color: var(--orders-accent);

@@ -7,8 +7,12 @@ import {
 } from "../app/s/[slug]/actions";
 import { db } from "../lib/db";
 import {
+  readOrderDetailForManager,
   readOrderDetailForMember,
+  readPaymentReceiptsForManager,
+  readShippingOrdersForManager,
   saveOrderShipment,
+  transitionOrderStatus,
 } from "../lib/order-admin";
 import { readPublicReservation } from "../lib/public-reservation";
 import { createDefaultStorefrontDocument } from "../lib/storefront-document";
@@ -354,6 +358,125 @@ test(
         }),
         1,
       );
+
+      assert.equal(
+        (
+          await readPaymentReceiptsForManager({
+            boothId,
+            actorUserId: staffId,
+          })
+        ).kind,
+        "forbidden",
+      );
+      assert.equal(
+        (
+          await readShippingOrdersForManager({
+            boothId,
+            actorUserId: staffId,
+          })
+        ).kind,
+        "forbidden",
+      );
+      assert.equal(
+        (
+          await readOrderDetailForManager({
+            boothId,
+            orderId: shipped.id,
+            actorUserId: staffId,
+          })
+        ).kind,
+        "forbidden",
+      );
+
+      const receipts = await readPaymentReceiptsForManager({
+        boothId,
+        actorUserId: ownerId,
+      });
+      assert.equal(receipts.kind, "found");
+      if (receipts.kind === "found") {
+        assert.equal(receipts.receipts.length, 2);
+        const linkedReceipt = receipts.receipts.find(
+          (receipt) => receipt.orderId === shipped.id,
+        );
+        assert.equal(linkedReceipt?.orderCode, shipped.code);
+        assert.equal(linkedReceipt?.paymentState, "AWAITING_REVIEW");
+        assert.equal(linkedReceipt?.amountCents, shipped.totalCents.toString());
+      }
+
+      const shippingOrders = await readShippingOrdersForManager({
+        boothId,
+        actorUserId: ownerId,
+      });
+      assert.equal(shippingOrders.kind, "found");
+      if (shippingOrders.kind === "found") {
+        assert.deepEqual(
+          shippingOrders.orders.map((order) => order.id),
+          [shipped.id],
+        );
+        assert.equal(
+          shippingOrders.orders[0]?.shipmentTrackingNumber,
+          shipmentInput.trackingNumber,
+        );
+      }
+      assert.equal(
+        (
+          await readShippingOrdersForManager({
+            boothId: secondBoothId,
+            actorUserId: staffId,
+          })
+        ).kind,
+        "forbidden",
+      );
+      const crossBoothShipping = await readShippingOrdersForManager({
+        boothId: secondBoothId,
+        actorUserId: ownerId,
+      });
+      assert.equal(crossBoothShipping.kind, "found");
+      if (crossBoothShipping.kind === "found") {
+        assert.equal(crossBoothShipping.orders.length, 0);
+      }
+      assert.equal(
+        (
+          await readOrderDetailForManager({
+            boothId: secondBoothId,
+            orderId: shipped.id,
+            actorUserId: ownerId,
+          })
+        ).kind,
+        "missing",
+      );
+
+      assert.equal(
+        (
+          await transitionOrderStatus({
+            boothId,
+            orderId: shipped.id,
+            actorUserId: ownerId,
+            nextStatus: "CONFIRMED",
+          })
+        ).kind,
+        "changed",
+      );
+      const managerDetail = await readOrderDetailForManager({
+        boothId,
+        orderId: shipped.id,
+        actorUserId: ownerId,
+      });
+      assert.equal(managerDetail.kind, "found");
+      if (managerDetail.kind === "found") {
+        assert.deepEqual(
+          managerDetail.receiptHistory.map((entry) => entry.orderStatus),
+          ["PENDING", "CONFIRMED"],
+        );
+        assert.equal(
+          managerDetail.receiptHistory[1]?.amountCents,
+          shipped.totalCents.toString(),
+        );
+        assert.equal(
+          managerDetail.receiptHistory[1]?.actorName,
+          "Phase Fourteen Owner",
+        );
+      }
 
       const legacyCode = `CYF-${suffix.slice(0, 20).toUpperCase()}`;
       const legacy = await db.order.create({

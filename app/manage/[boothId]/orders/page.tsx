@@ -300,21 +300,37 @@ export default async function OrdersPage({
           <h1>{strings.title}</h1>
           <p>{strings.description}</p>
         </div>
-        <OrdersLiveRefresh
-          boothId={boothId}
-          boothName={
-            parseBilingual(boothWithSettings?.name, locale) || strings.thisBooth
-          }
-          locale={locale}
-          latestOrder={
-            latestOrder
-              ? {
-                  ...latestOrder,
-                  placedAt: latestOrder.placedAt.toISOString(),
-                }
-              : null
-          }
-        />
+        <div className={styles.headerTools}>
+          {canManageEvents ? (
+            <nav
+              className={styles.operationsLinks}
+              aria-label={workspaceStrings.orderOperations.detailMetadataTitle}
+            >
+              <Link href={`/manage/${boothId}/payments`}>
+                {workspaceStrings.orderOperations.paymentManagement}
+              </Link>
+              <Link href={`/manage/${boothId}/shipping`}>
+                {workspaceStrings.orderOperations.shippingManagement}
+              </Link>
+            </nav>
+          ) : null}
+          <OrdersLiveRefresh
+            boothId={boothId}
+            boothName={
+              parseBilingual(boothWithSettings?.name, locale) ||
+              strings.thisBooth
+            }
+            locale={locale}
+            latestOrder={
+              latestOrder
+                ? {
+                    ...latestOrder,
+                    placedAt: latestOrder.placedAt.toISOString(),
+                  }
+                : null
+            }
+          />
+        </div>
       </header>
 
       <aside
@@ -671,7 +687,12 @@ export default async function OrdersPage({
                 {orders.map((order) => (
                   <tr key={order.id}>
                     <th scope="row">
-                      <span className={styles.orderCode}>{order.code}</span>
+                      <Link
+                        className={styles.orderCodeLink}
+                        href={`/manage/${boothId}/orders/${order.id}`}
+                      >
+                        <span className={styles.orderCode}>{order.code}</span>
+                      </Link>
                       <span className={styles.customerName}>
                         {order.customerName}
                       </span>
@@ -728,7 +749,12 @@ export default async function OrdersPage({
               <li key={order.id} className={styles.mobileCard}>
                 <div className={styles.mobileCardHeader}>
                   <div>
-                    <span className={styles.orderCode}>{order.code}</span>
+                    <Link
+                      className={styles.orderCodeLink}
+                      href={`/manage/${boothId}/orders/${order.id}`}
+                    >
+                      <span className={styles.orderCode}>{order.code}</span>
+                    </Link>
                     <strong>{order.customerName}</strong>
                     {order.event ? (
                       <span className={styles.eventAttribution}>
@@ -776,6 +802,12 @@ export default async function OrdersPage({
                   currentStatus={order.status}
                   locale={locale}
                 />
+                <Link
+                  className={styles.openOrderLink}
+                  href={`/manage/${boothId}/orders/${order.id}`}
+                >
+                  {workspaceStrings.orderOperations.openOrder}
+                </Link>
               </li>
             ))}
           </ul>

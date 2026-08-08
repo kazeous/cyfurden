@@ -7,6 +7,7 @@ import {
 } from "@/lib/order-fulfillment";
 import {
   canTransitionOrderStatus,
+  readOrderPaymentSnapshot,
   type OrderStatusName,
   releasesInventory,
 } from "@/lib/order-rules";
@@ -40,6 +41,9 @@ const orderDetailSelect = {
   confirmedAt: true,
   fulfilledAt: true,
   updatedAt: true,
+  event: {
+    select: { id: true, name: true },
+  },
   items: {
     select: {
       id: true,
@@ -62,6 +66,97 @@ type OrderDetailRecord = Prisma.OrderGetPayload<{
 
 export type OrderDetailDto = ReturnType<typeof toOrderDetailDto>;
 
+export type OrderReceiptState = "AWAITING_REVIEW" | "CONFIRMED" | "CLOSED";
+
+export type OrderReceiptDto = {
+  orderId: string;
+  orderCode: string;
+  orderStatus: OrderStatusName;
+  paymentState: OrderReceiptState;
+  customerName: string;
+  customerEmail: string;
+  amountCents: string;
+  currency: string;
+  paymentMethod: string | null;
+  timestamp: string;
+  customerTransferReference: string | null;
+};
+
+export type OrderReceiptHistoryEntry = {
+  id: string;
+  orderStatus: OrderStatusName;
+  amountCents: string;
+  currency: string;
+  paymentMethod: string | null;
+  timestamp: string;
+  actorName: string | null;
+  kind: "PLACED" | "STATUS_CHANGED";
+};
+
+const managerRoles = ["OWNER", "ADMIN"] as const;
+const orderDeskRoles = ["OWNER", "ADMIN", "STAFF"] as const;
+const receiptAuditActions = [
+  "order.pending",
+  "order.confirmed",
+  "order.fulfilled",
+  "order.cancelled",
+  "order.expired",
+] as const;
+
+function receiptState(status: OrderStatusName): OrderReceiptState {
+  if (status === "PENDING") return "AWAITING_REVIEW";
+  if (status === "CONFIRMED" || status === "FULFILLED") return "CONFIRMED";
+  return "CLOSED";
+}
+
+function receiptTimestamp(order: {
+  status: OrderStatusName;
+  placedAt: Date;
+  confirmedAt: Date | null;
+  fulfilledAt: Date | null;
+  updatedAt: Date;
+}) {
+  if (order.status === "CONFIRMED") return order.confirmedAt ?? order.updatedAt;
+  if (order.status === "FULFILLED") {
+    return order.fulfilledAt ?? order.confirmedAt ?? order.updatedAt;
+  }
+  if (order.status === "CANCELLED" || order.status === "EXPIRED") {
+    return order.updatedAt;
+  }
+  return order.placedAt;
+}
+
+export function projectOrderReceipt(order: {
+  id: string;
+  code: string;
+  status: OrderStatusName;
+  customerName: string;
+  customerEmail: string;
+  totalCents: bigint;
+  currency: string;
+  paymentSnapshot: unknown;
+  customerTransferReference: string | null;
+  placedAt: Date;
+  confirmedAt: Date | null;
+  fulfilledAt: Date | null;
+  updatedAt: Date;
+}): OrderReceiptDto {
+  return {
+    orderId: order.id,
+    orderCode: order.code,
+    orderStatus: order.status,
+    paymentState: receiptState(order.status),
+    customerName: order.customerName,
+    customerEmail: order.customerEmail,
+    amountCents: order.totalCents.toString(),
+    currency: order.currency,
+    paymentMethod:
+      readOrderPaymentSnapshot(order.paymentSnapshot)?.paymentLabel ?? null,
+    timestamp: receiptTimestamp(order).toISOString(),
+    customerTransferReference: order.customerTransferReference,
+  };
+}
+
 function toOrderDetailDto(order: OrderDetailRecord) {
   return {
     ...order,
@@ -80,17 +175,21 @@ function toOrderDetailDto(order: OrderDetailRecord) {
   };
 }
 
-export async function readOrderDetailForMember(input: {
-  boothId: string;
-  orderId: string;
-  actorUserId: string;
-}) {
+async function readOrderDetailForRoles(
+  input: {
+    boothId: string;
+    orderId: string;
+    actorUserId: string;
+  },
+  roles: readonly ("OWNER" | "ADMIN" | "STAFF")[],
+) {
+  const roleFilter = [...roles];
   const membership = await db.boothMembership.findFirst({
     where: {
       boothId: input.boothId,
       userId: input.actorUserId,
       status: "ACTIVE",
-      role: { in: ["OWNER", "ADMIN", "STAFF"] },
+      role: { in: roleFilter },
     },
     select: { id: true },
   });
@@ -105,16 +204,188 @@ export async function readOrderDetailForMember(input: {
           some: {
             userId: input.actorUserId,
             status: "ACTIVE",
-            role: { in: ["OWNER", "ADMIN", "STAFF"] },
+            role: { in: roleFilter },
           },
         },
       },
     },
     select: orderDetailSelect,
   });
-  return order
-    ? ({ kind: "found", order: toOrderDetailDto(order) } as const)
-    : ({ kind: "missing" } as const);
+  if (!order) return { kind: "missing" } as const;
+
+  const audits = await db.auditLog.findMany({
+    where: {
+      boothId: input.boothId,
+      entityType: "Order",
+      entityId: input.orderId,
+      action: { in: [...receiptAuditActions] },
+    },
+    select: {
+      id: true,
+      action: true,
+      createdAt: true,
+      actor: { select: { name: true } },
+    },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+  });
+  const paymentMethod =
+    readOrderPaymentSnapshot(order.paymentSnapshot)?.paymentLabel ?? null;
+  const receiptHistory: OrderReceiptHistoryEntry[] = [
+    {
+      id: `${order.id}:placed`,
+      orderStatus: "PENDING",
+      amountCents: order.totalCents.toString(),
+      currency: order.currency,
+      paymentMethod,
+      timestamp: order.placedAt.toISOString(),
+      actorName: null,
+      kind: "PLACED",
+    },
+    ...audits.flatMap((audit) => {
+      const status = audit.action.slice("order.".length).toUpperCase();
+      if (
+        !["PENDING", "CONFIRMED", "FULFILLED", "CANCELLED", "EXPIRED"].includes(
+          status,
+        )
+      ) {
+        return [];
+      }
+      return [
+        {
+          id: audit.id,
+          orderStatus: status as OrderStatusName,
+          amountCents: order.totalCents.toString(),
+          currency: order.currency,
+          paymentMethod,
+          timestamp: audit.createdAt.toISOString(),
+          actorName: audit.actor.name,
+          kind: "STATUS_CHANGED" as const,
+        },
+      ];
+    }),
+  ];
+
+  return {
+    kind: "found",
+    order: toOrderDetailDto(order),
+    receiptHistory,
+  } as const;
+}
+
+export function readOrderDetailForMember(input: {
+  boothId: string;
+  orderId: string;
+  actorUserId: string;
+}) {
+  return readOrderDetailForRoles(input, orderDeskRoles);
+}
+
+export function readOrderDetailForManager(input: {
+  boothId: string;
+  orderId: string;
+  actorUserId: string;
+}) {
+  return readOrderDetailForRoles(input, managerRoles);
+}
+
+async function hasManagerMembership(input: {
+  boothId: string;
+  actorUserId: string;
+}) {
+  return db.boothMembership.findFirst({
+    where: {
+      boothId: input.boothId,
+      userId: input.actorUserId,
+      status: "ACTIVE",
+      role: { in: [...managerRoles] },
+    },
+    select: { id: true },
+  });
+}
+
+export async function readPaymentReceiptsForManager(input: {
+  boothId: string;
+  actorUserId: string;
+}) {
+  if (!(await hasManagerMembership(input))) {
+    return { kind: "forbidden" } as const;
+  }
+  const orders = await db.order.findMany({
+    where: {
+      boothId: input.boothId,
+      booth: {
+        memberships: {
+          some: {
+            userId: input.actorUserId,
+            status: "ACTIVE",
+            role: { in: [...managerRoles] },
+          },
+        },
+      },
+    },
+    select: {
+      id: true,
+      code: true,
+      status: true,
+      customerName: true,
+      customerEmail: true,
+      customerTransferReference: true,
+      totalCents: true,
+      currency: true,
+      paymentSnapshot: true,
+      placedAt: true,
+      confirmedAt: true,
+      fulfilledAt: true,
+      updatedAt: true,
+    },
+    orderBy: [{ placedAt: "desc" }, { id: "desc" }],
+  });
+  return {
+    kind: "found",
+    receipts: orders.map((order) => projectOrderReceipt(order)),
+  } as const;
+}
+
+export async function readShippingOrdersForManager(input: {
+  boothId: string;
+  actorUserId: string;
+}) {
+  if (!(await hasManagerMembership(input))) {
+    return { kind: "forbidden" } as const;
+  }
+  const orders = await db.order.findMany({
+    where: {
+      boothId: input.boothId,
+      fulfillmentMethod: "SHIP",
+      booth: {
+        memberships: {
+          some: {
+            userId: input.actorUserId,
+            status: "ACTIVE",
+            role: { in: [...managerRoles] },
+          },
+        },
+      },
+    },
+    select: {
+      id: true,
+      code: true,
+      status: true,
+      customerName: true,
+      shippingAddress: true,
+      shipmentCarrier: true,
+      shipmentTrackingNumber: true,
+      placedAt: true,
+    },
+    orderBy: [{ placedAt: "desc" }, { id: "desc" }],
+  });
+  return {
+    kind: "found",
+    orders: orders.map((order) => ({
+      ...order,
+      placedAt: order.placedAt.toISOString(),
+    })),
+  } as const;
 }
 
 export async function saveOrderShipment(input: {

@@ -1,6 +1,8 @@
 export const boothSectionIds = [
   "storefront",
   "orders",
+  "payments",
+  "shipping",
   "products",
   "gacha",
   "team",

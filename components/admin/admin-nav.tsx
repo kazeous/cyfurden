@@ -12,7 +12,7 @@ import { getAdminShellStrings } from "@/lib/i18n/admin-shell";
 import styles from "./admin.module.css";
 
 const sections: Array<{
-  id: Exclude<BoothSectionId, "settings">;
+  id: Exclude<BoothSectionId, "settings" | "payments" | "shipping">;
   labelKey:
     | "storefrontLabel"
     | "ordersLabel"
