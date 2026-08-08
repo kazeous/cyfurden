@@ -384,7 +384,7 @@ const englishWorkspaceCatalogue = {
     accountNumber: "Account number",
     transferTemplate: "Transfer message template",
     transferTemplateHint:
-      "Supports {code}, {item}, and {amount}. References longer than VietQR's 25-character limit safely fall back to the reservation code. {ORDER} remains available for existing booths.",
+      "Supports {code}, {item}, and {amount}. New transfer references use at most 10 printable characters; longer templates safely fall back to the generated short reference. {ORDER} remains available for existing booths.",
     paymentQr: "Payment QR image",
     paymentQrHelp:
       "Upload a PNG, JPEG, or WebP image up to 5 MB. It is stored securely in Oracle Object Storage when you save.",
@@ -1424,7 +1424,7 @@ const vietnameseWorkspaceCatalogue: WorkspaceCatalogue = {
     accountNumber: "Số tài khoản",
     transferTemplate: "Mẫu nội dung chuyển khoản",
     transferTemplateHint:
-      "Hỗ trợ {code}, {item} và {amount}. Nội dung dài hơn giới hạn 25 ký tự của VietQR sẽ dùng mã đơn đặt trước. {ORDER} vẫn dùng được cho booth cũ.",
+      "Hỗ trợ {code}, {item} và {amount}. Mã chuyển khoản mới có tối đa 10 ký tự in được; mẫu dài hơn sẽ dùng mã ngắn do hệ thống tạo. {ORDER} vẫn dùng được cho booth cũ.",
     paymentQr: "Ảnh QR thanh toán",
     paymentQrHelp:
       "Tải ảnh PNG, JPEG hoặc WebP tối đa 5 MB. Ảnh được lưu an toàn trong Oracle Object Storage khi bạn bấm lưu.",

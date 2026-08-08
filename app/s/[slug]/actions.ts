@@ -13,11 +13,13 @@ import {
 import {
   aggregateSubmittedOrderLines,
   createOrderPaymentSnapshot,
+  generateTransferReference,
   PUBLIC_ORDER_MAX_LINES,
   PUBLIC_ORDER_MAX_QUANTITY,
   purchasableVariantStatuses,
   renderTransferReference,
 } from "@/lib/order-rules";
+import { publicOrderFulfillmentSchema } from "@/lib/order-fulfillment";
 import { synchronizeProductInventoryStatus } from "@/lib/product-inventory";
 import { applyQuantityPromotions } from "@/lib/quantity-promotions";
 import { readStorefrontDocument } from "@/lib/storefront-document";
@@ -94,8 +96,14 @@ export async function createPublicOrderAction(
     customerNote: String(formData.get("customerNote") ?? ""),
     lines: submittedLines,
   });
+  const fulfillment = publicOrderFulfillmentSchema.safeParse({
+    fulfillmentMethod: String(formData.get("fulfillmentMethod") ?? ""),
+    customerPhone: String(formData.get("customerPhone") ?? ""),
+    customerSocialContact: String(formData.get("customerSocialContact") ?? ""),
+    shippingAddress: String(formData.get("shippingAddress") ?? ""),
+  });
 
-  if (!parsed.success) {
+  if (!parsed.success || !fulfillment.success) {
     return {
       status: "error",
       message: strings.cartActionInvalidSubmission,
@@ -284,6 +292,9 @@ export async function createPublicOrderAction(
           const subtotalCents = promotionPricing.subtotalMinorUnits;
           const totalCents = promotionPricing.totalMinorUnits;
           const code = `CYF-${randomBytes(10).toString("hex").toUpperCase()}`;
+          const generatedTransferReference = generateTransferReference(
+            randomBytes(10),
+          );
           const itemSummary =
             pricedLines.length === 1
               ? parseBilingual(pricedLines[0].titleSnapshot, actionLocale)
@@ -293,7 +304,7 @@ export async function createPublicOrderAction(
                 )} +${pricedLines.length - 1}`;
           const transferReference = renderTransferReference(
             booth.paymentInstructions?.transferReferenceTemplate ?? "{code}",
-            code,
+            generatedTransferReference,
             itemSummary,
             (totalCents / BigInt(100)).toString(),
           );
@@ -305,7 +316,11 @@ export async function createPublicOrderAction(
               status: "PENDING",
               customerName: parsed.data.customerName,
               customerEmail: parsed.data.customerEmail,
+              customerPhone: fulfillment.data.customerPhone,
+              customerSocialContact: fulfillment.data.customerSocialContact,
               customerNote: parsed.data.customerNote || null,
+              fulfillmentMethod: fulfillment.data.fulfillmentMethod,
+              shippingAddress: fulfillment.data.shippingAddress,
               subtotalCents,
               totalCents,
               currency: booth.currency,

@@ -1,6 +1,20 @@
 export const PUBLIC_ORDER_MAX_LINES = 30;
 export const PUBLIC_ORDER_MAX_QUANTITY = 99;
-export const VIETQR_TRANSFER_REFERENCE_MAX_LENGTH = 25;
+export const VIETQR_TRANSFER_REFERENCE_MAX_LENGTH = 10;
+const TRANSFER_REFERENCE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+export function generateTransferReference(entropy: Uint8Array) {
+  if (entropy.length < VIETQR_TRANSFER_REFERENCE_MAX_LENGTH) {
+    throw new Error(
+      "Generating a transfer reference requires ten random bytes.",
+    );
+  }
+  return Array.from(
+    entropy.slice(0, VIETQR_TRANSFER_REFERENCE_MAX_LENGTH),
+    (value) =>
+      TRANSFER_REFERENCE_ALPHABET[value % TRANSFER_REFERENCE_ALPHABET.length],
+  ).join("");
+}
 
 export const purchasableVariantStatuses = [
   "AVAILABLE",
@@ -176,14 +190,26 @@ export function readOrderPaymentSnapshot(
 
 export function renderTransferReference(
   template: string,
-  orderCode: string,
+  generatedReference: string,
   itemSummary = "order",
   amount = "",
 ) {
+  const normalizedGeneratedReference = generatedReference
+    .replace(/[^\x20-\x7E]/g, "")
+    .trim();
+  if (
+    !normalizedGeneratedReference ||
+    normalizedGeneratedReference !== generatedReference ||
+    normalizedGeneratedReference.length > VIETQR_TRANSFER_REFERENCE_MAX_LENGTH
+  ) {
+    throw new Error(
+      "The generated transfer reference must contain at most ten printable characters.",
+    );
+  }
   const normalizedTemplate = template.trim() || "{code}";
   const replacements: Record<string, string> = {
-    "{ORDER}": orderCode,
-    "{code}": orderCode,
+    "{ORDER}": normalizedGeneratedReference,
+    "{code}": normalizedGeneratedReference,
     "{item}": itemSummary,
     "{amount}": amount,
   };
@@ -194,7 +220,9 @@ export function renderTransferReference(
     (value, [token, replacement]) => value.replaceAll(token, replacement),
     normalizedTemplate,
   );
-  const withCode = hasCodeToken ? rendered : `${rendered} ${orderCode}`;
+  const withCode = hasCodeToken
+    ? rendered
+    : `${rendered} ${normalizedGeneratedReference}`;
   const normalized = withCode
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -205,8 +233,5 @@ export function renderTransferReference(
   if (normalized.length <= VIETQR_TRANSFER_REFERENCE_MAX_LENGTH) {
     return normalized;
   }
-  if (orderCode.length <= VIETQR_TRANSFER_REFERENCE_MAX_LENGTH) {
-    return orderCode;
-  }
-  throw new Error("The reservation code is too long for a VietQR reference.");
+  return normalizedGeneratedReference;
 }

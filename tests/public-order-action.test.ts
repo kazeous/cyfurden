@@ -14,6 +14,10 @@ function orderForm(lines: string, locale = "en"): FormData {
   form.set("idempotencyKey", "10000000-0000-4000-8000-000000000000");
   form.set("customerName", "Test Customer");
   form.set("customerEmail", "customer@example.com");
+  form.set("customerPhone", "0901234567");
+  form.set("customerSocialContact", "@test-customer");
+  form.set("fulfillmentMethod", "PICKUP");
+  form.set("shippingAddress", "");
   form.set("customerNote", "");
   form.set("locale", locale);
   form.set("lines", lines);

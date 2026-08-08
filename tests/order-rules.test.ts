@@ -4,6 +4,7 @@ import {
   aggregateSubmittedOrderLines,
   canTransitionOrderStatus,
   createOrderPaymentSnapshot,
+  generateTransferReference,
   isPurchasableVariant,
   maximumPurchasableQuantity,
   readOrderPaymentSnapshot,
@@ -82,33 +83,42 @@ test("payment handoff requires a destination and survives JSON round trips", () 
   });
 });
 
-test("transfer references always retain the private reservation code", () => {
+test("new transfer references remain printable and at most ten characters", () => {
+  const generatedReference = "CF12AB34EF";
   assert.equal(
-    renderTransferReference("ORDER-{ORDER}", "CYF-ABC"),
-    "ORDER-CYF-ABC",
+    renderTransferReference("{code}", generatedReference),
+    generatedReference,
   );
-  assert.equal(renderTransferReference("BOOTH", "CYF-ABC"), "BOOTH CYF-ABC");
+  assert.equal(
+    renderTransferReference("ORDER-{ORDER}", generatedReference),
+    generatedReference,
+  );
   assert.equal(
     renderTransferReference(
       "{code} {item} {amount}",
-      "CYF-ABC",
+      generatedReference,
       "Moon pin",
       "125000",
     ),
-    "CYF-ABC Moon pin 125000",
+    generatedReference,
   );
-  const fullReservationCode = "CYF-0123456789ABCDEF0123";
+  assert.equal(renderTransferReference("X{code}", "CYF-ABC"), "XCYF-ABC");
+  assert.equal(VIETQR_TRANSFER_REFERENCE_MAX_LENGTH, 10);
+  assert.throws(
+    () => renderTransferReference("{code}", "CYF-0123456789"),
+    /at most ten printable characters/,
+  );
+});
+
+test("transfer references use ten unambiguous characters from supplied entropy", () => {
   assert.equal(
-    renderTransferReference(
-      "A template that cannot fit {code} {item} {amount}",
-      fullReservationCode,
-      "Moon pin",
-      "125000",
+    generateTransferReference(
+      Uint8Array.from([0, 1, 2, 3, 4, 5, 6, 7, 31, 30]),
     ),
-    fullReservationCode,
+    "ABCDEFGH98",
   );
-  assert.ok(
-    renderTransferReference("{code}", fullReservationCode).length <=
-      VIETQR_TRANSFER_REFERENCE_MAX_LENGTH,
+  assert.throws(
+    () => generateTransferReference(Uint8Array.from([1, 2, 3])),
+    /requires ten random bytes/,
   );
 });

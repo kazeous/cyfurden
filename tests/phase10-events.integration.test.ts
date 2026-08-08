@@ -24,6 +24,10 @@ function orderForm(input: {
   form.set("idempotencyKey", input.idempotencyKey);
   form.set("customerName", "Phase Ten Customer");
   form.set("customerEmail", "phase10-customer@example.com");
+  form.set("customerPhone", "0901234567");
+  form.set("customerSocialContact", "@phase-ten-customer");
+  form.set("fulfillmentMethod", "PICKUP");
+  form.set("shippingAddress", "");
   form.set("customerNote", "Event attribution acceptance");
   form.set(
     "lines",

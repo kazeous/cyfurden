@@ -78,6 +78,6 @@ test("VietQR data URLs are generated only from valid account data", async () => 
         ...input,
         transferReference: "X".repeat(VIETQR_TRANSFER_REFERENCE_MAX_LENGTH + 1),
       }),
-    /cannot exceed 25 characters/i,
+    /cannot exceed 10 characters/i,
   );
 });

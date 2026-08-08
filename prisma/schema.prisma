@@ -54,6 +54,11 @@ enum OrderStatus {
   FULFILLED
 }
 
+enum OrderFulfillmentMethod {
+  PICKUP
+  SHIP
+}
+
 enum GachaBannerType {
   CHARACTER
   WEAPON
@@ -364,35 +369,42 @@ model Event {
 }
 
 model Order {
-  id                        String      @id @default(cuid())
+  id                        String                  @id @default(cuid())
   boothId                   String
   eventId                   String?
   code                      String
-  status                    OrderStatus @default(PENDING)
+  status                    OrderStatus             @default(PENDING)
   customerName              String
   customerEmail             String
   customerPhone             String?
-  customerNote              String?     @db.Text
+  customerSocialContact     String?
+  customerNote              String?                 @db.Text
+  fulfillmentMethod         OrderFulfillmentMethod?
+  shippingAddress           String?                 @db.Text
+  shipmentCarrier           String?
+  shipmentTrackingNumber    String?
+  shipmentTrackingUrl       String?
   customerTransferReference String?
   subtotalCents             BigInt
   totalCents                BigInt
-  currency                  String      @default("VND")
+  currency                  String                  @default("VND")
   transferReference         String
   idempotencyKey            String
   paymentSnapshot           Json?
-  placedAt                  DateTime    @default(now())
+  placedAt                  DateTime                @default(now())
   expiresAt                 DateTime?
   confirmedAt               DateTime?
   confirmedById             String?
   fulfilledAt               DateTime?
-  updatedAt                 DateTime    @updatedAt
-  booth                     Booth       @relation(fields: [boothId], references: [id], onDelete: Restrict)
-  event                     Event?      @relation(fields: [eventId, boothId], references: [id, boothId], onDelete: Restrict, onUpdate: Cascade)
-  confirmedBy               User?       @relation("OrderConfirmer", fields: [confirmedById], references: [id], onDelete: SetNull)
+  updatedAt                 DateTime                @updatedAt
+  booth                     Booth                   @relation(fields: [boothId], references: [id], onDelete: Restrict)
+  event                     Event?                  @relation(fields: [eventId, boothId], references: [id, boothId], onDelete: Restrict, onUpdate: Cascade)
+  confirmedBy               User?                   @relation("OrderConfirmer", fields: [confirmedById], references: [id], onDelete: SetNull)
   items                     OrderItem[]
 
   @@unique([boothId, code])
   @@unique([boothId, idempotencyKey])
+  @@unique([boothId, transferReference])
   @@index([boothId, status, placedAt])
   @@index([boothId, eventId, placedAt])
 }

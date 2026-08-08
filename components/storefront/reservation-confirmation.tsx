@@ -35,6 +35,7 @@ type ReservationDetails = {
   subtotalMinorUnits: string;
   totalMinorUnits: string;
   transferReference: string;
+  fulfillmentMethod: "PICKUP" | "SHIP" | null;
   customerTransferReference: string | null;
   idempotencyKey: string;
   items: Array<{
@@ -369,6 +370,16 @@ export function ReservationConfirmation({
                 <dt>{t.summaryStatusLabel}</dt>
                 <dd>{statusCopy.label}</dd>
               </div>
+              {reservation.fulfillmentMethod ? (
+                <div>
+                  <dt>{t.summaryFulfillmentLabel}</dt>
+                  <dd>
+                    {reservation.fulfillmentMethod === "SHIP"
+                      ? t.summaryFulfillmentShip
+                      : t.summaryFulfillmentPickup}
+                  </dd>
+                </div>
+              ) : null}
             </dl>
             <ul className={styles.itemSummary} aria-label={t.itemsAriaLabel}>
               {reservation.items.map((item) => (

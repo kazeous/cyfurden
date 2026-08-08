@@ -1,5 +1,10 @@
 import { db } from "@/lib/db";
+import type { Prisma } from "@/generated/prisma/client";
 import { ORDER_RESERVATION_TTL_MS } from "@/lib/order-inventory";
+import {
+  orderShipmentSchema,
+  type OrderShipmentInput,
+} from "@/lib/order-fulfillment";
 import {
   canTransitionOrderStatus,
   type OrderStatusName,
@@ -8,6 +13,185 @@ import {
 import { synchronizeProductInventoryStatusForVariants } from "@/lib/product-inventory";
 
 type TransactionClient = Parameters<Parameters<typeof db.$transaction>[0]>[0];
+
+const orderDetailSelect = {
+  id: true,
+  boothId: true,
+  code: true,
+  status: true,
+  customerName: true,
+  customerEmail: true,
+  customerPhone: true,
+  customerSocialContact: true,
+  customerNote: true,
+  fulfillmentMethod: true,
+  shippingAddress: true,
+  shipmentCarrier: true,
+  shipmentTrackingNumber: true,
+  shipmentTrackingUrl: true,
+  customerTransferReference: true,
+  subtotalCents: true,
+  totalCents: true,
+  currency: true,
+  transferReference: true,
+  paymentSnapshot: true,
+  placedAt: true,
+  expiresAt: true,
+  confirmedAt: true,
+  fulfilledAt: true,
+  updatedAt: true,
+  items: {
+    select: {
+      id: true,
+      productId: true,
+      productVariantId: true,
+      titleSnapshot: true,
+      variantSnapshot: true,
+      unitPriceCents: true,
+      originalUnitPriceCents: true,
+      promotionNameSnapshot: true,
+      quantity: true,
+    },
+    orderBy: { id: "asc" },
+  },
+} satisfies Prisma.OrderSelect;
+
+type OrderDetailRecord = Prisma.OrderGetPayload<{
+  select: typeof orderDetailSelect;
+}>;
+
+export type OrderDetailDto = ReturnType<typeof toOrderDetailDto>;
+
+function toOrderDetailDto(order: OrderDetailRecord) {
+  return {
+    ...order,
+    subtotalCents: order.subtotalCents.toString(),
+    totalCents: order.totalCents.toString(),
+    placedAt: order.placedAt.toISOString(),
+    expiresAt: order.expiresAt?.toISOString() ?? null,
+    confirmedAt: order.confirmedAt?.toISOString() ?? null,
+    fulfilledAt: order.fulfilledAt?.toISOString() ?? null,
+    updatedAt: order.updatedAt.toISOString(),
+    items: order.items.map((item) => ({
+      ...item,
+      unitPriceCents: item.unitPriceCents.toString(),
+      originalUnitPriceCents: item.originalUnitPriceCents?.toString() ?? null,
+    })),
+  };
+}
+
+export async function readOrderDetailForMember(input: {
+  boothId: string;
+  orderId: string;
+  actorUserId: string;
+}) {
+  const membership = await db.boothMembership.findFirst({
+    where: {
+      boothId: input.boothId,
+      userId: input.actorUserId,
+      status: "ACTIVE",
+      role: { in: ["OWNER", "ADMIN", "STAFF"] },
+    },
+    select: { id: true },
+  });
+  if (!membership) return { kind: "forbidden" } as const;
+
+  const order = await db.order.findFirst({
+    where: {
+      id: input.orderId,
+      boothId: input.boothId,
+      booth: {
+        memberships: {
+          some: {
+            userId: input.actorUserId,
+            status: "ACTIVE",
+            role: { in: ["OWNER", "ADMIN", "STAFF"] },
+          },
+        },
+      },
+    },
+    select: orderDetailSelect,
+  });
+  return order
+    ? ({ kind: "found", order: toOrderDetailDto(order) } as const)
+    : ({ kind: "missing" } as const);
+}
+
+export async function saveOrderShipment(input: {
+  boothId: string;
+  orderId: string;
+  actorUserId: string;
+  shipment: OrderShipmentInput;
+}) {
+  const parsed = orderShipmentSchema.safeParse(input.shipment);
+  if (!parsed.success) return { kind: "invalid" } as const;
+
+  return db.$transaction(
+    async (transaction) => {
+      const membership = await transaction.boothMembership.findFirst({
+        where: {
+          boothId: input.boothId,
+          userId: input.actorUserId,
+          status: "ACTIVE",
+          role: { in: ["OWNER", "ADMIN"] },
+        },
+        select: { id: true },
+      });
+      if (!membership) return { kind: "forbidden" } as const;
+
+      const order = await transaction.order.findFirst({
+        where: { id: input.orderId, boothId: input.boothId },
+        select: { fulfillmentMethod: true },
+      });
+      if (!order) return { kind: "missing" } as const;
+      if (order.fulfillmentMethod !== "SHIP") {
+        return { kind: "not-shipping" } as const;
+      }
+
+      const shipment = parsed.data;
+      const updated = await transaction.order.updateMany({
+        where: {
+          id: input.orderId,
+          boothId: input.boothId,
+          fulfillmentMethod: "SHIP",
+          booth: {
+            memberships: {
+              some: {
+                userId: input.actorUserId,
+                status: "ACTIVE",
+                role: { in: ["OWNER", "ADMIN"] },
+              },
+            },
+          },
+        },
+        data: {
+          shipmentCarrier: shipment.carrier,
+          shipmentTrackingNumber: shipment.trackingNumber,
+          shipmentTrackingUrl: shipment.trackingUrl,
+        },
+      });
+      if (!updated.count) return { kind: "conflict" } as const;
+      await transaction.auditLog.create({
+        data: {
+          boothId: input.boothId,
+          actorUserId: input.actorUserId,
+          action: "order.shipment_updated",
+          entityType: "Order",
+          entityId: input.orderId,
+          metadata: {
+            carrier: shipment.carrier,
+            trackingNumber: shipment.trackingNumber,
+            trackingUrl: shipment.trackingUrl,
+            manualTracking: true,
+          },
+        },
+      });
+
+      return { kind: "updated", shipment } as const;
+    },
+    { isolationLevel: "Serializable" },
+  );
+}
 
 export type OrderTransitionResult =
   | { kind: "missing" }
@@ -44,6 +228,7 @@ async function transitionOrderStatusInTransaction(
     select: {
       code: true,
       status: true,
+      fulfillmentMethod: true,
       confirmedAt: true,
       confirmedById: true,
       items: {
@@ -138,6 +323,7 @@ async function transitionOrderStatusInTransaction(
         previousStatus: currentStatus,
         nextStatus: input.nextStatus,
         inventoryReleased,
+        fulfillmentMethod: order.fulfillmentMethod,
       },
     },
   });

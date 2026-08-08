@@ -9,6 +9,7 @@ import {
   readOrderPaymentSnapshot,
 } from "@/lib/order-rules";
 import { resolveOracleImageUrl } from "@/lib/oracle-images";
+import { readPublicReservation } from "@/lib/public-reservation";
 import { readStorefrontDocument } from "@/lib/storefront-document";
 import { generateVietQrDataUrl } from "@/lib/vietqr";
 
@@ -39,21 +40,7 @@ export default async function ReservationPage({
   params: Promise<{ slug: string; code: string }>;
 }) {
   const { slug, code } = await params;
-  const order = await db.order.findFirst({
-    where: {
-      code,
-      booth: { slug },
-    },
-    include: {
-      items: true,
-      booth: {
-        include: {
-          storefront: true,
-          paymentInstructions: true,
-        },
-      },
-    },
-  });
+  const order = await readPublicReservation({ slug, code });
 
   if (!order?.booth.storefront?.publishedDocument) notFound();
 
@@ -97,6 +84,7 @@ export default async function ReservationPage({
           subtotalMinorUnits: order.subtotalCents.toString(),
           totalMinorUnits: order.totalCents.toString(),
           transferReference: order.transferReference,
+          fulfillmentMethod: order.fulfillmentMethod,
           customerTransferReference: order.customerTransferReference,
           idempotencyKey: order.idempotencyKey,
           items: order.items.map((item) => ({

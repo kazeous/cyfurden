@@ -1522,6 +1522,30 @@
   font-size: 12px;
   font-weight: 800;
 }
+.fulfillmentFields {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid #d9d4ca;
+  border-radius: 12px;
+}
+.fulfillmentFields legend {
+  padding: 0 4px;
+  font-size: 12px;
+  font-weight: 800;
+}
+.fulfillmentFields label {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  align-items: center;
+  font-weight: 600;
+}
+.orderForm .fulfillmentFields input {
+  width: auto;
+  margin: 0;
+}
 .orderForm input,
 .orderForm textarea {
   width: 100%;

@@ -294,6 +294,9 @@ export function ManagedStorefront({
   const [hydrated, setHydrated] = useState(false);
   const [idempotencyKey, setIdempotencyKey] = useState("");
   const [cartAnnouncement, setCartAnnouncement] = useState("");
+  const [fulfillmentMethod, setFulfillmentMethod] = useState<"PICKUP" | "SHIP">(
+    "PICKUP",
+  );
   const [orderState, orderAction, orderPending] = useActionState(
     createPublicOrderAction,
     initialOrderState,
@@ -1815,6 +1818,70 @@ export function ManagedStorefront({
                       disabled={orderPending}
                     />
                   </label>
+                  <label>
+                    {t.cartPhoneLabel}
+                    <input
+                      name="customerPhone"
+                      type="tel"
+                      inputMode="numeric"
+                      autoComplete="tel"
+                      required
+                      minLength={1}
+                      maxLength={10}
+                      pattern="[0-9]{1,10}"
+                      placeholder={t.cartPhonePlaceholder}
+                      disabled={orderPending}
+                    />
+                  </label>
+                  <label>
+                    {t.cartSocialLabel}
+                    <input
+                      name="customerSocialContact"
+                      maxLength={200}
+                      placeholder={t.cartSocialPlaceholder}
+                      disabled={orderPending}
+                    />
+                  </label>
+                  <fieldset className={styles.fulfillmentFields}>
+                    <legend>{t.cartFulfillmentLegend}</legend>
+                    <label>
+                      <input
+                        type="radio"
+                        name="fulfillmentMethod"
+                        value="PICKUP"
+                        checked={fulfillmentMethod === "PICKUP"}
+                        onChange={() => setFulfillmentMethod("PICKUP")}
+                        disabled={orderPending}
+                      />
+                      {t.cartFulfillmentPickup}
+                    </label>
+                    <label>
+                      <input
+                        type="radio"
+                        name="fulfillmentMethod"
+                        value="SHIP"
+                        checked={fulfillmentMethod === "SHIP"}
+                        onChange={() => setFulfillmentMethod("SHIP")}
+                        disabled={orderPending}
+                      />
+                      {t.cartFulfillmentShip}
+                    </label>
+                  </fieldset>
+                  {fulfillmentMethod === "SHIP" ? (
+                    <label>
+                      {t.cartShippingAddressLabel}
+                      <textarea
+                        name="shippingAddress"
+                        required
+                        maxLength={500}
+                        autoComplete="street-address"
+                        placeholder={t.cartShippingAddressPlaceholder}
+                        disabled={orderPending}
+                      />
+                    </label>
+                  ) : (
+                    <input type="hidden" name="shippingAddress" value="" />
+                  )}
                   <label>
                     {t.cartNoteLabel}
                     <textarea

@@ -100,10 +100,17 @@ export type PublicBoothStrings = {
   cartNameLabel: string;
   cartEmailLabel: string;
   cartPhoneLabel: string;
+  cartSocialLabel: string;
+  cartFulfillmentLegend: string;
+  cartFulfillmentPickup: string;
+  cartFulfillmentShip: string;
+  cartShippingAddressLabel: string;
   cartNoteLabel: string;
   cartNamePlaceholder: string;
   cartEmailPlaceholder: string;
   cartPhonePlaceholder: string;
+  cartSocialPlaceholder: string;
+  cartShippingAddressPlaceholder: string;
   cartNotePlaceholder: string;
   cartSubmitErrorRequired: string;
   cartSubmitErrorInvalidEmail: string;
@@ -230,6 +237,9 @@ export type PublicReservationStrings = {
   summarySubtotal: string;
   summaryPromotionSavings: string;
   summaryStatusLabel: string;
+  summaryFulfillmentLabel: string;
+  summaryFulfillmentPickup: string;
+  summaryFulfillmentShip: string;
   itemsAriaLabel: string;
   promotionRewardLabel: (name: string) => string;
   promotionOriginalPriceLabel: (price: string) => string;

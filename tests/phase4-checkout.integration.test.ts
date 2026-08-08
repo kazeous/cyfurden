@@ -27,6 +27,10 @@ function orderForm(input: {
   form.set("idempotencyKey", input.idempotencyKey);
   form.set("customerName", "Phase Four Customer");
   form.set("customerEmail", "phase4-customer@example.com");
+  form.set("customerPhone", "0901234567");
+  form.set("customerSocialContact", "@phase-four-customer");
+  form.set("fulfillmentMethod", "PICKUP");
+  form.set("shippingAddress", "");
   form.set("customerNote", "Convention pickup");
   form.set(
     "lines",
@@ -57,6 +61,10 @@ function multiLineOrderForm(input: {
   form.set("idempotencyKey", input.idempotencyKey);
   form.set("customerName", "Phase Nine Customer");
   form.set("customerEmail", "phase9-customer@example.com");
+  form.set("customerPhone", "0901234567");
+  form.set("customerSocialContact", "@phase-nine-customer");
+  form.set("fulfillmentMethod", "PICKUP");
+  form.set("shippingAddress", "");
   form.set("customerNote", "Promotion acceptance");
   form.set("lines", JSON.stringify(input.lines));
   return form;
@@ -181,13 +189,17 @@ test(
       assert.equal(order.status, "PENDING");
       assert.equal(order.customerName, "Phase Four Customer");
       assert.equal(order.customerEmail, "phase4-customer@example.com");
+      assert.equal(order.customerPhone, "0901234567");
+      assert.equal(order.customerSocialContact, "@phase-four-customer");
+      assert.equal(order.fulfillmentMethod, "PICKUP");
+      assert.equal(order.shippingAddress, null);
       assert.equal(order.items.length, 1);
       assert.equal(order.items[0]?.quantity, 2);
       assert.equal(order.items[0]?.unitPriceCents, BigInt(12_500_00));
       assert.equal(order.totalCents, BigInt(25_000_00));
       assert.equal(order.code.length, 24);
-      assert.equal(order.transferReference, order.code);
-      assert.ok(order.transferReference.length <= 25);
+      assert.notEqual(order.transferReference, order.code);
+      assert.match(order.transferReference, /^[ -~]{1,10}$/);
       assert.ok(order.expiresAt && order.expiresAt > order.placedAt);
 
       const reservedVariant = await db.productVariant.findUniqueOrThrow({

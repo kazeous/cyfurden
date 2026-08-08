@@ -244,8 +244,8 @@ test("keeps Oracle images wired to managed storefront content", async () => {
 });
 
 test("keeps bank details behind a successful managed reservation", async () => {
-  const [storefront, action, confirmation, reservationPage] = await Promise.all(
-    [
+  const [storefront, action, confirmation, reservationPage, publicReservation] =
+    await Promise.all([
       readFile(
         new URL(
           "../components/storefront/managed-storefront.tsx",
@@ -265,8 +265,11 @@ test("keeps bank details behind a successful managed reservation", async () => {
         new URL("../app/s/[slug]/reservation/[code]/page.tsx", import.meta.url),
         "utf8",
       ),
-    ],
-  );
+      readFile(
+        new URL("../lib/public-reservation.ts", import.meta.url),
+        "utf8",
+      ),
+    ]);
 
   assert.doesNotMatch(storefront, /paymentQrUrl|payment\.bankName|paymentQr/);
   assert.match(storefront, /t\.cartFooter/);
@@ -281,7 +284,12 @@ test("keeps bank details behind a successful managed reservation", async () => {
   assert.match(confirmation, /payment\.disclaimer/);
 
   assert.match(reservationPage, /code,/);
-  assert.match(reservationPage, /booth: \{ slug \}/);
+  assert.match(reservationPage, /readPublicReservation\(\{ slug, code \}\)/);
+  assert.match(publicReservation, /booth: \{ slug: input\.slug \}/);
+  assert.doesNotMatch(
+    publicReservation,
+    /customerPhone: true|customerSocialContact: true|shippingAddress: true|shipmentTrackingNumber: true/,
+  );
   assert.match(
     reservationPage,
     /readOrderPaymentSnapshot\(order\.paymentSnapshot\)/,
