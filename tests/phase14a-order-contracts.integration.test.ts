@@ -6,6 +6,12 @@ import {
   type PublicOrderState,
 } from "../app/s/[slug]/actions";
 import { db } from "../lib/db";
+import { inspectOracleImageBytes } from "../lib/oracle-image-verification";
+import {
+  PRESIGNED_UPLOAD_MAX_BYTES,
+  presignedUploadRequestSchema,
+} from "../lib/oracle-presign-contract";
+import { ProductImageValidationError } from "../lib/payment-qr";
 import {
   readOrderDetailForManager,
   readOrderDetailForMember,
@@ -18,6 +24,13 @@ import { readPublicReservation } from "../lib/public-reservation";
 import { createDefaultStorefrontDocument } from "../lib/storefront-document";
 
 const enabled = process.env.CYFURDEN_PHASE14_INTEGRATION === "1";
+
+const preparedWebpFixture = Uint8Array.from(
+  Buffer.from(
+    "UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEALmk0mk0iIiIiIgBoSygABc6zbAAA",
+    "base64",
+  ),
+);
 
 function orderForm(input: {
   boothId: string;
@@ -72,11 +85,12 @@ async function expectReservationRedirect(
 }
 
 test(
-  "Phase 14A preserves legacy orders and enforces fulfillment, contact, reference, and booth scope",
+  "Phase 14D integrates migration, reservations, roles, receipts, and shipments",
   { skip: !enabled },
   async () => {
     const suffix = randomUUID().replaceAll("-", "");
     const ownerId = `phase14-owner-${suffix}`;
+    const adminId = `phase14-admin-${suffix}`;
     const staffId = `phase14-staff-${suffix}`;
     const strangerId = `phase14-stranger-${suffix}`;
     const slug = `phase14-${suffix.slice(0, 16)}`;
@@ -90,6 +104,12 @@ test(
             id: ownerId,
             name: "Phase Fourteen Owner",
             email: `phase14-owner-${suffix}@example.com`,
+            emailVerified: true,
+          },
+          {
+            id: adminId,
+            name: "Phase Fourteen Admin",
+            email: `phase14-admin-${suffix}@example.com`,
             emailVerified: true,
           },
           {
@@ -115,6 +135,7 @@ test(
           memberships: {
             create: [
               { userId: ownerId, role: "OWNER", status: "ACTIVE" },
+              { userId: adminId, role: "ADMIN", status: "ACTIVE" },
               { userId: staffId, role: "STAFF", status: "ACTIVE" },
             ],
           },
@@ -178,6 +199,35 @@ test(
       const variant = product.variants[0];
       assert.ok(variant);
 
+      const appliedMigration = await db.$queryRaw<
+        Array<{ finished_at: Date | null; migration_name: string }>
+      >`
+        SELECT migration_name, finished_at
+        FROM _prisma_migrations
+        WHERE migration_name = '0012_phase14a_order_fulfillment_contracts'
+      `;
+      assert.equal(appliedMigration.length, 1);
+      assert.ok(appliedMigration[0]?.finished_at);
+
+      const phase14Constraints = await db.$queryRaw<Array<{ conname: string }>>`
+        SELECT conname
+        FROM pg_constraint
+        WHERE conrelid = '"Order"'::regclass
+          AND conname LIKE 'Order_phase14_%'
+        ORDER BY conname
+      `;
+      assert.deepEqual(
+        phase14Constraints.map(({ conname }) => conname),
+        [
+          "Order_phase14_phone_check",
+          "Order_phase14_shipment_scope_check",
+          "Order_phase14_shipment_values_check",
+          "Order_phase14_shipping_address_check",
+          "Order_phase14_social_contact_check",
+          "Order_phase14_transfer_reference_check",
+        ],
+      );
+
       await expectReservationRedirect(() =>
         createPublicOrderAction(
           { status: "idle", message: "" },
@@ -199,9 +249,10 @@ test(
       assert.match(pickup.transferReference, /^[ -~]{1,10}$/);
       assert.notEqual(pickup.transferReference, pickup.code);
 
-      const beforeMissingAddress = await db.order.count({ where: { boothId } });
-      const missingAddress = await createPublicOrderAction(
-        { status: "idle", message: "" },
+      const beforeInvalidReservations = await db.order.count({
+        where: { boothId },
+      });
+      for (const invalidForm of [
         orderForm({
           boothId,
           slug,
@@ -209,11 +260,32 @@ test(
           variantId: variant.id,
           fulfillmentMethod: "SHIP",
         }),
-      );
-      assert.equal(missingAddress.status, "error");
+        orderForm({
+          boothId,
+          slug,
+          productId: product.id,
+          variantId: variant.id,
+          fulfillmentMethod: "PICKUP",
+          customerPhone: "09012345678",
+        }),
+        orderForm({
+          boothId,
+          slug,
+          productId: product.id,
+          variantId: variant.id,
+          fulfillmentMethod: "PICKUP",
+          customerSocialContact: "javascript:alert(1)",
+        }),
+      ]) {
+        const invalidReservation = await createPublicOrderAction(
+          { status: "idle", message: "" },
+          invalidForm,
+        );
+        assert.equal(invalidReservation.status, "error");
+      }
       assert.equal(
         await db.order.count({ where: { boothId } }),
-        beforeMissingAddress,
+        beforeInvalidReservations,
       );
 
       await expectReservationRedirect(() =>
@@ -247,6 +319,55 @@ test(
             subtotalCents: BigInt(1_000_00),
             totalCents: BigInt(1_000_00),
             transferReference: "CFDIRECT01",
+            idempotencyKey: randomUUID(),
+          },
+        }),
+      );
+      await assert.rejects(
+        db.order.create({
+          data: {
+            boothId,
+            code: `CYF-PHONE-${suffix.slice(0, 12).toUpperCase()}`,
+            customerName: "Invalid phone order",
+            customerEmail: "invalid-phone@example.com",
+            customerPhone: "09012345678",
+            fulfillmentMethod: "PICKUP",
+            subtotalCents: BigInt(1_000_00),
+            totalCents: BigInt(1_000_00),
+            transferReference: "PHONE00001",
+            idempotencyKey: randomUUID(),
+          },
+        }),
+      );
+      await assert.rejects(
+        db.order.create({
+          data: {
+            boothId,
+            code: `CYF-REF-${suffix.slice(0, 14).toUpperCase()}`,
+            customerName: "Invalid reference order",
+            customerEmail: "invalid-reference@example.com",
+            customerPhone: "0901234567",
+            fulfillmentMethod: "PICKUP",
+            subtotalCents: BigInt(1_000_00),
+            totalCents: BigInt(1_000_00),
+            transferReference: "12345678901",
+            idempotencyKey: randomUUID(),
+          },
+        }),
+      );
+      await assert.rejects(
+        db.order.create({
+          data: {
+            boothId,
+            code: `CYF-SHIP-${suffix.slice(0, 13).toUpperCase()}`,
+            customerName: "Invalid pickup shipment",
+            customerEmail: "invalid-shipment@example.com",
+            customerPhone: "0901234567",
+            fulfillmentMethod: "PICKUP",
+            shipmentCarrier: "Carrier must not be set",
+            subtotalCents: BigInt(1_000_00),
+            totalCents: BigInt(1_000_00),
+            transferReference: "SHIP000001",
             idempotencyKey: randomUUID(),
           },
         }),
@@ -329,7 +450,7 @@ test(
           await saveOrderShipment({
             boothId,
             orderId: shipped.id,
-            actorUserId: ownerId,
+            actorUserId: adminId,
             shipment: shipmentInput,
           })
         ).kind,
@@ -351,7 +472,7 @@ test(
         await db.auditLog.count({
           where: {
             boothId,
-            actorUserId: ownerId,
+            actorUserId: adminId,
             action: "order.shipment_updated",
             entityId: shipped.id,
           },
@@ -390,7 +511,7 @@ test(
 
       const receipts = await readPaymentReceiptsForManager({
         boothId,
-        actorUserId: ownerId,
+        actorUserId: adminId,
       });
       assert.equal(receipts.kind, "found");
       if (receipts.kind === "found") {
@@ -405,7 +526,7 @@ test(
 
       const shippingOrders = await readShippingOrdersForManager({
         boothId,
-        actorUserId: ownerId,
+        actorUserId: adminId,
       });
       assert.equal(shippingOrders.kind, "found");
       if (shippingOrders.kind === "found") {
@@ -509,8 +630,58 @@ test(
       }
       if (boothId) await db.booth.deleteMany({ where: { id: boothId } });
       await db.user.deleteMany({
-        where: { id: { in: [ownerId, staffId, strangerId] } },
+        where: { id: { in: [ownerId, adminId, staffId, strangerId] } },
       });
     }
+  },
+);
+
+test(
+  "Phase 14D verifies prepared upload MIME and real bytes through the Oracle contract",
+  { skip: !enabled },
+  async () => {
+    const request = presignedUploadRequestSchema.parse({
+      boothId: "phase14d_upload_booth",
+      purpose: "product",
+      contentType: "image/webp",
+      contentLength: preparedWebpFixture.byteLength,
+    });
+    assert.equal(request.contentType, "image/webp");
+    assert.equal(request.contentLength, preparedWebpFixture.byteLength);
+
+    const verified = inspectOracleImageBytes(
+      preparedWebpFixture,
+      request.contentType,
+    );
+    assert.equal(verified.image.contentType, "image/webp");
+    assert.equal(verified.image.bytes, preparedWebpFixture);
+    assert.equal(verified.contentTypeMatches, true);
+    assert.equal(
+      inspectOracleImageBytes(preparedWebpFixture, "image/png")
+        .contentTypeMatches,
+      false,
+    );
+
+    const exactLimitWebp = new Uint8Array(PRESIGNED_UPLOAD_MAX_BYTES);
+    exactLimitWebp.set(preparedWebpFixture);
+    assert.equal(
+      inspectOracleImageBytes(exactLimitWebp, "image/webp").image.bytes
+        .byteLength,
+      PRESIGNED_UPLOAD_MAX_BYTES,
+    );
+    const oversizedWebp = new Uint8Array(PRESIGNED_UPLOAD_MAX_BYTES + 1);
+    oversizedWebp.set(preparedWebpFixture);
+    assert.throws(
+      () => inspectOracleImageBytes(oversizedWebp, "image/webp"),
+      ProductImageValidationError,
+    );
+    assert.throws(
+      () =>
+        inspectOracleImageBytes(
+          new TextEncoder().encode("not a raster image"),
+          "image/webp",
+        ),
+      ProductImageValidationError,
+    );
   },
 );

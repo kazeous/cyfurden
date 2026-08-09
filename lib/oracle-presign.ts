@@ -13,10 +13,8 @@ import {
   createOracleClient,
   getOracleUploadConfig,
 } from "@/lib/oracle-uploads";
-import {
-  ProductImageValidationError,
-  validateProductImageBytes,
-} from "@/lib/payment-qr";
+import { ProductImageValidationError } from "@/lib/payment-qr";
+import { inspectOracleImageBytes } from "@/lib/oracle-image-verification";
 import { isBoothLogoObjectKey } from "@/lib/shop-settings";
 
 export { presignedUploadRequestSchema } from "@/lib/oracle-presign-contract";
@@ -93,10 +91,11 @@ export async function verifyBoothLogoUpload({
         "The uploaded logo could not be read from object storage.",
       );
     }
-    const image = validateProductImageBytes(
+    const { contentTypeMatches } = inspectOracleImageBytes(
       new Uint8Array(await result.Body.transformToByteArray()),
+      result.ContentType,
     );
-    if (result.ContentType && result.ContentType !== image.contentType) {
+    if (!contentTypeMatches) {
       throw new OracleLogoVerificationError(
         "The uploaded logo content does not match its image type.",
       );
@@ -138,10 +137,11 @@ export async function verifyBoothProductImageUpload({
         "The uploaded product image could not be read from object storage.",
       );
     }
-    const image = validateProductImageBytes(
+    const { contentTypeMatches } = inspectOracleImageBytes(
       new Uint8Array(await result.Body.transformToByteArray()),
+      result.ContentType,
     );
-    if (result.ContentType && result.ContentType !== image.contentType) {
+    if (!contentTypeMatches) {
       throw new OracleProductImageVerificationError(
         "The uploaded product image does not match its declared image type.",
       );
