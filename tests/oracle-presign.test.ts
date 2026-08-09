@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildBoothUploadObjectKey,
+  isBoothFaceboothObjectKey,
   isBoothProductImageObjectKey,
   PRESIGNED_UPLOAD_MAX_BYTES,
   presignedUploadRequestSchema,
@@ -19,6 +20,20 @@ test("presigned upload requests enforce purpose, image type, and byte limits", (
   assert.equal(
     presignedUploadRequestSchema.safeParse({ ...valid, purpose: "product" })
       .success,
+    true,
+  );
+  assert.equal(
+    presignedUploadRequestSchema.safeParse({
+      ...valid,
+      purpose: "facebooth-artwork",
+    }).success,
+    true,
+  );
+  assert.equal(
+    presignedUploadRequestSchema.safeParse({
+      ...valid,
+      purpose: "facebooth-preview",
+    }).success,
     true,
   );
 
@@ -70,4 +85,38 @@ test("booth upload keys use an identity prefix and never include a caller filena
     /^booths\/booth123\/identity\/logo-[a-f0-9-]+\.jpg$/i,
   );
   assert.doesNotMatch(objectKey, /\.exe|filename|\.\.\//i);
+});
+
+test("Facebooth artwork and preview keys are booth- and purpose-scoped", () => {
+  const artworkKey = buildBoothUploadObjectKey({
+    boothId: "booth/123",
+    purpose: "facebooth-artwork",
+    contentType: "image/png",
+  });
+  const previewKey = buildBoothUploadObjectKey({
+    boothId: "booth/123",
+    purpose: "facebooth-preview",
+    contentType: "image/webp",
+  });
+
+  assert.match(
+    artworkKey,
+    /^booths\/booth123\/facebooth\/artwork-[a-f0-9-]+\.png$/i,
+  );
+  assert.match(
+    previewKey,
+    /^booths\/booth123\/facebooth\/preview-[a-f0-9-]+\.webp$/i,
+  );
+  assert.equal(
+    isBoothFaceboothObjectKey("booth/123", "artwork", artworkKey),
+    true,
+  );
+  assert.equal(
+    isBoothFaceboothObjectKey("booth/123", "preview", artworkKey),
+    false,
+  );
+  assert.equal(
+    isBoothFaceboothObjectKey("another-booth", "artwork", artworkKey),
+    false,
+  );
 });

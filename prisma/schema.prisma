@@ -77,23 +77,31 @@ enum PromotionProductRole {
   REWARD
 }
 
+enum FaceboothProjectKind {
+  MERCH
+  SCENE
+}
+
 model User {
-  id                  String             @id
-  name                String
-  email               String             @unique
-  emailVerified       Boolean            @default(false)
-  image               String?
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
-  sessions            Session[]
-  accounts            Account[]
-  ownedBooths         Booth[]            @relation("BoothOwner")
-  memberships         BoothMembership[]
-  invitationsSent     TeamInvitation[]   @relation("InvitationSender")
-  invitationsAccepted TeamInvitation[]   @relation("InvitationAccepter")
-  storefrontUpdates   StorefrontConfig[] @relation("StorefrontUpdater")
-  ordersConfirmed     Order[]            @relation("OrderConfirmer")
-  auditLogs           AuditLog[]
+  id                       String                 @id
+  name                     String
+  email                    String                 @unique
+  emailVerified            Boolean                @default(false)
+  image                    String?
+  createdAt                DateTime               @default(now())
+  updatedAt                DateTime               @updatedAt
+  sessions                 Session[]
+  accounts                 Account[]
+  ownedBooths              Booth[]                @relation("BoothOwner")
+  memberships              BoothMembership[]
+  invitationsSent          TeamInvitation[]       @relation("InvitationSender")
+  invitationsAccepted      TeamInvitation[]       @relation("InvitationAccepter")
+  storefrontUpdates        StorefrontConfig[]     @relation("StorefrontUpdater")
+  ordersConfirmed          Order[]                @relation("OrderConfirmer")
+  faceboothProjectsCreated FaceboothProject[]     @relation("FaceboothProjectCreator")
+  faceboothProjectsUpdated FaceboothProject[]     @relation("FaceboothProjectUpdater")
+  faceboothPublications    FaceboothPublication[] @relation("FaceboothPublisher")
+  auditLogs                AuditLog[]
 
   @@map("user")
 }
@@ -147,30 +155,32 @@ model Verification {
 }
 
 model Booth {
-  id                  String                   @id @default(cuid())
-  slug                String                   @unique
-  name                String
-  logoObjectKey       String?
-  socialLinks         Json?
-  status              BoothStatus              @default(DRAFT)
-  locale              String                   @default("en")
-  currency            String                   @default("VND")
-  ownerId             String
-  owner               User                     @relation("BoothOwner", fields: [ownerId], references: [id], onDelete: Restrict)
-  createdAt           DateTime                 @default(now())
-  updatedAt           DateTime                 @updatedAt
-  memberships         BoothMembership[]
-  invitations         TeamInvitation[]
-  storefront          StorefrontConfig?
-  paymentInstructions BoothPaymentInstruction?
-  categories          Category[]
-  products            Product[]
-  promotions          QuantityPromotion[]
-  events              Event[]
-  orders              Order[]
-  gacha               GachaConfig?
-  gachaBanners        GachaBanner[]
-  auditLogs           AuditLog[]
+  id                   String                   @id @default(cuid())
+  slug                 String                   @unique
+  name                 String
+  logoObjectKey        String?
+  socialLinks          Json?
+  status               BoothStatus              @default(DRAFT)
+  locale               String                   @default("en")
+  currency             String                   @default("VND")
+  ownerId              String
+  owner                User                     @relation("BoothOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+  memberships          BoothMembership[]
+  invitations          TeamInvitation[]
+  storefront           StorefrontConfig?
+  paymentInstructions  BoothPaymentInstruction?
+  categories           Category[]
+  products             Product[]
+  promotions           QuantityPromotion[]
+  events               Event[]
+  orders               Order[]
+  gacha                GachaConfig?
+  gachaBanners         GachaBanner[]
+  faceboothProjects    FaceboothProject[]
+  faceboothPublication FaceboothPublication?
+  auditLogs            AuditLog[]
 
   @@index([ownerId])
   @@index([status])
@@ -479,6 +489,43 @@ model GachaPoolEntry {
   productVariant   ProductVariant? @relation(fields: [productVariantId], references: [id], onDelete: SetNull)
 
   @@index([bannerId, sortOrder])
+}
+
+model FaceboothProject {
+  id               String               @id @default(cuid())
+  boothId          String
+  kind             FaceboothProjectKind
+  schemaVersion    Int                  @default(1)
+  editVersion      Int                  @default(1)
+  name             String
+  document         Json
+  previewObjectKey String?
+  createdById      String
+  updatedById      String
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  booth            Booth                @relation(fields: [boothId], references: [id], onDelete: Cascade)
+  createdBy        User                 @relation("FaceboothProjectCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy        User                 @relation("FaceboothProjectUpdater", fields: [updatedById], references: [id], onDelete: Restrict)
+
+  @@unique([id, boothId])
+  @@index([boothId, kind, updatedAt(sort: Desc)])
+}
+
+model FaceboothPublication {
+  id               String   @id @default(cuid())
+  boothId          String   @unique
+  schemaVersion    Int      @default(1)
+  revision         Int      @default(1)
+  document         Json
+  previewObjectKey String?
+  publishedById    String
+  publishedAt      DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  booth            Booth    @relation(fields: [boothId], references: [id], onDelete: Cascade)
+  publishedBy      User     @relation("FaceboothPublisher", fields: [publishedById], references: [id], onDelete: Restrict)
+
+  @@index([boothId, revision])
 }
 
 model AuditLog {

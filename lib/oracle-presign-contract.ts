@@ -13,12 +13,20 @@ export const presignedUploadContentTypes = [
 
 export type PresignedUploadContentType =
   (typeof presignedUploadContentTypes)[number];
-export type PresignedUploadPurpose = "logo" | "design" | "product";
+export const presignedUploadPurposes = [
+  "logo",
+  "design",
+  "product",
+  "facebooth-artwork",
+  "facebooth-preview",
+] as const;
+export type PresignedUploadPurpose = (typeof presignedUploadPurposes)[number];
+export type FaceboothUploadPurpose = "artwork" | "preview";
 
 export const presignedUploadRequestSchema = z
   .object({
     boothId: z.string().trim().min(1).max(64),
-    purpose: z.enum(["logo", "design", "product"]),
+    purpose: z.enum(presignedUploadPurposes),
     contentType: z.enum(presignedUploadContentTypes),
     contentLength: z.number().int().positive().max(PRESIGNED_UPLOAD_MAX_BYTES),
   })
@@ -46,24 +54,53 @@ export function buildBoothUploadObjectKey({
 }) {
   const safeBoothId = boothId.replace(/[^a-zA-Z0-9_-]/g, "");
   const prefix = safeBoothId || "unknown";
-  const objectPrefix =
-    purpose === "logo"
-      ? "identity/logo"
-      : purpose === "product"
-        ? "products/image"
-        : "identity/design";
-  return `booths/${prefix}/${objectPrefix}-${randomUUID()}.${extensionByContentType[contentType]}`;
+  const objectPrefix = {
+    logo: "identity/logo",
+    design: "identity/design",
+    product: "products/image",
+    "facebooth-artwork": "facebooth/artwork",
+    "facebooth-preview": "facebooth/preview",
+  } satisfies Record<PresignedUploadPurpose, string>;
+  return `booths/${prefix}/${objectPrefix[purpose]}-${randomUUID()}.${extensionByContentType[contentType]}`;
+}
+
+function isBoothUploadObjectKey({
+  boothId,
+  objectKey,
+  prefix,
+}: {
+  boothId: string;
+  objectKey: string;
+  prefix: string;
+}) {
+  const safeBoothId = boothId.replace(/[^a-zA-Z0-9_-]/g, "");
+  if (!safeBoothId) return false;
+  const boothPrefix = `booths/${safeBoothId}/${prefix}-`;
+  return (
+    objectKey.startsWith(boothPrefix) &&
+    /^[a-f0-9-]+\.(?:jpg|png|webp)$/i.test(objectKey.slice(boothPrefix.length))
+  );
 }
 
 export function isBoothProductImageObjectKey(
   boothId: string,
   objectKey: string,
 ) {
-  const safeBoothId = boothId.replace(/[^a-zA-Z0-9_-]/g, "");
-  if (!safeBoothId) return false;
-  const prefix = `booths/${safeBoothId}/products/image-`;
-  return (
-    objectKey.startsWith(prefix) &&
-    /^[a-f0-9-]+\.(?:jpg|png|webp)$/i.test(objectKey.slice(prefix.length))
-  );
+  return isBoothUploadObjectKey({
+    boothId,
+    objectKey,
+    prefix: "products/image",
+  });
+}
+
+export function isBoothFaceboothObjectKey(
+  boothId: string,
+  purpose: FaceboothUploadPurpose,
+  objectKey: string,
+) {
+  return isBoothUploadObjectKey({
+    boothId,
+    objectKey,
+    prefix: `facebooth/${purpose}`,
+  });
 }
