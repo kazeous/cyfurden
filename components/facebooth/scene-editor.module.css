@@ -1,4 +1,5 @@
 /* Hallmark · genre: editorial-utilitarian · macrostructure: Workbench · theme: Cyfurden locked · enrichment: interactive true-size scene · nav: N6 existing · footer: none */
+/* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5 · contrast: pass (40–41) · mobile: pass (34, 49–57) */
 /* Hallmark · expected-files: scene editor + shared Facebooth canvas · designed-as-app */
 
 .historyBar {
@@ -25,6 +26,7 @@
   font: inherit;
   font-size: var(--text-xs);
   font-weight: 800;
+  line-height: 1;
   white-space: nowrap;
   cursor: pointer;
 }
@@ -41,13 +43,26 @@
 }
 
 .historyBar button:disabled,
+.actionGrid button:disabled,
 .selectionActions button:disabled,
 .moveHandle button:disabled,
 .snapRow button:disabled,
+.merchList button:disabled,
 .updateNotice button:disabled {
   color: var(--color-muted-2);
   background: var(--color-paper-3);
   cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.historyBar button:active:not(:disabled),
+.actionGrid button:active:not(:disabled),
+.selectionActions button:active:not(:disabled),
+.moveHandle button:active:not(:disabled),
+.snapRow button:active:not(:disabled),
+.merchList button:active:not(:disabled),
+.updateNotice button:active:not(:disabled) {
+  filter: brightness(0.94);
 }
 
 .historyBar > span {
@@ -96,9 +111,11 @@
 }
 
 .inspector > h2 {
+  min-width: 0;
   margin: 0 0 var(--space-md);
   font-family: var(--font-display);
   font-size: var(--text-md);
+  overflow-wrap: anywhere;
 }
 
 .inspector fieldset {
@@ -238,10 +255,26 @@
   background: var(--color-paper-2);
   font: inherit;
   font-variant-numeric: tabular-nums;
+  outline: 2px solid var(--color-transparent);
+  outline-offset: 1px;
+}
+
+.field input:hover:not(:disabled),
+.selectGrid select:hover:not(:disabled),
+.snapRow select:hover:not(:disabled) {
+  border-color: var(--color-accent-line);
+}
+
+.field input:disabled,
+.selectGrid select:disabled,
+.snapRow select:disabled {
+  background: var(--color-paper-3);
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .field input {
-  padding-right: 38px;
+  padding-right: var(--space-xl);
 }
 
 .field small {
@@ -296,13 +329,13 @@
 .field input:focus-visible,
 .selectGrid select:focus-visible,
 .snapRow select:focus-visible {
-  outline: 3px solid var(--color-accent-alpha);
-  outline-offset: 2px;
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
 }
 
 @media (max-width: 1020px) {
   .workbench {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .inspector {

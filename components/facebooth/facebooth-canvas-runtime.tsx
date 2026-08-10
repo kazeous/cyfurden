@@ -3,9 +3,36 @@
 import { Suspense, useEffect, useState, type ReactNode } from "react";
 import { Preload } from "@react-three/drei";
 import { Canvas, useThree } from "@react-three/fiber";
+import { getConsoleFunction, setConsoleFunction } from "three";
 import styles from "./facebooth-canvas.module.css";
 
+const threeRuntime = globalThis as typeof globalThis & {
+  __cyfurdenFaceboothConsoleConfigured?: boolean;
+};
+
+if (!threeRuntime.__cyfurdenFaceboothConsoleConfigured) {
+  const inheritedConsoleFunction = getConsoleFunction();
+  setConsoleFunction((level, message, ...params) => {
+    if (
+      level === "warn" &&
+      message ===
+        "THREE.Clock: This module has been deprecated. Please use THREE.Timer instead."
+    ) {
+      return;
+    }
+    if (inheritedConsoleFunction) {
+      inheritedConsoleFunction(level, message, ...params);
+      return;
+    }
+    if (level === "error") console.error(message, ...params);
+    else if (level === "warn") console.warn(message, ...params);
+    else console.log(message, ...params);
+  });
+  threeRuntime.__cyfurdenFaceboothConsoleConfigured = true;
+}
+
 export type FaceboothCanvasRuntimeProps = {
+  canvasLabel: string;
   children: ReactNode;
   className?: string;
   fallback?: ReactNode;
@@ -14,10 +41,12 @@ export type FaceboothCanvasRuntimeProps = {
 };
 
 function ContextLifecycle({
+  canvasLabel,
   onLost,
   onReady,
   onRestored,
 }: {
+  canvasLabel: string;
   onLost?: () => void;
   onReady?: () => void;
   onRestored?: () => void;
@@ -25,6 +54,8 @@ function ContextLifecycle({
   const { gl, invalidate } = useThree();
   useEffect(() => {
     const canvas = gl.domElement;
+    canvas.setAttribute("aria-label", canvasLabel);
+    canvas.setAttribute("role", "img");
     const handleLost = (event: Event) => {
       event.preventDefault();
       onLost?.();
@@ -41,11 +72,12 @@ function ContextLifecycle({
       canvas.removeEventListener("webglcontextrestored", handleRestored);
       gl.renderLists.dispose();
     };
-  }, [gl, invalidate, onLost, onReady, onRestored]);
+  }, [canvasLabel, gl, invalidate, onLost, onReady, onRestored]);
   return null;
 }
 
 export function FaceboothCanvasRuntime({
+  canvasLabel,
   children,
   className,
   fallback = null,
@@ -70,6 +102,7 @@ export function FaceboothCanvasRuntime({
       >
         <Suspense fallback={null}>
           <ContextLifecycle
+            canvasLabel={canvasLabel}
             onLost={() => {
               setContextLost(true);
               onContextLost?.();

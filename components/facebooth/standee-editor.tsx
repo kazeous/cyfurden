@@ -310,7 +310,10 @@ export function StandeeEditor({
             </span>
           </div>
           <div className={styles.canvasWrap}>
-            <FaceboothCanvasBoundary fallback={fallback}>
+            <FaceboothCanvasBoundary
+              canvasLabel={strings.previewHeading}
+              fallback={fallback}
+            >
               <FaceboothStandeeStage
                 artworkUrl={artworkUrl}
                 background={background}

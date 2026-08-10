@@ -11,17 +11,23 @@ import styles from "./public-facebooth-viewer.module.css";
 
 export function PublicFaceboothWebgl({
   artworkUrls,
+  canvasLabel,
   cameraPreset,
   document,
   fallback,
 }: {
   artworkUrls: Record<string, string | null>;
+  canvasLabel: string;
   cameraPreset: SceneCameraPreset;
   document: FaceboothSceneDocument;
   fallback: ReactNode;
 }) {
   return (
-    <FaceboothCanvasBoundary className={styles.canvas} fallback={fallback}>
+    <FaceboothCanvasBoundary
+      canvasLabel={canvasLabel}
+      className={styles.canvas}
+      fallback={fallback}
+    >
       <FaceboothSceneStage
         artworkUrls={artworkUrls}
         cameraPreset={cameraPreset}

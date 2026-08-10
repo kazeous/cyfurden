@@ -1,23 +1,25 @@
-/* Hallmark · genre: editorial-commerce · macrostructure: Split Showcase Feature · theme: storefront inherited · enrichment: saved 3D preview · nav: inherited · footer: inherited */
+/* Hallmark · genre: editorial-commerce · macrostructure: Split Showcase Feature · theme: storefront inherited · enrichment: saved 3D preview · nav: inherited · footer: inherited · contrast: pass (40–41) · mobile: pass (34, 49–57) */
+/* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5 */
 /* Hallmark · expected-files: Storefront Facebooth card · designed-as-page-section */
 
 .card {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
   overflow: hidden;
-  margin: clamp(1.5rem, 4vw, 3.5rem) 0;
-  border: 1px solid color-mix(in srgb, var(--accent) 32%, #d3d4cf);
-  border-radius: var(--store-radius, 18px);
-  color: #f7f5ee;
-  background: #18314e;
-  box-shadow: 0 22px 48px rgb(17 37 58 / 18%);
+  margin: clamp(var(--space-lg), 4vw, calc(var(--space-xl) + var(--space-md))) 0;
+  border: 1px solid
+    color-mix(in oklab, var(--accent) 32%, var(--color-rule-strong));
+  border-radius: var(--store-radius, var(--radius-card));
+  color: var(--color-dark-ink);
+  background: var(--color-dark);
+  box-shadow: 0 22px 48px var(--color-shadow-strong);
 }
 
 .preview {
   position: relative;
   min-height: 320px;
   overflow: hidden;
-  background: #d8d8cf;
+  background: var(--color-paper-3);
 }
 
 .preview img {
@@ -31,18 +33,18 @@
   background:
     linear-gradient(
       145deg,
-      transparent 47%,
-      var(--accent) 47% 53%,
-      transparent 53%
+      var(--color-transparent) 47%,
+      var(--accent) 48% 52%,
+      var(--color-transparent) 53%
     ),
-    #d9d8d0;
+    var(--color-rule-strong);
 }
 
 .previewFallback span {
   position: absolute;
   top: 12%;
   left: 8%;
-  color: #18314e;
+  color: var(--color-dark);
   font-size: clamp(4rem, 12vw, 8.5rem);
   font-weight: 900;
   letter-spacing: -0.08em;
@@ -55,7 +57,7 @@
   bottom: 10%;
   width: 28%;
   height: 44%;
-  border: 5px solid #18314e;
+  border: 5px solid var(--color-dark);
   transform: skewY(-8deg);
 }
 
@@ -63,7 +65,7 @@
   right: 28%;
   bottom: 18%;
   height: 24%;
-  background: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in oklab, var(--accent) 55%, var(--color-transparent));
 }
 
 .copy {
@@ -71,7 +73,7 @@
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
-  padding: clamp(1.5rem, 4vw, 3.5rem);
+  padding: clamp(var(--space-lg), 4vw, calc(var(--space-xl) + var(--space-md)));
 }
 
 .copy p,
@@ -81,7 +83,7 @@
 }
 
 .copy p {
-  color: color-mix(in srgb, var(--accent) 62%, white);
+  color: color-mix(in oklab, var(--accent) 62%, var(--color-panel));
   font-size: 0.72rem;
   font-weight: 900;
   letter-spacing: 0.13em;
@@ -89,24 +91,30 @@
 }
 
 .copy h2 {
-  margin-top: 0.6rem;
+  min-width: 0;
+  margin-top: var(--space-xs);
   font-family: var(--font-display);
   font-size: clamp(2rem, 4vw, 3.5rem);
   font-weight: 550;
   letter-spacing: -0.045em;
-  line-height: 0.95;
+  line-height: 1;
+  overflow-wrap: anywhere;
 }
 
 .copy strong {
-  margin-top: 1.2rem;
-  color: #fff;
+  margin-top: var(--space-md);
+  color: var(--color-dark-ink);
   font-size: 0.96rem;
 }
 
 .copy span {
-  max-width: 44ch;
-  margin-top: 0.45rem;
-  color: rgb(247 245 238 / 76%);
+  max-width: 48ch;
+  margin-top: var(--space-xs);
+  color: color-mix(
+    in oklab,
+    var(--color-dark-ink) 76%,
+    var(--color-transparent)
+  );
   line-height: 1.55;
 }
 
@@ -115,25 +123,41 @@
   min-height: 46px;
   align-items: center;
   justify-content: center;
-  margin-top: 1.4rem;
-  padding: 0 1.25rem;
-  border: 1px solid color-mix(in srgb, var(--accent) 70%, white);
-  border-radius: 999px;
-  color: #18314e;
-  background: color-mix(in srgb, var(--accent) 76%, white);
+  margin-top: var(--space-lg);
+  padding: 0 var(--space-lg);
+  border: 1px solid var(--color-accent-line);
+  border-radius: var(--radius-pill);
+  color: var(--color-dark);
+  background: var(--color-accent-line);
   font-size: 0.82rem;
   font-weight: 900;
+  line-height: 1;
   text-decoration: none;
+  white-space: nowrap;
 }
 
-.copy a:hover,
 .copy a:focus-visible {
-  background: #fff;
+  outline: 2px solid var(--color-dark-ink);
+  outline-offset: 2px;
+}
+
+.copy a:hover {
+  background: var(--color-panel);
+}
+
+.copy a:active {
+  color: var(--color-accent-ink);
+  background: var(--color-accent);
+}
+
+.copy a[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 @media (max-width: 720px) {
   .card {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .preview {

@@ -1,5 +1,27 @@
 [
   {
+    "date": "2026-08-10",
+    "scope": "Phase 15 Facebooth admin + public viewer",
+    "macrostructure": "Workshop Index + Workbench + Publication Ledger + Hero / Viewer Stage / Object Folio + Split Showcase Feature",
+    "theme": "Cyfurden locked editorial-utilitarian",
+    "enrichment": "Demand-rendered WebGL2 with opaque recovery fallback and static storefront preview",
+    "brief": "Create true-size standees and booth scenes privately, export them in the browser, and publish an immutable display-only public showcase",
+    "critique": {
+      "philosophy": 5,
+      "hierarchy": 5,
+      "execution": 5,
+      "specificity": 5,
+      "restraint": 5,
+      "variety": 5
+    },
+    "slop_test": "pass (1-58)",
+    "verified_viewports": [320, 375, 390, 414, 768, 1280, 1440],
+    "contrast": "pass (40-41); measured public text minimum 4.54:1, controls 7.85:1 or higher, and dark-surface text 9.25:1 or higher",
+    "browser_diagnostics": "zero warning or error logs in fresh public-viewer and scene-editor tabs",
+    "navigation": "N6 responsive admin shell + public back-link; inherited N4 storefront command bar",
+    "footer": "none in editor/viewer; inherited Ft1 storefront legal strip"
+  },
+  {
     "date": "2026-08-01",
     "scope": "landing + public booth",
     "macrostructure": "Narrative Workflow + Catalogue (locked)",

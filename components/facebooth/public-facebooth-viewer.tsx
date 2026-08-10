@@ -147,6 +147,7 @@ export function PublicFaceboothViewer({
           <LazyPublicFaceboothWebgl
             artworkUrls={artworkUrls}
             cameraPreset={cameraPreset}
+            canvasLabel={`${sceneName} — ${strings.displayOnly}`}
             document={scene}
             fallback={fallback}
           />

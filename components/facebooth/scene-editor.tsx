@@ -503,7 +503,10 @@ export function SceneEditor({
             </span>
           </div>
           <div className={styles.canvasWrap}>
-            <FaceboothCanvasBoundary fallback={fallback}>
+            <FaceboothCanvasBoundary
+              canvasLabel={strings.scenePreviewHeading}
+              fallback={fallback}
+            >
               <FaceboothSceneStage
                 artworkUrls={artworkUrls}
                 cameraPreset={cameraPreset}

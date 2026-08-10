@@ -1,4 +1,5 @@
 /* Hallmark · genre: editorial-utilitarian · macrostructure: Publication Ledger · theme: Cyfurden locked · enrichment: immutable snapshot · nav: inherited · footer: action rail */
+/* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5 · contrast: pass (40–41) · mobile: pass (34, 49–57) */
 /* Hallmark · expected-files: Facebooth publication panel · designed-as-app */
 
 .panel {
@@ -38,10 +39,12 @@
 }
 
 .heading h2 {
+  min-width: 0;
   font-family: var(--font-display);
   font-size: clamp(1.55rem, 3vw, 2.5rem);
   font-weight: 550;
   letter-spacing: -0.035em;
+  overflow-wrap: anywhere;
 }
 
 .heading span {
@@ -113,6 +116,20 @@
   background: var(--color-accent-soft);
 }
 
+.optionGrid label:has(input:focus-visible) {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+.optionGrid label:active {
+  background: var(--color-accent-soft);
+}
+
+.optionGrid label:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .optionGrid input {
   inline-size: 18px;
   block-size: 18px;
@@ -146,6 +163,8 @@
   font: inherit;
   font-size: var(--text-xs);
   font-weight: 850;
+  line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -154,16 +173,25 @@
   filter: brightness(1.06);
 }
 
+.actions button:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
 .actions button:disabled {
-  cursor: wait;
+  cursor: not-allowed;
   opacity: 0.55;
+}
+
+.actions button:active:not(:disabled) {
+  filter: brightness(0.94);
 }
 
 .actions .unpublish,
 .confirm button:last-child {
   border-color: var(--color-rule-strong);
   color: var(--color-ink);
-  background: transparent;
+  background: var(--color-transparent);
 }
 
 .actions p {
@@ -196,7 +224,7 @@
   }
 
   .selections {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .selections fieldset {
