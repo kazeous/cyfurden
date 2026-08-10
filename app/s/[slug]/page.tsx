@@ -4,13 +4,17 @@ import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { ManagedStorefront } from "@/components/storefront/managed-storefront";
 import { db } from "@/lib/db";
+import { parseFaceboothPublicationDocument } from "@/lib/facebooth-documents";
 import { readPublishedGachaDocument } from "@/lib/gacha-document";
 import { parseBilingual } from "@/lib/i18n";
 import {
   createOrderPaymentSnapshot,
   isPurchasableVariant,
 } from "@/lib/order-rules";
-import { resolveOracleImageUrl } from "@/lib/oracle-images";
+import {
+  resolveOracleImageUrl,
+  resolveOracleObjectUrl,
+} from "@/lib/oracle-images";
 import { parseReservationCode, reservationPath } from "@/lib/reservation-code";
 import { readBoothSocialLinks, socialPlatforms } from "@/lib/shop-settings";
 import {
@@ -24,6 +28,7 @@ const getManagedBooth = cache(async (slug: string) => {
       where: { slug },
       include: {
         storefront: true,
+        faceboothPublication: true,
         gacha: true,
         paymentInstructions: true,
         promotions: {
@@ -199,6 +204,9 @@ export default async function PublicBoothPage({
   });
   const socialLinks = readBoothSocialLinks(managed.socialLinks);
   const gacha = readPublishedGachaDocument(managed.gacha?.publishedDocument);
+  const faceboothDocument = parseFaceboothPublicationDocument(
+    managed.faceboothPublication?.document,
+  );
   return (
     <ManagedStorefront
       booth={{ id: managed.id, slug: managed.slug }}
@@ -214,6 +222,21 @@ export default async function PublicBoothPage({
       products={products}
       promotions={promotions}
       gacha={gacha}
+      facebooth={
+        faceboothDocument
+          ? {
+              sceneName: parseBilingual(
+                faceboothDocument.scene.name,
+                document.locale,
+              ),
+              merchCount: faceboothDocument.merch.length,
+              previewUrl: faceboothDocument.previewObjectKey
+                ? (resolveOracleObjectUrl(faceboothDocument.previewObjectKey) ??
+                  null)
+                : null,
+            }
+          : null
+      }
       canAcceptReservations={Boolean(
         createOrderPaymentSnapshot(managed.paymentInstructions),
       )}

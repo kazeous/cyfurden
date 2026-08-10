@@ -15,9 +15,11 @@ export type FaceboothCanvasRuntimeProps = {
 
 function ContextLifecycle({
   onLost,
+  onReady,
   onRestored,
 }: {
   onLost?: () => void;
+  onReady?: () => void;
   onRestored?: () => void;
 }) {
   const { gl, invalidate } = useThree();
@@ -33,12 +35,13 @@ function ContextLifecycle({
     };
     canvas.addEventListener("webglcontextlost", handleLost);
     canvas.addEventListener("webglcontextrestored", handleRestored);
+    onReady?.();
     return () => {
       canvas.removeEventListener("webglcontextlost", handleLost);
       canvas.removeEventListener("webglcontextrestored", handleRestored);
       gl.renderLists.dispose();
     };
-  }, [gl, invalidate, onLost, onRestored]);
+  }, [gl, invalidate, onLost, onReady, onRestored]);
   return null;
 }
 
@@ -50,12 +53,12 @@ export function FaceboothCanvasRuntime({
   onContextRestored,
 }: FaceboothCanvasRuntimeProps) {
   const [contextLost, setContextLost] = useState(false);
+  const [ready, setReady] = useState(false);
   return (
     <div className={`${styles.runtime} ${className ?? ""}`}>
       <Canvas
         camera={{ position: [0.28, 0.2, 0.34], fov: 36, near: 0.001, far: 100 }}
         dpr={[1, 1.75]}
-        fallback={fallback}
         frameloop="demand"
         gl={{
           alpha: true,
@@ -75,12 +78,15 @@ export function FaceboothCanvasRuntime({
               setContextLost(false);
               onContextRestored?.();
             }}
+            onReady={() => setReady(true)}
           />
           {children}
           <Preload all />
         </Suspense>
       </Canvas>
-      {contextLost ? <div className={styles.fallback}>{fallback}</div> : null}
+      {!ready || contextLost ? (
+        <div className={styles.fallback}>{fallback}</div>
+      ) : null}
     </div>
   );
 }

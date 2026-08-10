@@ -26,6 +26,10 @@ import {
   parseFaceboothExportFile,
   replaceFaceboothArtworkObjectKeys,
 } from "@/lib/facebooth-portable";
+import {
+  FaceboothPublicationPanel,
+  type FaceboothManagerPublication,
+} from "@/components/facebooth/facebooth-publication-panel";
 import type { FaceboothStrings } from "@/lib/i18n/facebooth";
 import type { Locale } from "@/lib/i18n";
 import styles from "./facebooth-library.module.css";
@@ -74,11 +78,13 @@ function ProjectPreview({ project }: { project: FaceboothLibraryProject }) {
 
 export function FaceboothLibrary({
   boothId,
+  initialPublication,
   locale,
   projects,
   strings,
 }: {
   boothId: string;
+  initialPublication: FaceboothManagerPublication;
   locale: Locale;
   projects: FaceboothLibraryProject[];
   strings: FaceboothStrings;
@@ -418,6 +424,13 @@ export function FaceboothLibrary({
       <p className={styles.message} aria-live="polite">
         {message}
       </p>
+      <FaceboothPublicationPanel
+        boothId={boothId}
+        initialPublication={initialPublication}
+        locale={locale}
+        projects={projects}
+        strings={strings}
+      />
       {group(
         "facebooth-merch-projects",
         strings.merchProjects,

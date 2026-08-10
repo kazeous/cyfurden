@@ -1,0 +1,393 @@
+/* Hallmark · genre: immersive-editorial · macrostructure: Hero / Viewer Stage / Object Folio · theme: Cyfurden public navy-paper · enrichment: lazy WebGL scene · nav: back-link only · footer: none */
+/* Hallmark · expected-files: Dedicated public Facebooth viewer · designed-as-page */
+
+.page {
+  --viewer-navy: #18314e;
+  --viewer-paper: #f5f3ec;
+  --viewer-red: #c83f4f;
+  min-height: 100vh;
+  color: #243044;
+  background: var(--viewer-paper);
+}
+
+.hero,
+.viewerSection,
+.merchSection {
+  width: min(calc(100% - 32px), 1320px);
+  margin-inline: auto;
+}
+
+.hero {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: clamp(2rem, 6vw, 5.5rem) 0 2rem;
+  border-bottom: 1px solid #c9cbc6;
+}
+
+.hero a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  color: var(--viewer-navy);
+  font-size: 0.8rem;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.hero p,
+.hero h1,
+.snapshotMeta span,
+.snapshotMeta strong,
+.viewerToolbar p,
+.viewerToolbar span,
+.viewerToolbar strong,
+.merchSection header p,
+.merchSection header h2,
+.merchSection header span,
+.merchCopy h3,
+.merchCopy span,
+.merchCopy strong,
+.merchEmpty {
+  margin: 0;
+}
+
+.hero p,
+.merchSection header p {
+  margin-top: 1rem;
+  color: var(--viewer-red);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.hero h1 {
+  max-width: 16ch;
+  margin-top: 0.3rem;
+  font-family: var(--font-display);
+  font-size: clamp(2.6rem, 7vw, 6.8rem);
+  font-weight: 500;
+  letter-spacing: -0.055em;
+  line-height: 0.9;
+  overflow-wrap: anywhere;
+}
+
+.snapshotMeta {
+  display: grid;
+  max-width: 320px;
+  gap: 0.55rem;
+  padding: 1rem;
+  border-left: 4px solid var(--viewer-red);
+  background: #fff;
+}
+
+.snapshotMeta span {
+  color: #667080;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.snapshotMeta strong {
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.viewerSection {
+  margin-top: clamp(1.25rem, 3vw, 2.5rem);
+  overflow: hidden;
+  border: 1px solid #c4c7c4;
+  background: #e8e5dd;
+  box-shadow: 0 28px 65px rgb(24 49 78 / 16%);
+}
+
+.viewerToolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto minmax(180px, 0.7fr);
+  gap: 1rem;
+  align-items: center;
+  min-height: 78px;
+  padding: 0.85rem 1rem;
+  color: #f8f6ef;
+  background: var(--viewer-navy);
+}
+
+.viewerToolbar > div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.viewerToolbar span,
+.viewerToolbar p {
+  color: rgb(248 246 239 / 68%);
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.viewerToolbar strong {
+  font-size: 0.86rem;
+}
+
+.viewerToolbar fieldset {
+  display: flex;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.viewerToolbar legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.viewerToolbar button {
+  min-height: 42px;
+  padding: 0 0.8rem;
+  border: 1px solid rgb(255 255 255 / 28%);
+  border-radius: 999px;
+  color: #fff;
+  background: transparent;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.viewerToolbar button[aria-pressed="true"] {
+  border-color: #fff;
+  color: var(--viewer-navy);
+  background: #fff;
+}
+
+.canvasFrame {
+  position: relative;
+  height: clamp(420px, 68vw, 760px);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.fallbackUnderlay,
+.canvas,
+.fallback {
+  position: absolute;
+  inset: 0;
+}
+
+.canvas {
+  z-index: 2;
+}
+
+.fallbackUnderlay {
+  z-index: 1;
+}
+
+.fallback {
+  overflow: hidden;
+  background: #dddcd5;
+}
+
+.fallback img {
+  object-fit: cover;
+}
+
+.fallbackArt {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      155deg,
+      transparent 58%,
+      rgb(200 63 79 / 72%) 58% 64%,
+      transparent 64%
+    ),
+    #d9d8d0;
+}
+
+.fallbackArt span,
+.fallbackArt i,
+.fallbackArt b {
+  position: absolute;
+  bottom: 13%;
+  width: 28%;
+  height: 42%;
+  border: 6px solid var(--viewer-navy);
+}
+
+.fallbackArt span {
+  left: 12%;
+}
+
+.fallbackArt i {
+  left: 37%;
+  height: 26%;
+}
+
+.fallbackArt b {
+  left: 62%;
+  height: 54%;
+}
+
+.fallbackCopy {
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 2;
+  display: grid;
+  width: min(calc(100% - 2rem), 480px);
+  gap: 0.3rem;
+  padding: 1rem;
+  color: #fff;
+  background: rgb(24 49 78 / 91%);
+}
+
+.fallbackCopy strong {
+  font-size: 0.92rem;
+}
+
+.fallbackCopy span {
+  color: rgb(255 255 255 / 76%);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.merchSection {
+  padding: clamp(3.5rem, 8vw, 7rem) 0;
+}
+
+.merchSection header {
+  display: grid;
+  max-width: 680px;
+  gap: 0.45rem;
+}
+
+.merchSection header h2 {
+  font-family: var(--font-display);
+  font-size: clamp(2.2rem, 5vw, 4.6rem);
+  font-weight: 500;
+  letter-spacing: -0.045em;
+}
+
+.merchSection header span {
+  color: #667080;
+  line-height: 1.55;
+}
+
+.merchGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.merchGrid article {
+  overflow: hidden;
+  border: 1px solid #c9cbc6;
+  background: #fff;
+}
+
+.merchArt {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: #deddd6;
+}
+
+.merchArt img {
+  object-fit: contain;
+  padding: 1.25rem;
+}
+
+.merchArt > span {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #768090;
+  font-size: 0.75rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.merchCopy {
+  display: grid;
+  gap: 0.25rem;
+  padding: 1rem;
+  border-top: 5px solid var(--viewer-red);
+}
+
+.merchCopy h3 {
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  font-weight: 550;
+  letter-spacing: -0.03em;
+}
+
+.merchCopy span {
+  margin-top: 0.55rem;
+  color: #737b87;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.merchCopy strong {
+  font-size: 0.86rem;
+}
+
+.merchEmpty {
+  margin-top: 2rem;
+  padding: 1.25rem;
+  border-left: 4px solid var(--viewer-red);
+  background: #fff;
+  color: #667080;
+}
+
+@media (max-width: 880px) {
+  .hero {
+    display: grid;
+  }
+
+  .snapshotMeta {
+    max-width: none;
+  }
+
+  .viewerToolbar {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .merchGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .hero,
+  .viewerSection,
+  .merchSection {
+    width: min(calc(100% - 24px), 1320px);
+  }
+
+  .viewerToolbar fieldset {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .viewerToolbar button {
+    padding-inline: 0.35rem;
+  }
+
+  .canvasFrame {
+    height: 480px;
+  }
+
+  .merchGrid {
+    grid-template-columns: 1fr;
+  }
+}

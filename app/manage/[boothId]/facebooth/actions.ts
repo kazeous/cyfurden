@@ -11,6 +11,7 @@ import {
   readFaceboothProjectForManager,
   renameFaceboothProject,
   saveFaceboothProject,
+  unpublishFaceboothSnapshot,
 } from "@/lib/facebooth-projects";
 import { verifyFaceboothUploadForManager } from "@/lib/facebooth-uploads";
 import type { FaceboothUploadPurpose } from "@/lib/oracle-presign-contract";
@@ -138,5 +139,13 @@ export async function publishFaceboothSnapshotAction(
     boothId,
     actorUserId: session.user.id,
     publication,
+  });
+}
+
+export async function unpublishFaceboothSnapshotAction(boothId: string) {
+  const { session } = await requireBoothRole(boothId, faceboothManagerRoles);
+  return unpublishFaceboothSnapshot({
+    boothId,
+    actorUserId: session.user.id,
   });
 }

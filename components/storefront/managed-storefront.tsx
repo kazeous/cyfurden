@@ -8,6 +8,10 @@ import {
 } from "@/app/s/[slug]/actions";
 import { DocumentLocale } from "@/components/i18n/document-locale";
 import { FreeGacha } from "@/components/storefront/free-gacha";
+import {
+  FaceboothShowcaseCard,
+  type FaceboothShowcaseCardData,
+} from "@/components/storefront/facebooth-showcase-card";
 import type { PublishedGachaDocument } from "@/lib/gacha-document";
 import { resolveOracleImageUrl } from "@/lib/oracle-images";
 import {
@@ -271,6 +275,7 @@ export function ManagedStorefront({
   products,
   promotions = [],
   gacha = null,
+  facebooth = null,
   canAcceptReservations,
   locale = "en",
 }: {
@@ -283,6 +288,7 @@ export function ManagedStorefront({
   products: ProductDto[];
   promotions?: QuantityPromotionRule[];
   gacha?: PublishedGachaDocument | null;
+  facebooth?: FaceboothShowcaseCardData | null;
   canAcceptReservations: boolean;
   locale?: Locale;
 }) {
@@ -1357,6 +1363,14 @@ export function ManagedStorefront({
 
         {gacha ? (
           <FreeGacha document={gacha} boothSlug={booth.slug} locale={locale} />
+        ) : null}
+
+        {facebooth ? (
+          <FaceboothShowcaseCard
+            boothSlug={booth.slug}
+            locale={locale}
+            showcase={facebooth}
+          />
         ) : null}
 
         <footer className={styles.footer}>

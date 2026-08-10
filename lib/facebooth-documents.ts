@@ -550,3 +550,14 @@ export function parseFaceboothProjectDocument(
   }
   return parsed.data;
 }
+
+export function parseFaceboothPublicationDocument(
+  value: unknown,
+): FaceboothPublicationDocument | null {
+  const parsed = faceboothPublicationDocumentSchema.safeParse(value);
+  if (!parsed.success) return null;
+  if (faceboothDocumentByteLength(parsed.data) > FACEBOOTH_DOCUMENT_MAX_BYTES) {
+    return null;
+  }
+  return parsed.data;
+}

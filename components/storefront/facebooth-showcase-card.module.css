@@ -1,0 +1,142 @@
+/* Hallmark · genre: editorial-commerce · macrostructure: Split Showcase Feature · theme: storefront inherited · enrichment: saved 3D preview · nav: inherited · footer: inherited */
+/* Hallmark · expected-files: Storefront Facebooth card · designed-as-page-section */
+
+.card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+  overflow: hidden;
+  margin: clamp(1.5rem, 4vw, 3.5rem) 0;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, #d3d4cf);
+  border-radius: var(--store-radius, 18px);
+  color: #f7f5ee;
+  background: #18314e;
+  box-shadow: 0 22px 48px rgb(17 37 58 / 18%);
+}
+
+.preview {
+  position: relative;
+  min-height: 320px;
+  overflow: hidden;
+  background: #d8d8cf;
+}
+
+.preview img {
+  object-fit: cover;
+}
+
+.previewFallback {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background:
+    linear-gradient(
+      145deg,
+      transparent 47%,
+      var(--accent) 47% 53%,
+      transparent 53%
+    ),
+    #d9d8d0;
+}
+
+.previewFallback span {
+  position: absolute;
+  top: 12%;
+  left: 8%;
+  color: #18314e;
+  font-size: clamp(4rem, 12vw, 8.5rem);
+  font-weight: 900;
+  letter-spacing: -0.08em;
+}
+
+.previewFallback i,
+.previewFallback b {
+  position: absolute;
+  right: 9%;
+  bottom: 10%;
+  width: 28%;
+  height: 44%;
+  border: 5px solid #18314e;
+  transform: skewY(-8deg);
+}
+
+.previewFallback b {
+  right: 28%;
+  bottom: 18%;
+  height: 24%;
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding: clamp(1.5rem, 4vw, 3.5rem);
+}
+
+.copy p,
+.copy h2,
+.copy span {
+  margin: 0;
+}
+
+.copy p {
+  color: color-mix(in srgb, var(--accent) 62%, white);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.copy h2 {
+  margin-top: 0.6rem;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 550;
+  letter-spacing: -0.045em;
+  line-height: 0.95;
+}
+
+.copy strong {
+  margin-top: 1.2rem;
+  color: #fff;
+  font-size: 0.96rem;
+}
+
+.copy span {
+  max-width: 44ch;
+  margin-top: 0.45rem;
+  color: rgb(247 245 238 / 76%);
+  line-height: 1.55;
+}
+
+.copy a {
+  display: inline-flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1.4rem;
+  padding: 0 1.25rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 70%, white);
+  border-radius: 999px;
+  color: #18314e;
+  background: color-mix(in srgb, var(--accent) 76%, white);
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.copy a:hover,
+.copy a:focus-visible {
+  background: #fff;
+}
+
+@media (max-width: 720px) {
+  .card {
+    grid-template-columns: 1fr;
+  }
+
+  .preview {
+    min-height: 240px;
+  }
+}

@@ -11,6 +11,7 @@ import {
   FACEBOOTH_DOCUMENT_MAX_BYTES,
   FACEBOOTH_DOCUMENT_VERSION,
   parseFaceboothProjectDocument,
+  parseFaceboothPublicationDocument,
   type FaceboothProjectDocument,
   type FaceboothProjectKind,
   type FaceboothPublicationDocument,
@@ -58,7 +59,7 @@ const publishSnapshotInputSchema = z
         (projectIds) => new Set(projectIds).size === projectIds.length,
         "Published merch projects must be unique.",
       ),
-    previewObjectKey: z.string().trim().min(1).max(512).nullable(),
+    previewObjectKey: z.string().trim().min(1).max(512).nullable().optional(),
   })
   .strict();
 
@@ -694,17 +695,6 @@ export async function publishFaceboothSnapshot(input: {
         issues: validationIssues(parsedInput.error),
       } as const;
     }
-    if (
-      parsedInput.data.previewObjectKey &&
-      !isBoothFaceboothObjectKey(
-        input.boothId,
-        "preview",
-        parsedInput.data.previewObjectKey,
-      )
-    ) {
-      return { kind: "invalid-assets" } as const;
-    }
-
     const requestedIds = [
       parsedInput.data.sceneProjectId,
       ...parsedInput.data.merchProjectIds,
@@ -721,6 +711,16 @@ export async function publishFaceboothSnapshot(input: {
     );
     if (!sceneRecord || sceneRecord.kind !== "SCENE") {
       return { kind: "invalid-references" } as const;
+    }
+    if (
+      sceneRecord.previewObjectKey &&
+      !isBoothFaceboothObjectKey(
+        input.boothId,
+        "preview",
+        sceneRecord.previewObjectKey,
+      )
+    ) {
+      return { kind: "invalid-assets" } as const;
     }
     const sceneDocument = parseFaceboothProjectDocument(
       "SCENE",
@@ -765,7 +765,7 @@ export async function publishFaceboothSnapshot(input: {
         document: sceneDocument as FaceboothSceneDocument,
       },
       merch,
-      previewObjectKey: parsedInput.data.previewObjectKey,
+      previewObjectKey: sceneRecord.previewObjectKey,
     };
     const document = faceboothPublicationDocumentSchema.safeParse(candidate);
     if (
@@ -823,6 +823,74 @@ export async function publishFaceboothSnapshot(input: {
         document: document.data,
         publishedAt: publication.publishedAt.toISOString(),
       },
+    } as const;
+  });
+}
+
+export async function readFaceboothPublicationForManager(input: {
+  boothId: string;
+  actorUserId: string;
+}) {
+  return db.$transaction(async (transaction) => {
+    if (!(await hasManagerMembership(transaction, input))) {
+      return { kind: "forbidden" } as const;
+    }
+    const publication = await transaction.faceboothPublication.findUnique({
+      where: { boothId: input.boothId },
+      select: {
+        id: true,
+        revision: true,
+        document: true,
+        previewObjectKey: true,
+        publishedById: true,
+        publishedAt: true,
+        updatedAt: true,
+      },
+    });
+    if (!publication) return { kind: "missing" } as const;
+    const document = parseFaceboothPublicationDocument(publication.document);
+    if (!document) return { kind: "invalid-document" } as const;
+    return {
+      kind: "found",
+      publication: {
+        ...publication,
+        document,
+        publishedAt: publication.publishedAt.toISOString(),
+        updatedAt: publication.updatedAt.toISOString(),
+      },
+    } as const;
+  });
+}
+
+export async function unpublishFaceboothSnapshot(input: {
+  boothId: string;
+  actorUserId: string;
+}) {
+  return db.$transaction(async (transaction) => {
+    if (!(await hasManagerMembership(transaction, input))) {
+      return { kind: "forbidden" } as const;
+    }
+    const publication = await transaction.faceboothPublication.findUnique({
+      where: { boothId: input.boothId },
+      select: { id: true, revision: true },
+    });
+    if (!publication) return { kind: "missing" } as const;
+    await transaction.faceboothPublication.delete({
+      where: { id: publication.id },
+    });
+    await transaction.auditLog.create({
+      data: {
+        boothId: input.boothId,
+        actorUserId: input.actorUserId,
+        action: "facebooth.publication_unpublished",
+        entityType: "FaceboothPublication",
+        entityId: publication.id,
+        metadata: { revision: publication.revision },
+      },
+    });
+    return {
+      kind: "unpublished",
+      revision: publication.revision,
     } as const;
   });
 }

@@ -1,0 +1,225 @@
+/* Hallmark · genre: editorial-utilitarian · macrostructure: Publication Ledger · theme: Cyfurden locked · enrichment: immutable snapshot · nav: inherited · footer: action rail */
+/* Hallmark · expected-files: Facebooth publication panel · designed-as-app */
+
+.panel {
+  margin-top: var(--space-xl);
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-card);
+  background: var(--color-paper-2);
+  box-shadow: var(--shadow-card);
+}
+
+.heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  padding: var(--space-lg);
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.heading p,
+.heading h2,
+.heading span,
+.heading time,
+.limit,
+.empty,
+.actions p {
+  margin: 0;
+}
+
+.heading p {
+  margin-bottom: var(--space-xs);
+  color: var(--color-accent);
+  font-size: var(--text-xs);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.heading h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.55rem, 3vw, 2.5rem);
+  font-weight: 550;
+  letter-spacing: -0.035em;
+}
+
+.heading span {
+  display: block;
+  max-width: 68ch;
+  margin-top: var(--space-xs);
+  color: var(--color-muted);
+  line-height: 1.55;
+}
+
+.heading time {
+  flex: 0 0 auto;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  font-weight: 750;
+}
+
+.selections {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.selections fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-lg);
+  border: 0;
+}
+
+.selections fieldset + fieldset {
+  border-left: 1px solid var(--color-rule);
+}
+
+.selections legend {
+  padding: 0;
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+  font-weight: 900;
+}
+
+.limit,
+.empty {
+  margin-top: var(--space-2xs);
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}
+
+.optionGrid {
+  display: grid;
+  gap: var(--space-xs);
+  margin-top: var(--space-sm);
+}
+
+.optionGrid label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-xs);
+  align-items: center;
+  min-height: 44px;
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-button);
+  background: var(--color-paper);
+  cursor: pointer;
+}
+
+.optionGrid label:has(input:checked) {
+  border-color: var(--color-accent-line);
+  background: var(--color-accent-soft);
+}
+
+.optionGrid input {
+  inline-size: 18px;
+  block-size: 18px;
+  accent-color: var(--color-action);
+}
+
+.optionGrid span {
+  overflow-wrap: anywhere;
+  font-size: var(--text-sm);
+  font-weight: 800;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  align-items: center;
+  min-height: 72px;
+  padding: var(--space-sm) var(--space-lg);
+  border-top: 1px solid var(--color-rule);
+  background: var(--color-paper);
+}
+
+.actions button {
+  min-height: 44px;
+  padding: 0 var(--space-md);
+  border: 1px solid var(--color-action);
+  border-radius: var(--radius-button);
+  color: var(--color-action-ink);
+  background: var(--color-action);
+  font: inherit;
+  font-size: var(--text-xs);
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.actions button:hover,
+.actions button:focus-visible {
+  filter: brightness(1.06);
+}
+
+.actions button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.actions .unpublish,
+.confirm button:last-child {
+  border-color: var(--color-rule-strong);
+  color: var(--color-ink);
+  background: transparent;
+}
+
+.actions p {
+  flex: 1 1 240px;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  font-weight: 750;
+  text-align: right;
+}
+
+.confirm {
+  display: flex;
+  flex: 1 1 420px;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  align-items: center;
+}
+
+.confirm span {
+  flex: 1 1 240px;
+  color: var(--color-error);
+  font-size: var(--text-xs);
+  font-weight: 800;
+}
+
+@media (max-width: 760px) {
+  .heading {
+    display: grid;
+    padding: var(--space-md);
+  }
+
+  .selections {
+    grid-template-columns: 1fr;
+  }
+
+  .selections fieldset {
+    padding: var(--space-md);
+  }
+
+  .selections fieldset + fieldset {
+    border-top: 1px solid var(--color-rule);
+    border-left: 0;
+  }
+
+  .actions {
+    align-items: stretch;
+    padding: var(--space-md);
+  }
+
+  .actions > button,
+  .confirm button {
+    flex: 1 1 100%;
+  }
+
+  .actions p {
+    flex-basis: 100%;
+    text-align: left;
+  }
+}

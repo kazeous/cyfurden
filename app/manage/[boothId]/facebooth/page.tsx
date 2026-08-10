@@ -8,6 +8,7 @@ import { requireBoothRole } from "@/lib/authorization";
 import { collectFaceboothArtworkObjectKeys } from "@/lib/facebooth-documents";
 import {
   listFaceboothProjectsForManager,
+  readFaceboothPublicationForManager,
   readFaceboothProjectForManager,
 } from "@/lib/facebooth-projects";
 import { getFaceboothStrings } from "@/lib/i18n/facebooth";
@@ -31,10 +32,16 @@ export default async function FaceboothLibraryPage({
     requireBoothRole(boothId, ["OWNER", "ADMIN"]),
     readLocaleCookie(),
   ]);
-  const list = await listFaceboothProjectsForManager({
-    boothId,
-    actorUserId: session.user.id,
-  });
+  const [list, publicationResult] = await Promise.all([
+    listFaceboothProjectsForManager({
+      boothId,
+      actorUserId: session.user.id,
+    }),
+    readFaceboothPublicationForManager({
+      boothId,
+      actorUserId: session.user.id,
+    }),
+  ]);
   if (list.kind !== "found") notFound();
   const results = await Promise.all(
     list.projects.map(({ id }) =>
@@ -73,6 +80,19 @@ export default async function FaceboothLibraryPage({
   return (
     <FaceboothLibrary
       boothId={boothId}
+      initialPublication={
+        publicationResult.kind === "found"
+          ? {
+              revision: publicationResult.publication.revision,
+              publishedAt: publicationResult.publication.publishedAt,
+              sceneProjectId:
+                publicationResult.publication.document.scene.projectId,
+              merchProjectIds: publicationResult.publication.document.merch.map(
+                ({ projectId }) => projectId,
+              ),
+            }
+          : null
+      }
       locale={locale}
       projects={projects}
       strings={getFaceboothStrings(locale)}

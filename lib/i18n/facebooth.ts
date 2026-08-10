@@ -177,6 +177,25 @@ const catalogues = {
     downloadPng: "Download PNG",
     exportPngFailed:
       "The PNG could not be rendered. Try again or use a smaller browser window.",
+    publicationHeading: "Published showcase",
+    publicationDescription:
+      "Choose one booth layout and up to six standees. Publishing creates a fixed public snapshot; later private edits stay private until you republish.",
+    publicationDraftStatus: "No showcase is published",
+    publicationLiveStatus: "Published revision",
+    publicationScene: "Booth layout",
+    publicationMerch: "Featured standees",
+    publicationMerchLimit: "Choose up to six standees",
+    publicationNoScene: "Create a booth layout before publishing.",
+    publishShowcase: "Publish showcase",
+    republishShowcase: "Republish snapshot",
+    unpublishShowcase: "Unpublish",
+    publishingShowcase: "Publishing…",
+    unpublishingShowcase: "Unpublishing…",
+    publicationSaved: "The public showcase snapshot is live.",
+    publicationRemoved: "The public showcase has been removed.",
+    publicationFailed: "The showcase could not be updated.",
+    publicationUnpublishConfirm:
+      "Remove the public showcase? Private projects will remain available.",
   },
   vi: {
     metadataTitle: "Trình chỉnh sửa Facebooth",
@@ -354,6 +373,25 @@ const catalogues = {
     downloadPng: "Tải PNG",
     exportPngFailed:
       "Không thể dựng PNG. Hãy thử lại hoặc dùng cửa sổ trình duyệt nhỏ hơn.",
+    publicationHeading: "Showcase đã xuất bản",
+    publicationDescription:
+      "Chọn một bố cục booth và tối đa sáu standee. Khi xuất bản, hệ thống tạo ảnh chụp công khai cố định; chỉnh sửa riêng tư chỉ hiện ra sau khi bạn xuất bản lại.",
+    publicationDraftStatus: "Chưa có showcase công khai",
+    publicationLiveStatus: "Phiên bản đã xuất bản",
+    publicationScene: "Bố cục booth",
+    publicationMerch: "Standee nổi bật",
+    publicationMerchLimit: "Chọn tối đa sáu standee",
+    publicationNoScene: "Hãy tạo bố cục booth trước khi xuất bản.",
+    publishShowcase: "Xuất bản showcase",
+    republishShowcase: "Xuất bản lại ảnh chụp",
+    unpublishShowcase: "Gỡ xuất bản",
+    publishingShowcase: "Đang xuất bản…",
+    unpublishingShowcase: "Đang gỡ xuất bản…",
+    publicationSaved: "Ảnh chụp showcase công khai đã hiển thị.",
+    publicationRemoved: "Showcase công khai đã được gỡ.",
+    publicationFailed: "Không thể cập nhật showcase.",
+    publicationUnpublishConfirm:
+      "Gỡ showcase công khai? Các dự án riêng tư vẫn được giữ nguyên.",
   },
 } as const;
 
