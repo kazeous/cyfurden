@@ -35,7 +35,7 @@ function useReducedMotion() {
   return reduced;
 }
 
-function CameraRig({ preset }: { preset: FaceboothCameraPreset }) {
+export function CameraRig({ preset }: { preset: FaceboothCameraPreset }) {
   const { camera, invalidate } = useThree();
   useEffect(() => {
     const config = faceboothCameraPresets[preset];
@@ -111,7 +111,7 @@ function useArtworkTexture(url: string | null) {
   return loadedTexture?.url === url ? loadedTexture.texture : null;
 }
 
-function StandeeObject({
+export function StandeeObject({
   document,
   artworkUrl,
   turntable,
