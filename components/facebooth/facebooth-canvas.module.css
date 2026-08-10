@@ -1,0 +1,15 @@
+/* Hallmark · renderer utility · shared Facebooth canvas shell */
+.runtime {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.runtime canvas[data-context-lost="true"] {
+  visibility: hidden;
+}
+
+.fallback {
+  position: absolute;
+  inset: 0;
+}
