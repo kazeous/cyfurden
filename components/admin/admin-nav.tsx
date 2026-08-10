@@ -18,6 +18,7 @@ const sections: Array<{
     | "ordersLabel"
     | "productsLabel"
     | "promotionsLabel"
+    | "faceboothLabel"
     | "gachaLabel"
     | "teamLabel";
   descriptionKey:
@@ -25,8 +26,10 @@ const sections: Array<{
     | "ordersDescription"
     | "productsDescription"
     | "promotionsDescription"
+    | "faceboothDescription"
     | "gachaDescription"
     | "teamDescription";
+  mobileLabelKey?: "faceboothMobileLabel";
   icon: ReactNode;
 }> = [
   {
@@ -66,6 +69,17 @@ const sections: Array<{
     icon: (
       <svg aria-hidden="true" viewBox="0 0 24 24">
         <path d="M4.5 7.5h15v9h-15zM12 7.5v9M9.5 7.5C7 7.5 6 4.5 8.2 4.5 10 4.5 12 7.5 12 7.5s2-3 3.8-3c2.2 0 1.2 3-1.3 3" />
+      </svg>
+    ),
+  },
+  {
+    id: "facebooth",
+    labelKey: "faceboothLabel",
+    mobileLabelKey: "faceboothMobileLabel",
+    descriptionKey: "faceboothDescription",
+    icon: (
+      <svg aria-hidden="true" viewBox="0 0 24 24">
+        <path d="M4 19.5h16M6 17V7.5h12V17M9 17v-4h6v4M8 7.5V4.5h8v3" />
       </svg>
     ),
   },
@@ -112,6 +126,9 @@ export function AdminNav({
           const href = `/manage/${boothId}/${section.id}`;
           const active = pathname === href || pathname.startsWith(`${href}/`);
           const label = strings[section.labelKey];
+          const mobileLabel = section.mobileLabelKey
+            ? strings[section.mobileLabelKey]
+            : label;
           const description = strings[section.descriptionKey];
           return (
             <Link
@@ -126,7 +143,7 @@ export function AdminNav({
               <span className={styles.sectionLinkCopy}>
                 <strong>
                   <span className={styles.fullNavLabel}>{label}</span>
-                  <span className={styles.mobileNavLabel}>{label}</span>
+                  <span className={styles.mobileNavLabel}>{mobileLabel}</span>
                   {section.id === "products" ? (
                     <span
                       className={styles.navCount}

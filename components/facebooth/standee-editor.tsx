@@ -1,14 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { FaceboothAutosaveControls } from "@/components/facebooth/facebooth-autosave-controls";
 import { FaceboothCanvasBoundary } from "@/components/facebooth/facebooth-canvas-boundary";
+import { FaceboothExportControls } from "@/components/facebooth/facebooth-export-controls";
+import {
+  FaceboothPngCaptureBridge,
+  type FaceboothPngCapture,
+} from "@/components/facebooth/facebooth-png-export";
 import { FaceboothStandeeStage } from "@/components/facebooth/standee-model";
 import { traceFaceboothArtwork } from "@/components/facebooth/trace-artwork";
-import {
-  saveFaceboothProjectAction,
-  verifyFaceboothUploadAction,
-} from "@/app/manage/[boothId]/facebooth/actions";
+import { verifyFaceboothUploadAction } from "@/app/manage/[boothId]/facebooth/actions";
+import { useFaceboothAutosave } from "@/components/facebooth/use-facebooth-autosave";
+import { useFaceboothThumbnail } from "@/components/facebooth/use-facebooth-thumbnail";
 import {
   acrylicStandeeDocumentSchema,
   FACEBOOTH_ASSET_MAX_BYTES,
@@ -28,6 +33,7 @@ type EditorProject = {
   id: string;
   name: string;
   editVersion: number;
+  previewObjectKey: string | null;
   document: AcrylicStandeeDocument;
 };
 
@@ -37,8 +43,11 @@ type PresignResponse = {
   headers?: Record<string, string>;
   error?: string;
 };
-type SaveState = "SAVED" | "DIRTY" | "SAVING" | "ERROR" | "CONFLICT";
 const acceptedArtworkTypes = ["image/jpeg", "image/png", "image/webp"] as const;
+const parseStandeeDocument = (value: unknown) => {
+  const parsed = acrylicStandeeDocumentSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+};
 
 function NumberField({
   id,
@@ -109,17 +118,24 @@ export function StandeeEditor({
   locale,
   initialProject,
   initialArtworkUrl,
+  previewUploadsEnabled,
   strings,
 }: {
   boothId: string;
   locale: Locale;
   initialProject: EditorProject;
   initialArtworkUrl: string | null;
+  previewUploadsEnabled: boolean;
   strings: FaceboothStrings;
 }) {
-  const [document, setDocument] = useState(initialProject.document);
-  const [name, setName] = useState(initialProject.name);
-  const [editVersion, setEditVersion] = useState(initialProject.editVersion);
+  const autosave = useFaceboothAutosave({
+    boothId,
+    kind: "MERCH",
+    initialProject,
+    parseDocument: parseStandeeDocument,
+    copyName: (current) => `${current} ${strings.copySuffix}`.slice(0, 120),
+  });
+  const { document, name, saveState } = autosave;
   const [artworkUrl, setArtworkUrl] = useState(initialArtworkUrl);
   const [fillGaps, setFillGaps] = useState(true);
   const [cameraPreset, setCameraPreset] =
@@ -127,9 +143,27 @@ export function StandeeEditor({
   const [background, setBackground] =
     useState<FaceboothBackgroundMode>("STUDIO");
   const [turntable, setTurntable] = useState(false);
-  const [saveState, setSaveState] = useState<SaveState>("SAVED");
-  const [message, setMessage] = useState("");
-  const [isPending, startTransition] = useTransition();
+  const [uploadMessage, setUploadMessage] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [pngCapture, setPngCapture] = useState<FaceboothPngCapture | null>(
+    null,
+  );
+  const handlePngCaptureReady = useCallback(
+    (capture: FaceboothPngCapture | null) => {
+      setPngCapture(() => capture);
+    },
+    [],
+  );
+
+  useFaceboothThumbnail({
+    boothId,
+    enabled: previewUploadsEnabled,
+    capture: pngCapture,
+    fingerprint: JSON.stringify([name, document]),
+    hasInitialPreview: Boolean(initialProject.previewObjectKey),
+    saveState,
+    savePreview: autosave.savePreview,
+  });
 
   useEffect(
     () => () => {
@@ -138,22 +172,11 @@ export function StandeeEditor({
     [artworkUrl],
   );
 
-  const statusLabel =
-    saveState === "SAVING"
-      ? strings.saving
-      : saveState === "SAVED"
-        ? strings.saved
-        : saveState === "CONFLICT"
-          ? strings.conflict
-          : saveState === "ERROR"
-            ? message || strings.uploadError
-            : strings.unsaved;
   const updateDocument = (
     updater: (current: AcrylicStandeeDocument) => AcrylicStandeeDocument,
   ) => {
-    setDocument((current) => updater(current));
-    setSaveState("DIRTY");
-    setMessage("");
+    autosave.setDocument(updater);
+    setUploadMessage("");
   };
   const updateParsed = (candidate: AcrylicStandeeDocument) => {
     const parsed = acrylicStandeeDocumentSchema.safeParse(candidate);
@@ -168,12 +191,11 @@ export function StandeeEditor({
       ) ||
       file.size > FACEBOOTH_ASSET_MAX_BYTES
     ) {
-      setSaveState("ERROR");
-      setMessage(strings.invalidFile);
+      setUploadMessage(strings.invalidFile);
       return;
     }
-    setSaveState("SAVING");
-    setMessage(strings.tracing);
+    setUploading(true);
+    setUploadMessage(strings.tracing);
     try {
       const traced = await traceFaceboothArtwork(file, fillGaps);
       const presignResponse = await fetch("/api/uploads/presign", {
@@ -222,39 +244,15 @@ export function StandeeEditor({
         if (current?.startsWith("blob:")) URL.revokeObjectURL(current);
         return nextUrl;
       });
-      setDocument(next);
-      setSaveState("DIRTY");
-      setMessage("");
+      autosave.setDocument(next);
+      setUploadMessage("");
     } catch (error) {
-      setSaveState("ERROR");
-      setMessage(error instanceof Error ? error.message : strings.uploadError);
-    }
-  }
-
-  function saveProject() {
-    setSaveState("SAVING");
-    setMessage("");
-    startTransition(async () => {
-      const result = await saveFaceboothProjectAction(
-        boothId,
-        initialProject.id,
-        {
-          expectedEditVersion: editVersion,
-          name,
-          document,
-        },
+      setUploadMessage(
+        error instanceof Error ? error.message : strings.uploadError,
       );
-      if (result.kind === "saved") {
-        setEditVersion(result.project.editVersion);
-        setDocument(result.project.document as AcrylicStandeeDocument);
-        setSaveState("SAVED");
-      } else if (result.kind === "conflict") {
-        setSaveState("CONFLICT");
-      } else {
-        setSaveState("ERROR");
-        setMessage(strings.uploadError);
-      }
-    });
+    } finally {
+      setUploading(false);
+    }
   }
 
   const fallback = useMemo(
@@ -280,30 +278,23 @@ export function StandeeEditor({
             className={styles.projectName}
             maxLength={120}
             onChange={(event) => {
-              setName(event.target.value);
-              setSaveState("DIRTY");
+              autosave.setName(event.target.value);
             }}
             value={name}
           />
           <span>{strings.editorDescription}</span>
         </div>
-        <div className={styles.saveCluster}>
-          <span aria-live="polite" data-state={saveState}>
-            {statusLabel}
-          </span>
-          <button
-            disabled={
-              isPending ||
-              saveState === "SAVED" ||
-              saveState === "CONFLICT" ||
-              !name.trim()
-            }
-            onClick={saveProject}
-            type="button"
-          >
-            {isPending ? strings.saving : strings.save}
-          </button>
-        </div>
+        <FaceboothAutosaveControls
+          disabled={!name.trim() || uploading}
+          onDiscardDraft={() => void autosave.discardRecoveryDraft()}
+          onDuplicateVersion={() => void autosave.duplicateMyVersion()}
+          onReloadRemote={() => void autosave.reloadRemote()}
+          onRestoreDraft={autosave.restoreRecoveryDraft}
+          onSaveNow={() => void autosave.saveNow()}
+          recoveryDraft={autosave.recoveryDraft}
+          saveState={saveState}
+          strings={strings}
+        />
       </header>
 
       <div className={styles.workbench}>
@@ -327,6 +318,7 @@ export function StandeeEditor({
                 document={document}
                 turntable={turntable}
               />
+              <FaceboothPngCaptureBridge onReady={handlePngCaptureReady} />
             </FaceboothCanvasBoundary>
           </div>
           <div className={styles.previewControls} aria-label={strings.camera}>
@@ -356,6 +348,12 @@ export function StandeeEditor({
               {strings.turntable}
             </button>
           </div>
+          <FaceboothExportControls
+            aspect={document.sizeMm.width / document.sizeMm.height}
+            capture={pngCapture}
+            name={name}
+            strings={strings}
+          />
         </section>
 
         <aside
@@ -367,14 +365,10 @@ export function StandeeEditor({
             <legend>{strings.artwork}</legend>
             <p>{strings.artworkHelp}</p>
             <label className={styles.uploadButton}>
-              <span>
-                {saveState === "SAVING" && message === strings.tracing
-                  ? strings.tracing
-                  : strings.uploadArtwork}
-              </span>
+              <span>{uploading ? strings.tracing : strings.uploadArtwork}</span>
               <input
                 accept="image/jpeg,image/png,image/webp"
-                disabled={saveState === "SAVING"}
+                disabled={uploading}
                 onChange={(event) =>
                   void uploadArtwork(event.target.files?.[0])
                 }
@@ -395,6 +389,9 @@ export function StandeeEditor({
                   ? strings.presetOutline
                   : strings.tracedOutline}
               </small>
+            ) : null}
+            {uploadMessage ? (
+              <small className={styles.artworkStatus}>{uploadMessage}</small>
             ) : null}
           </fieldset>
 

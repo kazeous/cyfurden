@@ -13,6 +13,7 @@ import {
 import { getFaceboothStrings } from "@/lib/i18n/facebooth";
 import { readLocaleCookie } from "@/lib/i18n/server-locale";
 import { resolveOracleObjectUrl } from "@/lib/oracle-images";
+import { isOracleQrUploadConfigured } from "@/lib/oracle-uploads";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
@@ -51,9 +52,11 @@ export default async function FaceboothProjectPage({
           id: result.project.id,
           name: result.project.name,
           editVersion: result.project.editVersion,
+          previewObjectKey: result.project.previewObjectKey,
           document: result.project.document,
         }}
         locale={locale}
+        previewUploadsEnabled={isOracleQrUploadConfigured()}
         strings={strings}
       />
     );
@@ -108,11 +111,13 @@ export default async function FaceboothProjectPage({
         id: result.project.id,
         name: result.project.name,
         editVersion: result.project.editVersion,
+        previewObjectKey: result.project.previewObjectKey,
         document: result.project.document,
       }}
       initialSnapshotArtworkUrls={initialSnapshotArtworkUrls}
       locale={locale}
       merchLibrary={merchLibrary}
+      previewUploadsEnabled={isOracleQrUploadConfigured()}
       strings={strings}
     />
   );

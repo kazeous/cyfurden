@@ -159,12 +159,14 @@ export function FaceboothSceneStage({
   cameraPreset,
   artworkUrls,
   onSelect,
+  showSelection = true,
 }: {
   document: FaceboothSceneDocument;
   selected: SceneSelection;
   cameraPreset: SceneCameraPreset;
   artworkUrls: Record<string, string | null>;
   onSelect: (selection: SceneSelection) => void;
+  showSelection?: boolean;
 }) {
   const snapshotById = new Map(
     document.merchSnapshots.map((snapshot) => [snapshot.id, snapshot]),
@@ -200,7 +202,7 @@ export function FaceboothSceneStage({
       <SceneTable
         document={document}
         onSelect={() => onSelect({ kind: "TABLE", id: "table" })}
-        selected={selected.kind === "TABLE"}
+        selected={showSelection && selected.kind === "TABLE"}
       />
       {document.backdrops.map((backdrop) => (
         <mesh
@@ -228,7 +230,9 @@ export function FaceboothSceneStage({
           />
           <meshStandardMaterial
             color={
-              selected.kind === "BACKDROP" && selected.id === backdrop.id
+              showSelection &&
+              selected.kind === "BACKDROP" &&
+              selected.id === backdrop.id
                 ? renderColors.selection
                 : backdrop.finish === "BLACK"
                   ? renderColors.backdropBlack
@@ -263,7 +267,9 @@ export function FaceboothSceneStage({
           />
           <meshPhysicalMaterial
             color={
-              selected.kind === "SHELF" && selected.id === shelf.id
+              showSelection &&
+              selected.kind === "SHELF" &&
+              selected.id === shelf.id
                 ? renderColors.selection
                 : finishColor(shelf.finish)
             }
@@ -296,7 +302,9 @@ export function FaceboothSceneStage({
               document={snapshot.document}
               turntable={false}
             />
-            {selected.kind === "INSTANCE" && selected.id === instance.id ? (
+            {showSelection &&
+            selected.kind === "INSTANCE" &&
+            selected.id === instance.id ? (
               <mesh position={[0, snapshot.document.sizeMm.height / 2_000, 0]}>
                 <boxGeometry
                   args={[

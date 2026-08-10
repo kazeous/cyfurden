@@ -12,6 +12,9 @@ export type AdminShellStrings = {
   productsDescription: string;
   promotionsLabel: string;
   promotionsDescription: string;
+  faceboothLabel: string;
+  faceboothMobileLabel: string;
+  faceboothDescription: string;
   gachaLabel: string;
   gachaDescription: string;
   teamLabel: string;
@@ -67,6 +70,9 @@ const catalogues: Record<Locale, AdminShellStrings> = {
     productsDescription: "Manage catalogue and stock",
     promotionsLabel: "Promotions",
     promotionsDescription: "Manage quantity offers",
+    faceboothLabel: "Facebooth",
+    faceboothMobileLabel: "Studio",
+    faceboothDescription: "Design standees and booth layouts",
     gachaLabel: "Gacha",
     gachaDescription: "Configure free play",
     teamLabel: "Team",
@@ -111,6 +117,9 @@ const catalogues: Record<Locale, AdminShellStrings> = {
     productsDescription: "Quản lý danh mục và tồn kho",
     promotionsLabel: "Ưu đãi",
     promotionsDescription: "Quản lý khuyến mãi số lượng",
+    faceboothLabel: "Facebooth",
+    faceboothMobileLabel: "Studio",
+    faceboothDescription: "Thiết kế standee và bố cục booth",
     gachaLabel: "Gacha",
     gachaDescription: "Cấu hình lượt chơi miễn phí",
     teamLabel: "Đội ngũ",

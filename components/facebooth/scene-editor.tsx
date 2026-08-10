@@ -1,13 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useTransition } from "react";
-import { saveFaceboothProjectAction } from "@/app/manage/[boothId]/facebooth/actions";
+import { useCallback, useMemo, useState } from "react";
+import { FaceboothAutosaveControls } from "@/components/facebooth/facebooth-autosave-controls";
 import { FaceboothCanvasBoundary } from "@/components/facebooth/facebooth-canvas-boundary";
+import { FaceboothExportControls } from "@/components/facebooth/facebooth-export-controls";
+import {
+  FaceboothPngCaptureBridge,
+  type FaceboothPngCapture,
+} from "@/components/facebooth/facebooth-png-export";
 import {
   FaceboothSceneStage,
   type SceneCameraPreset,
 } from "@/components/facebooth/scene-model";
+import { useFaceboothAutosave } from "@/components/facebooth/use-facebooth-autosave";
+import { useFaceboothThumbnail } from "@/components/facebooth/use-facebooth-thumbnail";
 import {
   faceboothSceneDocumentSchema,
   type AcrylicStandeeDocument,
@@ -37,6 +44,7 @@ type SceneProject = {
   id: string;
   name: string;
   editVersion: number;
+  previewObjectKey: string | null;
   document: FaceboothSceneDocument;
 };
 
@@ -48,8 +56,11 @@ export type SceneMerchProject = {
   artworkUrl: string | null;
 };
 
-type SaveState = "SAVED" | "DIRTY" | "SAVING" | "ERROR" | "CONFLICT";
 const newId = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
+const parseSceneDocument = (value: unknown) => {
+  const parsed = faceboothSceneDocumentSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+};
 
 function NumericField({
   id,
@@ -94,6 +105,7 @@ export function SceneEditor({
   initialProject,
   merchLibrary,
   initialSnapshotArtworkUrls,
+  previewUploadsEnabled,
   strings,
 }: {
   boothId: string;
@@ -101,11 +113,17 @@ export function SceneEditor({
   initialProject: SceneProject;
   merchLibrary: SceneMerchProject[];
   initialSnapshotArtworkUrls: Record<string, string | null>;
+  previewUploadsEnabled: boolean;
   strings: FaceboothStrings;
 }) {
-  const [document, setDocument] = useState(initialProject.document);
-  const [name, setName] = useState(initialProject.name);
-  const [editVersion, setEditVersion] = useState(initialProject.editVersion);
+  const autosave = useFaceboothAutosave({
+    boothId,
+    kind: "SCENE",
+    initialProject,
+    parseDocument: parseSceneDocument,
+    copyName: (current) => `${current} ${strings.copySuffix}`.slice(0, 120),
+  });
+  const { document, name, saveState } = autosave;
   const [history, setHistory] = useState(() =>
     createSceneHistory(initialProject.document),
   );
@@ -117,9 +135,27 @@ export function SceneEditor({
   const [gridMm, setGridMm] = useState(50);
   const [cameraPreset, setCameraPreset] =
     useState<SceneCameraPreset>("THREE_QUARTER");
-  const [saveState, setSaveState] = useState<SaveState>("SAVED");
-  const [message, setMessage] = useState("");
-  const [isPending, startTransition] = useTransition();
+  const [pngCapture, setPngCapture] = useState<FaceboothPngCapture | null>(
+    null,
+  );
+  const handlePngCaptureReady = useCallback(
+    (capture: FaceboothPngCapture | null) => {
+      setPngCapture(() => capture);
+    },
+    [],
+  );
+  const [captureMode, setCaptureMode] = useState(false);
+
+  useFaceboothThumbnail({
+    boothId,
+    enabled: previewUploadsEnabled,
+    capture: pngCapture,
+    fingerprint: JSON.stringify([name, document]),
+    hasInitialPreview: Boolean(initialProject.previewObjectKey),
+    saveState,
+    savePreview: autosave.savePreview,
+    prepareCapture: setCaptureMode,
+  });
 
   const warnings = useMemo(() => analyzeFaceboothScene(document), [document]);
   const updateIds = useMemo(
@@ -160,24 +196,11 @@ export function SceneEditor({
     ]),
   );
 
-  const statusLabel =
-    saveState === "SAVING"
-      ? strings.saving
-      : saveState === "SAVED"
-        ? strings.saved
-        : saveState === "CONFLICT"
-          ? strings.conflict
-          : saveState === "ERROR"
-            ? message || strings.uploadError
-            : strings.unsaved;
-
   const commitDocument = (candidate: FaceboothSceneDocument) => {
     const parsed = faceboothSceneDocumentSchema.safeParse(candidate);
     if (!parsed.success) return;
-    setDocument(parsed.data);
+    autosave.setDocument(parsed.data);
     setHistory((current) => pushSceneHistory(current, parsed.data));
-    setSaveState("DIRTY");
-    setMessage("");
   };
 
   const updateTransform = (
@@ -380,37 +403,14 @@ export function SceneEditor({
   const undo = () => {
     const result = undoSceneHistory(history);
     setHistory(result.history);
-    setDocument(result.document);
-    setSaveState("DIRTY");
+    autosave.setDocument(result.document);
     setSelection({ kind: "TABLE", id: "table" });
   };
   const redo = () => {
     const result = redoSceneHistory(history);
     setHistory(result.history);
-    setDocument(result.document);
-    setSaveState("DIRTY");
+    autosave.setDocument(result.document);
     setSelection({ kind: "TABLE", id: "table" });
-  };
-
-  const saveProject = () => {
-    setSaveState("SAVING");
-    startTransition(async () => {
-      const result = await saveFaceboothProjectAction(
-        boothId,
-        initialProject.id,
-        { expectedEditVersion: editVersion, name, document },
-      );
-      if (result.kind === "saved") {
-        setEditVersion(result.project.editVersion);
-        setDocument(result.project.document as FaceboothSceneDocument);
-        setSaveState("SAVED");
-      } else if (result.kind === "conflict") {
-        setSaveState("CONFLICT");
-      } else {
-        setSaveState("ERROR");
-        setMessage(strings.uploadError);
-      }
-    });
   };
 
   const selectionLabel =
@@ -444,31 +444,30 @@ export function SceneEditor({
             aria-label={strings.projectName}
             className={standeeStyles.projectName}
             maxLength={120}
-            onChange={(event) => {
-              setName(event.target.value);
-              setSaveState("DIRTY");
-            }}
+            onChange={(event) => autosave.setName(event.target.value)}
             value={name}
           />
           <span>{strings.sceneDescription}</span>
         </div>
-        <div className={standeeStyles.saveCluster}>
-          <span aria-live="polite" data-state={saveState}>
-            {statusLabel}
-          </span>
-          <button
-            disabled={
-              isPending ||
-              saveState === "SAVED" ||
-              saveState === "CONFLICT" ||
-              !name.trim()
+        <FaceboothAutosaveControls
+          disabled={!name.trim()}
+          onDiscardDraft={() => void autosave.discardRecoveryDraft()}
+          onDuplicateVersion={() => void autosave.duplicateMyVersion()}
+          onReloadRemote={() => void autosave.reloadRemote()}
+          onRestoreDraft={() => {
+            if (autosave.recoveryDraft) {
+              const parsed = parseSceneDocument(
+                autosave.recoveryDraft.document,
+              );
+              if (parsed) setHistory(createSceneHistory(parsed));
             }
-            onClick={saveProject}
-            type="button"
-          >
-            {isPending ? strings.saving : strings.save}
-          </button>
-        </div>
+            autosave.restoreRecoveryDraft();
+          }}
+          onSaveNow={() => void autosave.saveNow()}
+          recoveryDraft={autosave.recoveryDraft}
+          saveState={saveState}
+          strings={strings}
+        />
       </header>
 
       <div className={styles.historyBar}>
@@ -511,7 +510,9 @@ export function SceneEditor({
                 document={document}
                 onSelect={setSelection}
                 selected={selection}
+                showSelection={!captureMode}
               />
+              <FaceboothPngCaptureBridge onReady={handlePngCaptureReady} />
             </FaceboothCanvasBoundary>
           </div>
           <div
@@ -533,6 +534,13 @@ export function SceneEditor({
               </button>
             ))}
           </div>
+          <FaceboothExportControls
+            aspect={document.footprintMm.width / document.footprintMm.depth}
+            capture={pngCapture}
+            name={name}
+            prepareCapture={setCaptureMode}
+            strings={strings}
+          />
         </section>
 
         <aside

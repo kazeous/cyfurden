@@ -1,0 +1,62 @@
+/* Hallmark · genre: editorial-utilitarian · macrostructure: Export Strip · theme: Cyfurden locked · enrichment: PNG output · nav: inherited · footer: none */
+
+.controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+  border-top: 1px solid var(--color-rule);
+  background: var(--color-paper-2);
+}
+
+.controls label {
+  display: grid;
+  gap: var(--space-2xs);
+  color: var(--color-ink-2);
+  font-size: var(--text-xs);
+  font-weight: 800;
+}
+
+.controls select,
+.controls button {
+  min-height: 44px;
+  padding: 0 var(--space-sm);
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-button);
+  color: var(--color-ink);
+  background: var(--color-paper-2);
+  font: inherit;
+  font-size: var(--text-xs);
+  font-weight: 800;
+}
+
+.controls button {
+  align-self: end;
+  cursor: pointer;
+}
+
+.controls button:hover,
+.controls button:focus-visible,
+.controls select:focus-visible {
+  border-color: var(--color-accent-line);
+  background: var(--color-accent-soft);
+}
+
+.controls button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.error {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--color-danger);
+  font-size: var(--text-xs);
+  font-weight: 750;
+}
+
+@media (max-width: 560px) {
+  .controls {
+    grid-template-columns: 1fr;
+  }
+}

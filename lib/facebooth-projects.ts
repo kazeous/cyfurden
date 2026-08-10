@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import {
   collectFaceboothArtworkObjectKeys,
   faceboothDocumentByteLength,
+  faceboothSceneDocumentSchema,
   faceboothProjectKinds,
   faceboothProjectNameSchema,
   faceboothPublicationDocumentSchema,
@@ -37,6 +38,13 @@ const saveProjectInputSchema = z
     name: faceboothProjectNameSchema,
     document: z.unknown(),
     previewObjectKey: z.string().trim().min(1).max(512).nullable().optional(),
+  })
+  .strict();
+
+const renameProjectInputSchema = z
+  .object({
+    expectedEditVersion: z.number().int().min(1),
+    name: faceboothProjectNameSchema,
   })
   .strict();
 
@@ -223,6 +231,93 @@ export async function createFaceboothProject(input: {
   });
 }
 
+export async function importFaceboothProject(input: {
+  boothId: string;
+  actorUserId: string;
+  project: unknown;
+}) {
+  return db.$transaction(async (transaction) => {
+    if (!(await hasManagerMembership(transaction, input))) {
+      return { kind: "forbidden" } as const;
+    }
+    const parsedInput = createProjectInputSchema.safeParse(input.project);
+    if (!parsedInput.success) {
+      return {
+        kind: "invalid",
+        issues: validationIssues(parsedInput.error),
+      } as const;
+    }
+    const parsedDocument = parseFaceboothProjectDocument(
+      parsedInput.data.kind,
+      parsedInput.data.document,
+    );
+    if (!parsedDocument) return { kind: "invalid-document" } as const;
+    if (!hasValidAssetKeys(input.boothId, parsedDocument)) {
+      return { kind: "invalid-assets" } as const;
+    }
+
+    let document: FaceboothProjectDocument = parsedDocument;
+    const importedMerchIds: string[] = [];
+    if (document.kind === "SCENE") {
+      const sourceIdByRevision = new Map<string, string>();
+      for (const snapshot of document.merchSnapshots) {
+        const sourceRevision = `${snapshot.sourceProjectId}:${snapshot.sourceEditVersion}`;
+        if (sourceIdByRevision.has(sourceRevision)) continue;
+        const importedMerch = await transaction.faceboothProject.create({
+          data: {
+            boothId: input.boothId,
+            kind: "MERCH",
+            schemaVersion: FACEBOOTH_DOCUMENT_VERSION,
+            editVersion: 1,
+            name: snapshot.name,
+            document: snapshot.document as Prisma.InputJsonValue,
+            createdById: input.actorUserId,
+            updatedById: input.actorUserId,
+          },
+          select: { id: true },
+        });
+        sourceIdByRevision.set(sourceRevision, importedMerch.id);
+        importedMerchIds.push(importedMerch.id);
+      }
+      document = faceboothSceneDocumentSchema.parse({
+        ...document,
+        merchSnapshots: document.merchSnapshots.map((snapshot) => ({
+          ...snapshot,
+          sourceProjectId: sourceIdByRevision.get(
+            `${snapshot.sourceProjectId}:${snapshot.sourceEditVersion}`,
+          ),
+          sourceEditVersion: 1,
+        })),
+      });
+    }
+
+    const project = await transaction.faceboothProject.create({
+      data: {
+        boothId: input.boothId,
+        kind: parsedInput.data.kind,
+        schemaVersion: FACEBOOTH_DOCUMENT_VERSION,
+        editVersion: 1,
+        name: parsedInput.data.name,
+        document: document as Prisma.InputJsonValue,
+        createdById: input.actorUserId,
+        updatedById: input.actorUserId,
+      },
+      select: projectSelect,
+    });
+    await transaction.auditLog.create({
+      data: {
+        boothId: input.boothId,
+        actorUserId: input.actorUserId,
+        action: "facebooth.project_imported",
+        entityType: "FaceboothProject",
+        entityId: project.id,
+        metadata: { kind: project.kind, importedMerchIds },
+      },
+    });
+    return { kind: "imported", project: parseStoredProject(project)! } as const;
+  });
+}
+
 export async function readFaceboothProjectForManager(input: {
   boothId: string;
   projectId: string;
@@ -399,6 +494,187 @@ export async function saveFaceboothProject(input: {
       },
     });
     return { kind: "saved", project: parseStoredProject(project)! } as const;
+  });
+}
+
+export async function renameFaceboothProject(input: {
+  boothId: string;
+  projectId: string;
+  actorUserId: string;
+  rename: unknown;
+}) {
+  return db.$transaction(async (transaction) => {
+    if (!(await hasManagerMembership(transaction, input))) {
+      return { kind: "forbidden" } as const;
+    }
+    const parsedInput = renameProjectInputSchema.safeParse(input.rename);
+    if (!parsedInput.success) {
+      return {
+        kind: "invalid",
+        issues: validationIssues(parsedInput.error),
+      } as const;
+    }
+    const updated = await transaction.faceboothProject.updateMany({
+      where: {
+        id: input.projectId,
+        boothId: input.boothId,
+        editVersion: parsedInput.data.expectedEditVersion,
+      },
+      data: {
+        name: parsedInput.data.name,
+        editVersion: { increment: 1 },
+        updatedById: input.actorUserId,
+      },
+    });
+    if (!updated.count) {
+      const current = await transaction.faceboothProject.findFirst({
+        where: { id: input.projectId, boothId: input.boothId },
+        select: { editVersion: true },
+      });
+      return current
+        ? ({
+            kind: "conflict",
+            expectedEditVersion: parsedInput.data.expectedEditVersion,
+            currentEditVersion: current.editVersion,
+          } as const)
+        : ({ kind: "missing" } as const);
+    }
+    const project = await transaction.faceboothProject.findFirstOrThrow({
+      where: { id: input.projectId, boothId: input.boothId },
+      select: projectSelect,
+    });
+    await transaction.auditLog.create({
+      data: {
+        boothId: input.boothId,
+        actorUserId: input.actorUserId,
+        action: "facebooth.project_renamed",
+        entityType: "FaceboothProject",
+        entityId: project.id,
+        metadata: { editVersion: project.editVersion },
+      },
+    });
+    return { kind: "renamed", project: parseStoredProject(project)! } as const;
+  });
+}
+
+export async function duplicateFaceboothProject(input: {
+  boothId: string;
+  projectId: string;
+  actorUserId: string;
+  name: unknown;
+}) {
+  return db.$transaction(async (transaction) => {
+    if (!(await hasManagerMembership(transaction, input))) {
+      return { kind: "forbidden" } as const;
+    }
+    const parsedName = faceboothProjectNameSchema.safeParse(input.name);
+    if (!parsedName.success) {
+      return {
+        kind: "invalid",
+        issues: validationIssues(parsedName.error),
+      } as const;
+    }
+    const source = await transaction.faceboothProject.findFirst({
+      where: { id: input.projectId, boothId: input.boothId },
+      select: projectSelect,
+    });
+    if (!source) return { kind: "missing" } as const;
+    const document = parseFaceboothProjectDocument(
+      source.kind,
+      source.document,
+    );
+    if (!document) return { kind: "invalid-document" } as const;
+    if (!hasValidAssetKeys(input.boothId, document)) {
+      return { kind: "invalid-assets" } as const;
+    }
+    if (
+      !(await hasValidSceneReferences(transaction, input.boothId, document))
+    ) {
+      return { kind: "invalid-references" } as const;
+    }
+    const project = await transaction.faceboothProject.create({
+      data: {
+        boothId: input.boothId,
+        kind: source.kind,
+        schemaVersion: FACEBOOTH_DOCUMENT_VERSION,
+        editVersion: 1,
+        name: parsedName.data,
+        document: document as Prisma.InputJsonValue,
+        previewObjectKey: source.previewObjectKey,
+        createdById: input.actorUserId,
+        updatedById: input.actorUserId,
+      },
+      select: projectSelect,
+    });
+    await transaction.auditLog.create({
+      data: {
+        boothId: input.boothId,
+        actorUserId: input.actorUserId,
+        action: "facebooth.project_duplicated",
+        entityType: "FaceboothProject",
+        entityId: project.id,
+        metadata: { sourceProjectId: source.id, kind: source.kind },
+      },
+    });
+    return {
+      kind: "duplicated",
+      project: parseStoredProject(project)!,
+    } as const;
+  });
+}
+
+export async function deleteFaceboothProject(input: {
+  boothId: string;
+  projectId: string;
+  actorUserId: string;
+}) {
+  return db.$transaction(async (transaction) => {
+    if (!(await hasManagerMembership(transaction, input))) {
+      return { kind: "forbidden" } as const;
+    }
+    const project = await transaction.faceboothProject.findFirst({
+      where: { id: input.projectId, boothId: input.boothId },
+      select: { id: true, kind: true, name: true, previewObjectKey: true },
+    });
+    if (!project) return { kind: "missing" } as const;
+
+    if (project.kind === "MERCH") {
+      const sceneRecords = await transaction.faceboothProject.findMany({
+        where: { boothId: input.boothId, kind: "SCENE" },
+        select: { id: true, document: true },
+      });
+      const referencingSceneIds = sceneRecords.flatMap((scene) => {
+        const document = parseFaceboothProjectDocument("SCENE", scene.document);
+        return document?.merchSnapshots.some(
+          ({ sourceProjectId }) => sourceProjectId === project.id,
+        )
+          ? [scene.id]
+          : [];
+      });
+      if (referencingSceneIds.length) {
+        return {
+          kind: "in-use",
+          referencingSceneIds,
+        } as const;
+      }
+    }
+
+    await transaction.faceboothProject.delete({ where: { id: project.id } });
+    await transaction.auditLog.create({
+      data: {
+        boothId: input.boothId,
+        actorUserId: input.actorUserId,
+        action: "facebooth.project_deleted",
+        entityType: "FaceboothProject",
+        entityId: project.id,
+        metadata: {
+          kind: project.kind,
+          name: project.name,
+          hadPreview: Boolean(project.previewObjectKey),
+        },
+      },
+    });
+    return { kind: "deleted", projectId: project.id } as const;
   });
 }
 
