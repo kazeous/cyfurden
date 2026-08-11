@@ -64,3 +64,28 @@ test("Phase 14C keeps cart additions quiet and checkout explicit", async () => {
   assert.doesNotMatch(storefront, /styles\.skuChip/);
   assert.match(styles, /266px/);
 });
+
+test("public controls retain mobile-safe targets, labels, and stacking", async () => {
+  const [landing, auth, languageToggle, storefront] = await Promise.all([
+    readSource("app/landing.module.css"),
+    readSource("components/auth/auth.module.css"),
+    readSource("components/landing/language-toggle.module.css"),
+    readSource("components/storefront/managed-storefront.module.css"),
+  ]);
+
+  assert.match(
+    landing,
+    /\.siteHeader nav \{[\s\S]*display: flex;[\s\S]*justify-content: space-between;/,
+  );
+  assert.match(auth, /\.headerActions \{[\s\S]*min-width: 0;/);
+  assert.match(auth, /\.storefrontLink \{[\s\S]*white-space: nowrap;/);
+  assert.match(languageToggle, /min-height: 44px/);
+  assert.match(languageToggle, /font-size: var\(--text-sm\)/);
+  assert.match(storefront, /\.topbar \{[\s\S]*z-index: var\(--z-sticky\)/);
+  assert.match(storefront, /\.close \{[\s\S]*flex: 0 0 44px;/);
+  assert.match(storefront, /\.productTitle \{[\s\S]*min-height: 44px;/);
+  assert.match(
+    storefront,
+    /\.detailsButton \{[\s\S]*font-size: var\(--text-sm\)/,
+  );
+});

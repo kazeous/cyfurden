@@ -10,15 +10,21 @@
 
 .button,
 .active {
+  display: grid;
+  min-width: 44px;
+  min-height: 44px;
+  place-items: center;
   appearance: none;
-  padding: 4px 12px;
+  padding: 0 12px;
   border: 0;
   border-radius: 999px;
   background: transparent;
   color: #5a6577;
-  font-size: 12px;
+  font-size: var(--text-sm);
   font-weight: 800;
+  line-height: 1;
   letter-spacing: 0.08em;
+  white-space: nowrap;
   cursor: pointer;
 }
 

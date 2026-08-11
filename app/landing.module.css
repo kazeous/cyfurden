@@ -38,11 +38,22 @@
 }
 
 .siteHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-sm);
+  align-items: center;
+  min-height: calc(var(--space-3xl) - var(--space-md));
+  padding-block: var(--space-sm);
+  border-block-end: var(--rule-hairline);
+}
+
+.siteHeader nav {
   display: flex;
+  width: 100%;
+  min-width: 0;
+  gap: var(--space-xs);
   align-items: center;
   justify-content: space-between;
-  min-height: calc(var(--space-3xl) - var(--space-md));
-  border-block-end: var(--rule-hairline);
 }
 
 .wordmark,
@@ -56,6 +67,7 @@
 
 .wordmark {
   display: inline-flex;
+  min-height: calc(var(--space-xl) + var(--space-2xs));
   align-items: center;
   gap: var(--space-sm);
   color: var(--color-ink);
@@ -651,6 +663,20 @@
   .textLink:hover,
   .footerLinks a:hover {
     color: var(--color-accent);
+  }
+}
+
+@media (min-width: 30rem) {
+  .siteHeader {
+    display: flex;
+    gap: var(--space-lg);
+    justify-content: space-between;
+    padding-block: 0;
+  }
+
+  .siteHeader nav {
+    width: auto;
+    justify-content: flex-end;
   }
 }
 

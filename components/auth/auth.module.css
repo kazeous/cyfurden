@@ -17,6 +17,7 @@
 
 .topbar {
   display: flex;
+  min-width: 0;
   min-height: 82px;
   align-items: center;
   justify-content: space-between;
@@ -33,12 +34,14 @@
 
 .headerActions {
   display: inline-flex;
+  min-width: 0;
   align-items: center;
   gap: 14px;
 }
 
 .brand {
   display: inline-flex;
+  min-height: 44px;
   align-items: center;
   gap: 12px;
 }
@@ -97,7 +100,7 @@
 
 .storefrontLink {
   display: inline-flex;
-  min-height: 42px;
+  min-height: 44px;
   align-items: center;
   gap: 8px;
   padding: 0 15px;
@@ -105,8 +108,9 @@
   border-radius: 999px;
   background: var(--paper-light);
   color: var(--forest-dark);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   font-weight: 750;
+  white-space: nowrap;
   transition:
     transform 160ms ease,
     border-color 160ms ease,
@@ -554,8 +558,18 @@
   }
 
   .topbar {
-    min-height: 72px;
+    display: grid;
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    align-items: stretch;
     padding: 12px 16px;
+  }
+
+  .headerActions {
+    width: 100%;
+    gap: 8px;
+    justify-content: space-between;
   }
 
   .brandMark {
@@ -578,9 +592,9 @@
   }
 
   .storefrontLink {
-    min-height: 39px;
+    min-height: 44px;
     padding: 0 12px;
-    font-size: 0.77rem;
+    font-size: var(--text-sm);
   }
 
   .card {

@@ -1,6 +1,28 @@
 [
   {
     "date": "2026-08-11",
+    "scope": "landing + auth + public booth responsive controls",
+    "macrostructure": "Narrative Workflow + Catalogue (locked; targeted control hardening only)",
+    "theme": "Cyfurden locked editorial-utilitarian",
+    "enrichment": "existing CSS booth and product art (unchanged)",
+    "brief": "Prevent public control labels, touch targets, and sticky layers from clipping or colliding on narrow screens",
+    "critique": {
+      "philosophy": 5,
+      "hierarchy": 5,
+      "execution": 5,
+      "specificity": 5,
+      "restraint": 5,
+      "variety": 5
+    },
+    "slop_test": "pass (1-58); no new visual system or token improvisation",
+    "verified_viewports": [320, 375, 414, 768],
+    "contrast": "pass (40-41); existing locked palette and control fills unchanged",
+    "browser_diagnostics": "zero warning or error logs during local landing, auth, storefront, and product-detail checks",
+    "navigation": "N9 landing edge-aligned minimal + N4 public command bar (responsive layout hardened)",
+    "footer": "unchanged"
+  },
+  {
+    "date": "2026-08-11",
     "scope": "app",
     "macrostructure": "Workbench (viewport-fixed stage + collapsible inspector; delta from bounded split workspace)",
     "theme": "studied-DNA (source: circlekit.allennoir.art; canvas-first hierarchy) with Cyfurden locked editorial-utilitarian tokens",
