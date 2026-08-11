@@ -132,6 +132,7 @@ export function SceneEditor({
     id: "table",
   });
   const [moveMode, setMoveMode] = useState(false);
+  const [inspectorOpen, setInspectorOpen] = useState(true);
   const [gridMm, setGridMm] = useState(50);
   const [cameraPreset, setCameraPreset] =
     useState<SceneCameraPreset>("THREE_QUARTER");
@@ -433,8 +434,14 @@ export function SceneEditor({
   );
 
   return (
-    <div className={standeeStyles.page} lang={locale}>
-      <header className={standeeStyles.editorHeader}>
+    <div
+      className={`${standeeStyles.page} ${styles.studioPage}`}
+      data-facebooth-studio
+      lang={locale}
+    >
+      <header
+        className={`${standeeStyles.editorHeader} ${styles.studioHeader}`}
+      >
         <div>
           <Link href={`/manage/${boothId}/facebooth`}>
             ← {strings.backToLibrary}
@@ -449,25 +456,27 @@ export function SceneEditor({
           />
           <span>{strings.sceneDescription}</span>
         </div>
-        <FaceboothAutosaveControls
-          disabled={!name.trim()}
-          onDiscardDraft={() => void autosave.discardRecoveryDraft()}
-          onDuplicateVersion={() => void autosave.duplicateMyVersion()}
-          onReloadRemote={() => void autosave.reloadRemote()}
-          onRestoreDraft={() => {
-            if (autosave.recoveryDraft) {
-              const parsed = parseSceneDocument(
-                autosave.recoveryDraft.document,
-              );
-              if (parsed) setHistory(createSceneHistory(parsed));
-            }
-            autosave.restoreRecoveryDraft();
-          }}
-          onSaveNow={() => void autosave.saveNow()}
-          recoveryDraft={autosave.recoveryDraft}
-          saveState={saveState}
-          strings={strings}
-        />
+        <div className={styles.studioSave}>
+          <FaceboothAutosaveControls
+            disabled={!name.trim()}
+            onDiscardDraft={() => void autosave.discardRecoveryDraft()}
+            onDuplicateVersion={() => void autosave.duplicateMyVersion()}
+            onReloadRemote={() => void autosave.reloadRemote()}
+            onRestoreDraft={() => {
+              if (autosave.recoveryDraft) {
+                const parsed = parseSceneDocument(
+                  autosave.recoveryDraft.document,
+                );
+                if (parsed) setHistory(createSceneHistory(parsed));
+              }
+              autosave.restoreRecoveryDraft();
+            }}
+            onSaveNow={() => void autosave.saveNow()}
+            recoveryDraft={autosave.recoveryDraft}
+            saveState={saveState}
+            strings={strings}
+          />
+        </div>
       </header>
 
       <div className={styles.historyBar}>
@@ -481,6 +490,15 @@ export function SceneEditor({
         >
           ↷ {strings.redo}
         </button>
+        <button
+          aria-controls="scene-inspector"
+          aria-expanded={inspectorOpen}
+          className={styles.inspectorToggle}
+          onClick={() => setInspectorOpen((current) => !current)}
+          type="button"
+        >
+          {inspectorOpen ? strings.hideInspector : strings.showInspector}
+        </button>
         <span>
           {warnings.some(({ code }) => code === "OUT_OF_BOUNDS")
             ? strings.boundsWarning
@@ -490,7 +508,11 @@ export function SceneEditor({
         </span>
       </div>
 
-      <div className={styles.workbench}>
+      <div
+        className={`${styles.workbench} ${
+          inspectorOpen ? styles.inspectorOpen : styles.inspectorClosed
+        }`}
+      >
         <section
           aria-labelledby="scene-preview-heading"
           className={styles.previewPanel}
@@ -537,21 +559,26 @@ export function SceneEditor({
               </button>
             ))}
           </div>
-          <FaceboothExportControls
-            aspect={document.footprintMm.width / document.footprintMm.depth}
-            capture={pngCapture}
-            name={name}
-            prepareCapture={setCaptureMode}
-            strings={strings}
-          />
         </section>
 
         <aside
           aria-labelledby="scene-inspector-heading"
           className={styles.inspector}
+          hidden={!inspectorOpen}
+          id="scene-inspector"
         >
           <div className={styles.sheetHandle} aria-hidden="true" />
           <h2 id="scene-inspector-heading">{strings.sceneInspectorHeading}</h2>
+
+          <div className={styles.exportDock}>
+            <FaceboothExportControls
+              aspect={document.footprintMm.width / document.footprintMm.depth}
+              capture={pngCapture}
+              name={name}
+              prepareCapture={setCaptureMode}
+              strings={strings}
+            />
+          </div>
 
           <fieldset>
             <legend>{strings.addObjects}</legend>

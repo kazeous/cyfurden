@@ -76,6 +76,34 @@ test("Phase 15F public Facebooth surfaces retain responsive and accessible state
   assert.doesNotMatch(publicCss, /rgba?\(/i);
 });
 
+test("Facebooth scene editor uses a full-viewport studio with a dismissible inspector", async () => {
+  const [sceneSource, sceneCss, adminCss] = await Promise.all([
+    readSource("components/facebooth/scene-editor.tsx"),
+    readSource("components/facebooth/scene-editor.module.css"),
+    readSource("components/admin/admin.module.css"),
+  ]);
+
+  assert.match(
+    sceneCss,
+    /\.studioPage\s*\{[\s\S]*position: fixed;[\s\S]*inset: 0;[\s\S]*grid-template-rows: auto auto minmax\(0, 1fr\);/,
+  );
+  assert.match(
+    sceneCss,
+    /\.previewPanel\s*\{[\s\S]*grid-template-rows: auto minmax\(0, 1fr\) auto;/,
+  );
+  assert.match(sceneCss, /\.inspectorClosed\s*\{/);
+  assert.match(sceneCss, /max-height: min\(48svh, 32rem\)/);
+  assert.match(sceneSource, /aria-controls="scene-inspector"/);
+  assert.match(sceneSource, /aria-expanded=\{inspectorOpen\}/);
+  assert.match(sceneSource, /hidden=\{!inspectorOpen\}/);
+  assert.match(sceneSource, /data-facebooth-studio/);
+  assert.match(
+    adminCss,
+    /\.adminApp:has\(\[data-facebooth-studio\]\)\s*\{[\s\S]*padding: 0;[\s\S]*overflow: hidden;[\s\S]*\.adminSidebar/,
+  );
+  assert.doesNotMatch(sceneCss, /width:\s*100vw/);
+});
+
 test("Phase 15F passes the Hallmark token and interaction source gates", async () => {
   const auditedCss = (
     await Promise.all(

@@ -700,6 +700,27 @@
   margin: 0 auto;
 }
 
+.adminApp:has([data-facebooth-studio]) {
+  display: block;
+  min-height: 100svh;
+  padding: 0;
+  overflow: hidden;
+}
+
+.adminApp:has([data-facebooth-studio]) .adminSidebar,
+.adminApp:has([data-facebooth-studio]) .adminTopbar,
+.adminApp:has([data-facebooth-studio]) .mobileBottomNav {
+  display: none;
+}
+
+.adminApp:has([data-facebooth-studio]) .adminWorkspace,
+.adminApp:has([data-facebooth-studio]) .adminMain {
+  width: 100%;
+  min-height: 100svh;
+  padding: 0;
+  margin: 0;
+}
+
 .pageHeading {
   display: flex;
   gap: 24px;

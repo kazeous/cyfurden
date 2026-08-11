@@ -1,5 +1,27 @@
 [
   {
+    "date": "2026-08-11",
+    "scope": "app",
+    "macrostructure": "Workbench (viewport-fixed stage + collapsible inspector; delta from bounded split workspace)",
+    "theme": "studied-DNA (source: circlekit.allennoir.art; canvas-first hierarchy) with Cyfurden locked editorial-utilitarian tokens",
+    "enrichment": "interactive true-size scene",
+    "brief": "Full-viewport Facebooth booth-scene studio with a dismissible inspector",
+    "critique": {
+      "philosophy": 5,
+      "hierarchy": 5,
+      "execution": 5,
+      "specificity": 5,
+      "restraint": 5,
+      "variety": 5
+    },
+    "slop_test": "pass (1-58)",
+    "verified_viewports": [320, 375, 390, 414, 768, 1280],
+    "contrast": "pass (40-41); reuses the measured Cyfurden locked-token pairs from Phase 15",
+    "browser_diagnostics": "zero warning or error logs during desktop and mobile editor checks",
+    "navigation": "compact full-viewport studio header; parent admin shell suppressed while editing",
+    "footer": "none in the editor"
+  },
+  {
     "date": "2026-08-10",
     "scope": "Phase 15 Facebooth admin + public viewer",
     "macrostructure": "Workshop Index + Workbench + Publication Ledger + Hero / Viewer Stage / Object Folio + Split Showcase Feature",

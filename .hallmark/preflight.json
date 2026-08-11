@@ -14,5 +14,7 @@
     "public Catalogue and admin Index-First shells",
     "N4 public command bar, N6 admin navigation, and Ft1 inline legal strip"
   ],
-  "package_refresh": "Phase 15 uses only the approved Three.js, React Three Fiber, and Drei runtime installed in 15A; 15F adds no dependency or design-system change."
+  "package_refresh": "Phase 15 uses only the approved Three.js, React Three Fiber, and Drei runtime installed in 15A; 15F adds no dependency or design-system change.",
+  "last_refresh": "2026-08-11",
+  "refresh_reason": "Full-viewport Facebooth scene-editor redesign; the locked design system and dependencies are unchanged."
 }

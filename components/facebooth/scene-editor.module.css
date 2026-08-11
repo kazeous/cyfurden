@@ -1,13 +1,81 @@
-/* Hallmark · genre: editorial-utilitarian · macrostructure: Workbench · theme: Cyfurden locked · enrichment: interactive true-size scene · nav: N6 existing · footer: none */
+/* Hallmark · genre: editorial-utilitarian · macrostructure: Workbench (viewport-fixed stage + collapsible inspector) · theme: studied-DNA (source: circlekit.allennoir.art; canvas-first hierarchy) with Cyfurden locked tokens · enrichment: interactive true-size scene · nav: compact studio header · footer: none */
 /* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5 · contrast: pass (40–41) · mobile: pass (34, 49–57) */
 /* Hallmark · expected-files: scene editor + shared Facebooth canvas · designed-as-app */
+
+.studioPage {
+  --studio-inspector-size: clamp(20rem, 26vw, 24rem);
+  position: fixed;
+  z-index: var(--z-modal);
+  inset: 0;
+  display: grid;
+  min-height: 0;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  overflow: hidden;
+  color: var(--color-ink);
+  background: var(--color-paper-3);
+}
+
+.studioHeader {
+  min-height: var(--space-2xl);
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-xs) var(--space-md);
+  border-bottom: 1px solid var(--color-rule);
+  margin: 0;
+  background: var(--color-panel);
+  box-shadow: var(--shadow-whisper);
+}
+
+.studioHeader > div:first-child {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.studioHeader > div:first-child > p,
+.studioHeader > div:first-child > span {
+  display: none;
+}
+
+.studioHeader a {
+  flex: 0 0 auto;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.studioHeader input {
+  width: min(32rem, 100%);
+  min-height: 44px;
+  padding-inline: var(--space-xs);
+  font-size: var(--text-md);
+}
+
+.studioSave {
+  min-width: 0;
+  flex: 0 0 auto;
+}
+
+.studioSave > div {
+  min-width: 0;
+}
 
 .historyBar {
   display: flex;
   min-height: 48px;
   align-items: center;
   gap: var(--space-xs);
-  margin-bottom: var(--space-sm);
+  padding: var(--space-2xs) var(--space-md);
+  border-bottom: 1px solid var(--color-rule);
+  margin: 0;
+  overflow-x: auto;
+  background: var(--color-paper-2);
+  scrollbar-width: none;
+}
+
+.historyBar::-webkit-scrollbar {
+  display: none;
 }
 
 .historyBar button,
@@ -70,29 +138,42 @@
   color: var(--color-muted);
   font-size: var(--text-xs);
   font-weight: 700;
+  white-space: nowrap;
+}
+
+.inspectorToggle[aria-expanded="true"] {
+  border-color: var(--color-accent-line);
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
 }
 
 .workbench {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(310px, 370px);
-  min-height: 720px;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr) var(--studio-inspector-size);
   overflow: hidden;
-  border: 1px solid var(--color-rule);
-  border-radius: var(--radius-card);
+  border: 0;
+  border-radius: 0;
   background: var(--color-panel);
-  box-shadow: var(--shadow-whisper);
+  box-shadow: none;
+}
+
+.inspectorClosed {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .previewPanel {
   display: grid;
   min-width: 0;
-  grid-template-rows: auto minmax(500px, 1fr) auto;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   background: var(--color-dark);
 }
 
 .canvasWrap {
   position: relative;
-  min-height: 500px;
+  min-height: 0;
   touch-action: none;
 }
 
@@ -104,10 +185,17 @@
 
 .inspector {
   min-width: 0;
-  max-height: 820px;
+  height: 100%;
+  max-height: none;
   overflow-y: auto;
-  padding: var(--space-lg);
+  padding: var(--space-md);
   border-left: 1px solid var(--color-rule);
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.inspector[hidden] {
+  display: none;
 }
 
 .inspector > h2 {
@@ -143,6 +231,15 @@
 .inspector h3 {
   margin: var(--space-xs) 0 0;
   font-size: var(--text-xs);
+}
+
+.exportDock {
+  margin: 0 calc(var(--space-md) * -1) var(--space-md);
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.exportDock > div {
+  border-top: 0;
 }
 
 .actionGrid,
@@ -334,48 +431,24 @@
 }
 
 @media (max-width: 1020px) {
-  .workbench {
+  .workbench,
+  .inspectorOpen,
+  .inspectorClosed {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .inspector {
-    max-height: none;
+    position: absolute;
+    z-index: var(--z-raised);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: auto;
+    max-height: min(48svh, 32rem);
     border-top: 1px solid var(--color-rule);
     border-left: 0;
-  }
-}
-
-@media (max-width: 620px) {
-  .historyBar {
-    flex-wrap: wrap;
-  }
-
-  .historyBar > span {
-    width: 100%;
-    margin-left: 0;
-  }
-
-  .workbench {
-    min-height: 0;
-    overflow: visible;
-    margin-inline: calc(var(--space-sm) * -1);
-    border-radius: 0;
-  }
-
-  .previewPanel {
-    grid-template-rows: auto minmax(390px, 58svh) auto;
-  }
-
-  .canvasWrap {
-    min-height: 390px;
-  }
-
-  .inspector {
-    position: relative;
-    z-index: var(--z-raised);
-    padding: var(--space-md);
     border-radius: var(--radius-card) var(--radius-card) 0 0;
-    margin-top: calc(var(--space-md) * -1);
     background: var(--color-panel);
     box-shadow: 0 -2px 12px var(--color-shadow-soft);
   }
@@ -387,6 +460,65 @@
     border-radius: var(--radius-pill);
     margin: 0 auto var(--space-md);
     background: var(--color-rule-strong);
+  }
+}
+
+@media (max-width: 620px) {
+  .studioHeader {
+    align-items: stretch;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    padding: var(--space-xs) var(--space-sm);
+  }
+
+  .studioHeader > div:first-child {
+    width: 100%;
+    gap: var(--space-xs);
+  }
+
+  .studioHeader a {
+    max-width: 42%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .studioHeader input {
+    min-width: 0;
+    flex: 1;
+    font-size: var(--text-base);
+  }
+
+  .studioSave,
+  .studioSave > div {
+    width: 100%;
+  }
+
+  .historyBar {
+    padding-inline: var(--space-sm);
+  }
+
+  .historyBar > span {
+    margin-left: 0;
+  }
+
+  .workbench {
+    min-height: 0;
+    overflow: hidden;
+    margin: 0;
+    border-radius: 0;
+  }
+
+  .previewPanel {
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  .canvasWrap {
+    min-height: 0;
+  }
+
+  .inspector {
+    max-height: min(52svh, 30rem);
+    padding: var(--space-md);
   }
 
   .moveHandle {
