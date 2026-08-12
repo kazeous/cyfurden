@@ -1,5 +1,27 @@
 [
   {
+    "date": "2026-08-13",
+    "scope": "Phase 17B read-only platform console",
+    "macrostructure": "Index-First operator ledger (persistent platform rail + count-led overview + bounded record lists; delta from the prior Products index and Facebooth workbench)",
+    "theme": "Cyfurden locked editorial-utilitarian",
+    "enrichment": "none; operational identity and service-state data is the visual material",
+    "brief": "Inspect platform accounts, booths, Oracle ledger totals, and redacted audit events without exposing commerce data or enabling mutations",
+    "critique": {
+      "philosophy": 5,
+      "hierarchy": 5,
+      "execution": 5,
+      "specificity": 5,
+      "restraint": 5,
+      "variety": 4
+    },
+    "slop_test": "pass (1-58); locked tokens, restrained status accents, no decorative enrichment, and no Phase 17C controls",
+    "verified_viewports": [320, 375, 390, 414, 768, 1440],
+    "contrast": "pass (40-41); reuses the previously measured Cyfurden token pairs and explicit action/accent ink tokens",
+    "browser_diagnostics": "zero warning or error logs across authenticated EN/VI overview, lists, details, storage, and audit checks",
+    "navigation": "N6 persistent desktop operator rail + fixed five-destination mobile bottom navigation",
+    "footer": "none in the platform workspace"
+  },
+  {
     "date": "2026-08-12",
     "scope": "authenticated Products index + Facebooth editors",
     "macrostructure": "Index-First + Workbench (locked; targeted control-rhythm correction only)",
