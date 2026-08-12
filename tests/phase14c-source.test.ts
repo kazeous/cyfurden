@@ -89,3 +89,26 @@ test("public controls retain mobile-safe targets, labels, and stacking", async (
     /\.detailsButton \{[\s\S]*font-size: var\(--text-sm\)/,
   );
 });
+
+test("product index controls keep a symmetric 44px rhythm", async () => {
+  const products = await readSource(
+    "app/manage/[boothId]/products/products.module.css",
+  );
+
+  assert.match(
+    products,
+    /\.filterLink \{[\s\S]*display: inline-flex;[\s\S]*align-items: center;[\s\S]*justify-content: center;/,
+  );
+  assert.match(
+    products,
+    /\.table \{[\s\S]*font-variant-numeric: tabular-nums;[\s\S]*table-layout: fixed;/,
+  );
+  assert.match(
+    products,
+    /\.formGrid > \.field \{[\s\S]*grid-template-rows: auto 44px minmax\(1\.45em, auto\);/,
+  );
+  assert.match(
+    products,
+    /\.field input,[\s\S]*\.field select \{[\s\S]*height: 44px;/,
+  );
+});

@@ -131,3 +131,35 @@ test("Phase 15F passes the Hallmark token and interaction source gates", async (
   assert.doesNotMatch(auditedCss, /transition(?:-property)?:\s*all\b/i);
   assert.doesNotMatch(auditedCss, /(?:padding|margin|gap)[^:]*:[^;]*38px/i);
 });
+
+test("Facebooth controls align button text and paired field rows", async () => {
+  const [standeeCss, sceneCss, autosaveCss, exportCss] = await Promise.all([
+    readSource("components/facebooth/standee-editor.module.css"),
+    readSource("components/facebooth/scene-editor.module.css"),
+    readSource("components/facebooth/facebooth-autosave-controls.module.css"),
+    readSource("components/facebooth/facebooth-export-controls.module.css"),
+  ]);
+
+  assert.match(
+    standeeCss,
+    /\.previewControls button,[\s\S]*\.segmented button \{[\s\S]*display: inline-flex;[\s\S]*align-items: center;[\s\S]*justify-content: center;/,
+  );
+  assert.match(
+    standeeCss,
+    /\.fieldGrid > \.field > span:first-child \{[\s\S]*min-height: 2\.7em;/,
+  );
+  assert.match(
+    sceneCss,
+    /\.historyBar button,[\s\S]*\.updateNotice button \{[\s\S]*display: inline-flex;[\s\S]*align-items: center;[\s\S]*justify-content: center;/,
+  );
+  assert.match(
+    sceneCss,
+    /\.fieldGrid > \.field > span:first-child,[\s\S]*\.selectGrid > label > span:first-child \{[\s\S]*min-height: 2\.7em;/,
+  );
+  for (const sharedControls of [autosaveCss, exportCss]) {
+    assert.match(
+      sharedControls,
+      /button(?:,| \{)[\s\S]*display: inline-flex;[\s\S]*align-items: center;[\s\S]*justify-content: center;/,
+    );
+  }
+});

@@ -1,5 +1,27 @@
 [
   {
+    "date": "2026-08-12",
+    "scope": "authenticated Products index + Facebooth editors",
+    "macrostructure": "Index-First + Workbench (locked; targeted control-rhythm correction only)",
+    "theme": "Cyfurden locked editorial-utilitarian",
+    "enrichment": "existing product index and true-size Facebooth canvases (unchanged)",
+    "brief": "Center filter and button labels, align paired form controls, and impose a coherent product-table column rhythm",
+    "critique": {
+      "philosophy": 5,
+      "hierarchy": 5,
+      "execution": 5,
+      "specificity": 5,
+      "restraint": 5,
+      "variety": 5
+    },
+    "slop_test": "pass (1-58); no new visual system, copy, motion, or token improvisation",
+    "verified_viewports": [320, 375, 390, 414, 768, 1280],
+    "contrast": "pass (40-41); existing locked palette and control fills unchanged",
+    "browser_diagnostics": "zero error logs during authenticated production diagnosis and local Products, Facebooth, storefront, reservation, and Orders acceptance",
+    "navigation": "N6 responsive admin shell + compact Facebooth studio header (unchanged)",
+    "footer": "none in the authenticated workspace"
+  },
+  {
     "date": "2026-08-11",
     "scope": "landing + auth + public booth responsive controls",
     "macrostructure": "Narrative Workflow + Catalogue (locked; targeted control hardening only)",

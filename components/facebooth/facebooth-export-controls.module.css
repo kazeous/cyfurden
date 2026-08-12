@@ -34,6 +34,9 @@
 }
 
 .controls button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   align-self: end;
   line-height: 1;
   white-space: nowrap;
