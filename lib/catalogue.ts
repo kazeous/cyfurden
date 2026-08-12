@@ -12,6 +12,7 @@ export type CatalogueProduct = {
   tags: string[];
   featured: boolean;
   priceCents: string;
+  sortPriceCents?: string;
   createdAt: string;
   sortOrder: number;
   categorySlug: string | null;
@@ -57,12 +58,10 @@ export function filterAndSortCatalogue<T extends CatalogueProduct>(
 
   return [...visible].sort((left, right) => {
     if (sort === "price-asc" || sort === "price-desc") {
+      const leftPrice = BigInt(left.sortPriceCents ?? left.priceCents);
+      const rightPrice = BigInt(right.sortPriceCents ?? right.priceCents);
       const priceComparison =
-        BigInt(left.priceCents) < BigInt(right.priceCents)
-          ? -1
-          : BigInt(left.priceCents) > BigInt(right.priceCents)
-            ? 1
-            : 0;
+        leftPrice < rightPrice ? -1 : leftPrice > rightPrice ? 1 : 0;
       if (priceComparison) {
         return sort === "price-asc" ? priceComparison : -priceComparison;
       }

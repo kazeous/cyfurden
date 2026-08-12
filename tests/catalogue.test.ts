@@ -81,3 +81,18 @@ test("catalogue sort modes order prices, names, dates, and featured work", () =>
   );
   assert.equal(filterAndSortCatalogue(products)[0].name, "Sun Print");
 });
+
+test("catalogue price sorting can follow a variant-derived display price", () => {
+  const productsWithVariantPrice = products.map((product) =>
+    product.name === "Moon Pin"
+      ? { ...product, sortPriceCents: "10000" }
+      : product,
+  );
+
+  assert.deepEqual(
+    filterAndSortCatalogue(productsWithVariantPrice, {
+      sort: "price-asc",
+    }).map((product) => product.name),
+    ["Moon Pin", "Sun Print", "Cloud Charm"],
+  );
+});

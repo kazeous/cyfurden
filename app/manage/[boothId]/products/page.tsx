@@ -79,16 +79,41 @@ function normalizeEditorValue(
       status: VariantStatus;
       stockQuantity: number | null;
       fulfillmentNote: string | null;
+      _count: { orderItems: number; gachaPoolItems: number };
     }>;
     images: Array<{ id: string; objectKey: string; alt: string }>;
   } | null,
 ): ProductEditorValue {
-  const variant = product?.variants[0] ?? null;
+  const variants = product?.variants.length
+    ? product.variants.map((variant) => ({
+        id: variant.id,
+        sku: variant.sku,
+        label: variant.label,
+        priceVnd:
+          variant.priceCents === null ? null : Number(variant.priceCents) / 100,
+        status: variant.status,
+        stockQuantity: variant.stockQuantity,
+        fulfillmentNote: variant.fulfillmentNote ?? "",
+        referenced:
+          variant._count.orderItems > 0 || variant._count.gachaPoolItems > 0,
+      }))
+    : [
+        {
+          id: null,
+          sku: "",
+          label: defaultProductVariantLabel,
+          priceVnd: null,
+          status: "AVAILABLE" as const,
+          stockQuantity: null,
+          fulfillmentNote: "",
+          referenced: false,
+        },
+      ];
   return {
     id: product?.id ?? null,
     name: product?.name ?? "",
     slug: product?.slug ?? "",
-    sku: product?.sku ?? variant?.sku ?? "",
+    sku: product?.sku ?? "",
     priceVnd: product ? Number(product.priceCents) / 100 : 0,
     status: product?.status ?? "DRAFT",
     eyebrow: product?.eyebrow ?? "",
@@ -96,11 +121,7 @@ function normalizeEditorValue(
     description: product?.description ?? "",
     tags: product?.tags.join(", ") ?? "",
     featured: product?.featured ?? false,
-    variantId: variant?.id ?? null,
-    variantStatus: variant?.status ?? "AVAILABLE",
-    variantLabel: variant?.label ?? defaultProductVariantLabel,
-    stockQuantity: variant?.stockQuantity ?? null,
-    fulfillmentNote: variant?.fulfillmentNote ?? "",
+    variants,
     images:
       product?.images.map((image) => ({
         id: image.id,
@@ -108,6 +129,23 @@ function normalizeEditorValue(
         alt: image.alt,
       })) ?? [],
   };
+}
+
+function productInventorySummary(
+  variants: Array<{
+    status: VariantStatus;
+    stockQuantity: number | null;
+  }>,
+  untracked: string,
+) {
+  const visible = variants.filter((variant) => variant.status !== "HIDDEN");
+  if (visible.some((variant) => variant.stockQuantity === null)) {
+    return untracked;
+  }
+  return visible.reduce(
+    (total, variant) => total + (variant.stockQuantity ?? 0),
+    0,
+  );
 }
 
 function ProductThumbnail({
@@ -185,6 +223,13 @@ export default async function ProductsPage({
                 OR: [
                   { name: { contains: query, mode: "insensitive" as const } },
                   { sku: { contains: query, mode: "insensitive" as const } },
+                  {
+                    variants: {
+                      some: {
+                        sku: { contains: query, mode: "insensitive" as const },
+                      },
+                    },
+                  },
                   { tags: { has: query.toLocaleLowerCase() } },
                 ],
               },
@@ -193,7 +238,12 @@ export default async function ProductsPage({
       ],
     },
     include: {
-      variants: { orderBy: { sortOrder: "asc" } },
+      variants: {
+        orderBy: { sortOrder: "asc" },
+        include: {
+          _count: { select: { orderItems: true, gachaPoolItems: true } },
+        },
+      },
       images: { orderBy: { sortOrder: "asc" } },
     },
     orderBy: [{ status: "asc" }, { updatedAt: "desc" }],
@@ -209,7 +259,12 @@ export default async function ProductsPage({
       ? db.product.findFirst({
           where: { id: filters.product, boothId },
           include: {
-            variants: { orderBy: { sortOrder: "asc" } },
+            variants: {
+              orderBy: { sortOrder: "asc" },
+              include: {
+                _count: { select: { orderItems: true, gachaPoolItems: true } },
+              },
+            },
             images: { orderBy: { sortOrder: "asc" } },
           },
         })
@@ -339,7 +394,6 @@ export default async function ProductsPage({
                 </thead>
                 <tbody>
                   {products.map((product) => {
-                    const variant = product.variants[0];
                     return (
                       <tr className={styles.row} key={product.id}>
                         <td>
@@ -377,7 +431,15 @@ export default async function ProductsPage({
                           {formatMoney(product.priceCents, locale)}
                         </td>
                         <td className={styles.muted}>
-                          {variant?.stockQuantity ?? common.untracked}
+                          {productInventorySummary(
+                            product.variants,
+                            common.untracked,
+                          )}
+                          {product.variants.length > 1 ? (
+                            <small className={styles.variantCount}>
+                              {strings.variantCount(product.variants.length)}
+                            </small>
+                          ) : null}
                         </td>
                         <td>
                           <Link
@@ -399,7 +461,6 @@ export default async function ProductsPage({
             </div>
             <div className={styles.mobileCards}>
               {products.map((product) => {
-                const variant = product.variants[0];
                 const href = productHref(boothId, {
                   product: product.id,
                   query,
@@ -433,8 +494,14 @@ export default async function ProductsPage({
                       <span>{formatMoney(product.priceCents, locale)}</span>
                       <span>
                         {strings.inStock(
-                          variant?.stockQuantity ?? common.untracked,
+                          productInventorySummary(
+                            product.variants,
+                            common.untracked,
+                          ),
                         )}
+                        {product.variants.length > 1
+                          ? ` · ${strings.variantCount(product.variants.length)}`
+                          : ""}
                       </span>
                     </div>
                     <div className={styles.cardActions}>

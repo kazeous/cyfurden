@@ -56,6 +56,9 @@ export type PublicBoothStrings = {
   topbarBag: string;
   productDetailEyebrow: string;
   productDetailChooseOption: string;
+  productDetailChooseOptionsCta: string;
+  productDetailOptionsAvailable: (count: number) => string;
+  productPriceFrom: (amount: string) => string;
   productDetailOptionLabel: string;
   productDetailUnavailable: string;
   productDetailAvailabilitySoldOut: string;

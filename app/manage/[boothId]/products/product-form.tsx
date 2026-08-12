@@ -22,6 +22,7 @@ import {
 } from "@/lib/image-preparation";
 import type { Locale } from "@/lib/i18n";
 import { getWorkspaceStrings } from "@/lib/i18n/workspace";
+import { MAX_PRODUCT_VARIANTS } from "@/lib/product-variants";
 import styles from "./products.module.css";
 
 type ProductStatus = "DRAFT" | "LIVE" | "SOLD_OUT" | "HIDDEN";
@@ -44,11 +45,16 @@ export type ProductEditorValue = {
   description: string;
   tags: string;
   featured: boolean;
-  variantId: string | null;
-  variantStatus: VariantStatus;
-  variantLabel: string;
-  stockQuantity: number | null;
-  fulfillmentNote: string;
+  variants: Array<{
+    id: string | null;
+    sku: string;
+    label: string;
+    priceVnd: number | null;
+    status: VariantStatus;
+    stockQuantity: number | null;
+    fulfillmentNote: string;
+    referenced: boolean;
+  }>;
   images: Array<{
     id: string;
     url: string | null;
@@ -71,6 +77,18 @@ type EditableProductImage =
       url: string;
       alt: string;
     };
+
+type EditableProductVariant = {
+  clientId: string;
+  id: string | null;
+  sku: string;
+  label: string;
+  priceVnd: string;
+  status: VariantStatus;
+  stockQuantity: string;
+  fulfillmentNote: string;
+  referenced: boolean;
+};
 
 type PresignResponse = {
   error?: string;
@@ -165,6 +183,17 @@ export function ProductForm({
       ...image,
     })),
   );
+  const nextVariantId = useRef(value.variants.length);
+  const [variants, setVariants] = useState<EditableProductVariant[]>(() =>
+    value.variants.map((variant, index) => ({
+      ...variant,
+      clientId: variant.id ?? `new-${index}`,
+      priceVnd: variant.priceVnd === null ? "" : String(variant.priceVnd),
+      stockQuantity:
+        variant.stockQuantity === null ? "" : String(variant.stockQuantity),
+    })),
+  );
+  const [variantMessage, setVariantMessage] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
   const [uploadMessage, setUploadMessage] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -323,12 +352,88 @@ export function ProductForm({
     });
   };
 
+  const updateVariant = <Key extends keyof EditableProductVariant>(
+    clientId: string,
+    key: Key,
+    nextValue: EditableProductVariant[Key],
+  ) => {
+    setVariantMessage(null);
+    setVariants((current) =>
+      current.map((variant) =>
+        variant.clientId === clientId
+          ? { ...variant, [key]: nextValue }
+          : variant,
+      ),
+    );
+  };
+
+  const addVariant = (source?: EditableProductVariant) => {
+    if (variants.length >= MAX_PRODUCT_VARIANTS) {
+      setVariantMessage(strings.variantLimit(MAX_PRODUCT_VARIANTS));
+      return;
+    }
+    const clientId = `new-${nextVariantId.current++}`;
+    setVariants((current) => [
+      ...current,
+      {
+        clientId,
+        id: null,
+        sku: "",
+        label: source?.label ?? "",
+        priceVnd: source?.priceVnd ?? "",
+        status: source?.status ?? "AVAILABLE",
+        stockQuantity: source?.stockQuantity ?? "",
+        fulfillmentNote: source?.fulfillmentNote ?? "",
+        referenced: false,
+      },
+    ]);
+    setVariantMessage(null);
+  };
+
+  const moveVariant = (index: number, offset: -1 | 1) => {
+    setVariants((current) => {
+      const target = index + offset;
+      if (target < 0 || target >= current.length) return current;
+      const next = [...current];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+    setVariantMessage(null);
+  };
+
+  const removeVariant = (variant: EditableProductVariant) => {
+    if (variant.referenced) {
+      updateVariant(variant.clientId, "status", "HIDDEN");
+      setVariantMessage(strings.referencedVariantHidden);
+      return;
+    }
+    if (variants.length === 1) {
+      setVariantMessage(strings.variantMinimum);
+      return;
+    }
+    setVariants((current) =>
+      current.filter((candidate) => candidate.clientId !== variant.clientId),
+    );
+    setVariantMessage(null);
+  };
+
   const imageManifest = JSON.stringify(
     images.map((image) =>
       image.source === "existing"
         ? { existingId: image.id, alt: image.alt }
         : { objectKey: image.objectKey, alt: image.alt },
     ),
+  );
+  const variantManifest = JSON.stringify(
+    variants.map((variant) => ({
+      id: variant.id,
+      sku: variant.sku,
+      label: variant.label,
+      priceVnd: variant.priceVnd,
+      status: variant.status,
+      stockQuantity: variant.stockQuantity,
+      fulfillmentNote: variant.fulfillmentNote,
+    })),
   );
   const editorError = imageError ?? state.error ?? "";
 
@@ -337,7 +442,7 @@ export function ProductForm({
       <form action={formAction}>
         <input type="hidden" name="boothId" value={boothId} />
         <input type="hidden" name="productId" value={value.id ?? ""} />
-        <input type="hidden" name="variantId" value={value.variantId ?? ""} />
+        <input type="hidden" name="variantManifest" value={variantManifest} />
         <input type="hidden" name="imageManifest" value={imageManifest} />
 
         <div className={styles.editorHeader}>
@@ -389,12 +494,7 @@ export function ProductForm({
             </label>
             <label className={styles.field}>
               {strings.sku}
-              <input
-                name="sku"
-                defaultValue={value.sku}
-                required
-                maxLength={80}
-              />
+              <input name="sku" defaultValue={value.sku} maxLength={80} />
               <small>{strings.skuHelp}</small>
             </label>
           </div>
@@ -435,56 +535,232 @@ export function ProductForm({
               </select>
               <small>{strings.productStatusHelp}</small>
             </label>
-            <label className={styles.field}>
-              {strings.variantStatus}
-              <select name="variantStatus" defaultValue={value.variantStatus}>
-                <option value="AVAILABLE">
-                  {common.variantStatusLabels.AVAILABLE}
-                </option>
-                <option value="LOW_STOCK">
-                  {common.variantStatusLabels.LOW_STOCK}
-                </option>
-                <option value="PREORDER">
-                  {common.variantStatusLabels.PREORDER}
-                </option>
-                <option value="SOLD_OUT">
-                  {common.variantStatusLabels.SOLD_OUT}
-                </option>
-                <option value="HIDDEN">
-                  {common.variantStatusLabels.HIDDEN}
-                </option>
-              </select>
-              <small>{strings.variantStatusHelp}</small>
-            </label>
-            <label className={styles.field}>
-              {strings.variantLabel}
-              <input
-                name="variantLabel"
-                defaultValue={value.variantLabel}
-                maxLength={80}
-              />
-            </label>
-            <label className={styles.field}>
-              {strings.stockQuantity}
-              <input
-                name="stockQuantity"
-                type="number"
-                min="0"
-                max="2147483647"
-                step="1"
-                defaultValue={value.stockQuantity ?? ""}
-                placeholder={strings.untrackedPlaceholder}
-              />
-              <small>{strings.stockHelp}</small>
-            </label>
-            <label className={styles.field}>
-              {strings.fulfilmentNote}
-              <input
-                name="fulfillmentNote"
-                defaultValue={value.fulfillmentNote}
-                maxLength={500}
-              />
-            </label>
+          </div>
+        </section>
+
+        <section
+          className={styles.formSection}
+          aria-labelledby="variants-heading"
+        >
+          <div className={styles.variantSectionHeader}>
+            <div>
+              <h3 id="variants-heading">{strings.variants}</h3>
+              <p className={styles.helper}>
+                {strings.variantsHelp(MAX_PRODUCT_VARIANTS)}
+              </p>
+            </div>
+            <button
+              className={styles.removeButton}
+              type="button"
+              disabled={
+                !canEdit || pending || variants.length >= MAX_PRODUCT_VARIANTS
+              }
+              onClick={() => addVariant()}
+            >
+              {strings.addVariant}
+            </button>
+          </div>
+          {variantMessage ? (
+            <p className={styles.variantMessage} role="status">
+              {variantMessage}
+            </p>
+          ) : null}
+          <div className={styles.variantList}>
+            {variants.map((variant, index) => (
+              <article className={styles.variantCard} key={variant.clientId}>
+                <div className={styles.variantCardHeader}>
+                  <div>
+                    <strong>{strings.variantNumber(index + 1)}</strong>
+                    <span>
+                      {variant.label || strings.unnamedVariant}
+                      {variant.referenced
+                        ? ` · ${strings.referencedVariant}`
+                        : ""}
+                    </span>
+                  </div>
+                  <div className={styles.variantActions}>
+                    <button
+                      className={styles.removeButton}
+                      type="button"
+                      aria-label={`${strings.moveUp}: ${strings.variantNumber(index + 1)}`}
+                      disabled={!canEdit || pending || index === 0}
+                      onClick={() => moveVariant(index, -1)}
+                    >
+                      {strings.moveUp}
+                    </button>
+                    <button
+                      className={styles.removeButton}
+                      type="button"
+                      aria-label={`${strings.moveDown}: ${strings.variantNumber(index + 1)}`}
+                      disabled={
+                        !canEdit || pending || index === variants.length - 1
+                      }
+                      onClick={() => moveVariant(index, 1)}
+                    >
+                      {strings.moveDown}
+                    </button>
+                    <button
+                      className={styles.removeButton}
+                      type="button"
+                      aria-label={`${strings.duplicateVariant}: ${strings.variantNumber(index + 1)}`}
+                      disabled={
+                        !canEdit ||
+                        pending ||
+                        variants.length >= MAX_PRODUCT_VARIANTS
+                      }
+                      onClick={() => addVariant(variant)}
+                    >
+                      {strings.duplicateVariant}
+                    </button>
+                    <button
+                      className={styles.removeButton}
+                      type="button"
+                      aria-label={`${
+                        variant.referenced
+                          ? strings.hideVariant
+                          : strings.removeVariant
+                      }: ${strings.variantNumber(index + 1)}`}
+                      disabled={
+                        !canEdit ||
+                        pending ||
+                        (variant.referenced && variant.status === "HIDDEN")
+                      }
+                      onClick={() => removeVariant(variant)}
+                    >
+                      {variant.referenced
+                        ? strings.hideVariant
+                        : strings.removeVariant}
+                    </button>
+                  </div>
+                </div>
+                <div className={styles.variantGrid}>
+                  <label className={styles.field}>
+                    {strings.variantLabel}
+                    <input
+                      value={variant.label}
+                      required
+                      maxLength={80}
+                      disabled={!canEdit || pending}
+                      placeholder={strings.variantLabelPlaceholder}
+                      onChange={(event) =>
+                        updateVariant(
+                          variant.clientId,
+                          "label",
+                          event.target.value,
+                        )
+                      }
+                    />
+                  </label>
+                  <label className={styles.field}>
+                    {strings.variantSku}
+                    <input
+                      value={variant.sku}
+                      required
+                      maxLength={80}
+                      disabled={!canEdit || pending}
+                      onChange={(event) =>
+                        updateVariant(
+                          variant.clientId,
+                          "sku",
+                          event.target.value,
+                        )
+                      }
+                    />
+                  </label>
+                  <label className={styles.field}>
+                    {strings.variantPrice}
+                    <input
+                      value={variant.priceVnd}
+                      type="number"
+                      min="0"
+                      max="9000000000000"
+                      step="1"
+                      disabled={!canEdit || pending}
+                      placeholder={strings.inheritBasePrice}
+                      onChange={(event) =>
+                        updateVariant(
+                          variant.clientId,
+                          "priceVnd",
+                          event.target.value,
+                        )
+                      }
+                    />
+                  </label>
+                  <label className={styles.field}>
+                    {strings.variantStatus}
+                    <select
+                      value={variant.status}
+                      disabled={!canEdit || pending}
+                      onChange={(event) =>
+                        updateVariant(
+                          variant.clientId,
+                          "status",
+                          event.target.value as VariantStatus,
+                        )
+                      }
+                    >
+                      <option value="AVAILABLE">
+                        {common.variantStatusLabels.AVAILABLE}
+                      </option>
+                      <option value="LOW_STOCK">
+                        {common.variantStatusLabels.LOW_STOCK}
+                      </option>
+                      <option value="PREORDER">
+                        {common.variantStatusLabels.PREORDER}
+                      </option>
+                      <option value="SOLD_OUT">
+                        {common.variantStatusLabels.SOLD_OUT}
+                      </option>
+                      <option value="HIDDEN">
+                        {common.variantStatusLabels.HIDDEN}
+                      </option>
+                    </select>
+                  </label>
+                  <label className={styles.field}>
+                    {strings.stockQuantity}
+                    <input
+                      value={variant.stockQuantity}
+                      type="number"
+                      min="0"
+                      max="2147483647"
+                      step="1"
+                      disabled={!canEdit || pending}
+                      placeholder={strings.untrackedPlaceholder}
+                      onChange={(event) =>
+                        updateVariant(
+                          variant.clientId,
+                          "stockQuantity",
+                          event.target.value,
+                        )
+                      }
+                    />
+                    <small>{strings.stockHelp}</small>
+                  </label>
+                  <label
+                    className={`${styles.field} ${styles.variantNoteField}`}
+                  >
+                    {strings.fulfilmentNote}
+                    <input
+                      value={variant.fulfillmentNote}
+                      maxLength={500}
+                      disabled={!canEdit || pending}
+                      onChange={(event) =>
+                        updateVariant(
+                          variant.clientId,
+                          "fulfillmentNote",
+                          event.target.value,
+                        )
+                      }
+                    />
+                  </label>
+                </div>
+                {variant.referenced ? (
+                  <p className={styles.variantReferenceHelp}>
+                    {strings.referencedVariantHelp}
+                  </p>
+                ) : null}
+              </article>
+            ))}
           </div>
         </section>
 

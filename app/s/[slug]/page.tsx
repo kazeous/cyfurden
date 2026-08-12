@@ -134,39 +134,45 @@ export default async function PublicBoothPage({
     managed.products,
   );
   const featuredProductIdSet = new Set(featuredProductIds);
-  const products = managed.products.map((product) => ({
-    id: product.id,
-    category: product.category
-      ? {
-          id: product.category.id,
-          name: product.category.name,
-          slug: product.category.slug,
-        }
-      : null,
-    name: product.name,
-    eyebrow: product.eyebrow,
-    shortDescription: product.shortDescription,
-    description: product.description,
-    priceCents: product.priceCents.toString(),
-    sku: product.sku,
-    featured: featuredProductIdSet.has(product.id),
-    tags: product.tags,
-    sortOrder: product.sortOrder,
-    createdAt: product.createdAt.toISOString(),
-    images: product.images.map((image) => ({
-      objectKey: image.objectKey,
-      alt: image.alt,
-    })),
-    variants: product.variants.map((variant) => ({
-      id: variant.id,
-      label: variant.label,
-      priceCents:
-        variant.priceCents === null ? null : variant.priceCents.toString(),
-      status: variant.status,
-      stockQuantity: variant.stockQuantity,
-      fulfillmentNote: variant.fulfillmentNote,
-    })),
-  }));
+  const products = managed.products
+    .filter((product) =>
+      product.variants.some((variant) => variant.status !== "HIDDEN"),
+    )
+    .map((product) => ({
+      id: product.id,
+      category: product.category
+        ? {
+            id: product.category.id,
+            name: product.category.name,
+            slug: product.category.slug,
+          }
+        : null,
+      name: product.name,
+      eyebrow: product.eyebrow,
+      shortDescription: product.shortDescription,
+      description: product.description,
+      priceCents: product.priceCents.toString(),
+      sku: product.sku,
+      featured: featuredProductIdSet.has(product.id),
+      tags: product.tags,
+      sortOrder: product.sortOrder,
+      createdAt: product.createdAt.toISOString(),
+      images: product.images.map((image) => ({
+        objectKey: image.objectKey,
+        alt: image.alt,
+      })),
+      variants: product.variants
+        .filter((variant) => variant.status !== "HIDDEN")
+        .map((variant) => ({
+          id: variant.id,
+          label: variant.label,
+          priceCents:
+            variant.priceCents === null ? null : variant.priceCents.toString(),
+          status: variant.status,
+          stockQuantity: variant.stockQuantity,
+          fulfillmentNote: variant.fulfillmentNote,
+        })),
+    }));
   const purchasableProductIds = new Set(
     managed.products.flatMap((product) =>
       product.status === "LIVE" &&

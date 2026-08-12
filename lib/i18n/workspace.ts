@@ -468,6 +468,8 @@ const englishWorkspaceCatalogue = {
     actionColumn: "Action",
     edit: "Edit",
     inStock: (stock: number | string) => `${stock} in stock`,
+    variantCount: (count: number) =>
+      `${count} ${count === 1 ? "option" : "options"}`,
     editProduct: "Edit product",
     noMatchingTitle: "No matching products",
     noProductsTitle: "No products yet",
@@ -508,18 +510,40 @@ const englishWorkspaceCatalogue = {
     slugPlaceholder: "generated-from-name",
     slugHelp:
       "This becomes the product's public URL. Leave it blank to generate one from the product name; Cyfurden uses lowercase letters, numbers, and hyphens.",
-    sku: "SKU",
+    sku: "Product SKU (optional)",
     skuHelp:
-      "Letters with Vietnamese diacritics, numbers, spaces, dots, underscores, and hyphens are accepted.",
-    pricingStock: "Pricing & stock",
-    priceVnd: "Price (VND)",
-    priceHelp: "Enter whole đồng; the storefront formats the amount.",
+      "Use an optional parent SKU for the whole product. Every variant has its own required SKU below.",
+    pricingStock: "Base pricing",
+    priceVnd: "Base price (VND)",
+    priceHelp:
+      "Enter whole đồng. Variants inherit this amount unless they have a price override.",
     productStatus: "Product status",
     productStatusHelp:
       "Live products become sold out automatically when all tracked stock reaches zero.",
     variantStatus: "Variant status",
     variantStatusHelp: "Low-stock variants appear in the attention filter.",
     variantLabel: "Variant label",
+    variants: "Variants",
+    variantsHelp: (maximum: number) =>
+      `Add sizes, finishes, or other choices under one product. Use 1–${maximum} variants; product images are shared.`,
+    addVariant: "Add variant",
+    duplicateVariant: "Duplicate",
+    removeVariant: "Remove",
+    hideVariant: "Hide",
+    variantNumber: (number: number) => `Variant ${number}`,
+    unnamedVariant: "Unnamed option",
+    variantLabelPlaceholder: "Example: A4 · Hologram",
+    variantSku: "Variant SKU",
+    variantPrice: "Price override (VND)",
+    inheritBasePrice: "Use base price",
+    referencedVariant: "Used in history",
+    referencedVariantHelp:
+      "This variant is referenced by an order or gacha configuration. It can be hidden but not permanently deleted.",
+    referencedVariantHidden:
+      "The referenced variant was set to Hidden so its history remains intact.",
+    variantMinimum: "A product must keep at least one variant.",
+    variantLimit: (maximum: number) =>
+      `A product can have up to ${maximum} variants.`,
     stockQuantity: "Stock quantity",
     untrackedPlaceholder: "Untracked",
     stockHelp: "Leave blank when this item is not stock-counted.",
@@ -1077,11 +1101,25 @@ const englishWorkspaceCatalogue = {
       "This booth has order history and cannot be deleted. Archive support belongs to a later lifecycle milestone.",
     boothUnavailable: "The booth no longer exists or is no longer yours.",
     productCoreFields: (maximum: string) =>
-      `Use a 2-120 character name, a SKU made from letters (including Vietnamese diacritics), numbers, spaces, dots, underscores, or hyphens, and a whole-number price between 0 and ${maximum} VND.`,
+      `Use a 2-120 character name, an optional valid product SKU, and a whole-number base price between 0 and ${maximum} VND.`,
     productCopyLimits:
       "Keep the description under 5,000 characters and the supporting labels within their displayed limits.",
     productStock: (maximum: string) =>
       `Stock must be a whole number from 0 to ${maximum}, or blank when untracked.`,
+    productVariantsInvalid:
+      "The variant list is invalid. Refresh the editor and try again.",
+    productVariantsCount: (maximum: number) =>
+      `Keep between 1 and ${maximum} variants on each product.`,
+    productVariantSku:
+      "Every variant needs a valid SKU using letters, numbers, spaces, dots, underscores, or hyphens.",
+    productVariantSkuDuplicate:
+      "Variant SKUs must be unique within this product.",
+    productVariantLabel:
+      "Every variant needs a label of no more than 80 characters.",
+    productVariantPrice: (maximum: string) =>
+      `Each price override must be blank or a whole-number amount from 0 to ${maximum} VND.`,
+    productVariantNote:
+      "Keep each variant fulfilment note under 500 characters.",
     productImagesInvalid:
       "The product image list is invalid. Refresh and try again.",
     productImagesLimit: (maximum: number) =>
@@ -1099,7 +1137,7 @@ const englishWorkspaceCatalogue = {
     productImageVerification:
       "An uploaded product image could not be verified. Upload it again.",
     productUnique:
-      "That slug or SKU is already used in this booth. Choose a unique value.",
+      "That slug, product SKU, or variant SKU is already in use. Choose a unique value.",
     productDatabaseValue:
       "The database rejected the price or stock value. If those values are correct, apply the latest database migrations and try again.",
     productSaveFailed:
@@ -1634,6 +1672,7 @@ const vietnameseWorkspaceCatalogue: WorkspaceCatalogue = {
     actionColumn: "Thao tác",
     edit: "Sửa",
     inStock: (stock) => `${stock} trong kho`,
+    variantCount: (count) => `${count} tuỳ chọn`,
     editProduct: "Sửa sản phẩm",
     noMatchingTitle: "Không có sản phẩm phù hợp",
     noProductsTitle: "Chưa có sản phẩm",
@@ -1673,18 +1712,40 @@ const vietnameseWorkspaceCatalogue: WorkspaceCatalogue = {
     slugPlaceholder: "tao-tu-ten-san-pham",
     slugHelp:
       "Nội dung này trở thành URL công khai của sản phẩm. Để trống để tạo từ tên sản phẩm; Cyfurden dùng chữ thường, chữ số và dấu gạch nối.",
-    sku: "SKU",
+    sku: "SKU sản phẩm (không bắt buộc)",
     skuHelp:
-      "Chấp nhận chữ có dấu tiếng Việt, chữ số, khoảng trắng, dấu chấm, gạch dưới và gạch nối.",
-    pricingStock: "Giá & tồn kho",
-    priceVnd: "Giá (VND)",
-    priceHelp: "Nhập số tiền đồng nguyên; storefront sẽ định dạng giá.",
+      "Dùng SKU cha nếu cần cho toàn bộ sản phẩm. Mỗi phiên bản bên dưới có SKU riêng bắt buộc.",
+    pricingStock: "Giá cơ sở",
+    priceVnd: "Giá cơ sở (VND)",
+    priceHelp:
+      "Nhập số tiền đồng nguyên. Phiên bản dùng giá này nếu không đặt giá riêng.",
     productStatus: "Trạng thái sản phẩm",
     productStatusHelp:
       "Sản phẩm Đang bán sẽ tự chuyển sang Hết hàng khi toàn bộ tồn kho được theo dõi về 0.",
     variantStatus: "Trạng thái phiên bản",
     variantStatusHelp: "Phiên bản Sắp hết sẽ xuất hiện trong bộ lọc cần chú ý.",
     variantLabel: "Nhãn phiên bản",
+    variants: "Các phiên bản",
+    variantsHelp: (maximum) =>
+      `Thêm kích thước, chất liệu hoặc tuỳ chọn khác trong cùng sản phẩm. Dùng từ 1–${maximum} phiên bản; hình ảnh được dùng chung.`,
+    addVariant: "Thêm phiên bản",
+    duplicateVariant: "Nhân bản",
+    removeVariant: "Xoá",
+    hideVariant: "Ẩn",
+    variantNumber: (number) => `Phiên bản ${number}`,
+    unnamedVariant: "Tuỳ chọn chưa đặt tên",
+    variantLabelPlaceholder: "Ví dụ: A4 · Hologram",
+    variantSku: "SKU phiên bản",
+    variantPrice: "Giá riêng (VND)",
+    inheritBasePrice: "Dùng giá cơ sở",
+    referencedVariant: "Đã có lịch sử",
+    referencedVariantHelp:
+      "Phiên bản này đang được đơn hàng hoặc cấu hình gacha tham chiếu. Bạn có thể ẩn nhưng không thể xoá vĩnh viễn.",
+    referencedVariantHidden:
+      "Đã chuyển phiên bản có lịch sử sang trạng thái Ẩn để bảo toàn dữ liệu.",
+    variantMinimum: "Một sản phẩm phải giữ ít nhất một phiên bản.",
+    variantLimit: (maximum) =>
+      `Mỗi sản phẩm có thể có tối đa ${maximum} phiên bản.`,
     stockQuantity: "Số lượng tồn kho",
     untrackedPlaceholder: "Không theo dõi",
     stockHelp: "Để trống khi sản phẩm này không theo dõi số lượng.",
@@ -2238,11 +2299,24 @@ const vietnameseWorkspaceCatalogue: WorkspaceCatalogue = {
       "Booth này có lịch sử đơn hàng nên không thể xóa. Tính năng lưu trữ thuộc một mốc vòng đời sau.",
     boothUnavailable: "Booth không còn tồn tại hoặc không còn thuộc về bạn.",
     productCoreFields: (maximum) =>
-      `Dùng tên dài 2–120 ký tự, SKU gồm chữ có dấu tiếng Việt, chữ số, khoảng trắng, dấu chấm, gạch dưới hoặc gạch nối và giá nguyên từ 0 đến ${maximum} VND.`,
+      `Dùng tên dài 2–120 ký tự, SKU sản phẩm hợp lệ nếu có, và giá cơ sở nguyên từ 0 đến ${maximum} VND.`,
     productCopyLimits:
       "Giữ mô tả dưới 5.000 ký tự và các nhãn hỗ trợ trong giới hạn hiển thị.",
     productStock: (maximum) =>
       `Tồn kho phải là số nguyên từ 0 đến ${maximum}, hoặc để trống nếu không theo dõi.`,
+    productVariantsInvalid:
+      "Danh sách phiên bản không hợp lệ. Hãy tải lại trình chỉnh sửa rồi thử lại.",
+    productVariantsCount: (maximum) =>
+      `Mỗi sản phẩm phải có từ 1 đến ${maximum} phiên bản.`,
+    productVariantSku:
+      "Mỗi phiên bản cần SKU hợp lệ gồm chữ, số, khoảng trắng, dấu chấm, gạch dưới hoặc gạch nối.",
+    productVariantSkuDuplicate:
+      "SKU của các phiên bản trong cùng sản phẩm không được trùng nhau.",
+    productVariantLabel: "Mỗi phiên bản cần nhãn dài không quá 80 ký tự.",
+    productVariantPrice: (maximum) =>
+      `Giá riêng phải để trống hoặc là số đồng nguyên từ 0 đến ${maximum} VND.`,
+    productVariantNote:
+      "Ghi chú giao nhận của mỗi phiên bản phải dưới 500 ký tự.",
     productImagesInvalid:
       "Danh sách ảnh sản phẩm không hợp lệ. Hãy tải lại trang rồi thử lại.",
     productImagesLimit: (maximum) =>
@@ -2259,7 +2333,7 @@ const vietnameseWorkspaceCatalogue: WorkspaceCatalogue = {
     productImageVerification:
       "Không thể xác minh một ảnh sản phẩm đã tải lên. Hãy tải ảnh lên lại.",
     productUnique:
-      "Địa chỉ hoặc SKU này đã được dùng trong booth. Hãy chọn giá trị duy nhất.",
+      "Slug, SKU sản phẩm hoặc SKU phiên bản này đã được sử dụng. Hãy chọn giá trị duy nhất.",
     productDatabaseValue:
       "Cơ sở dữ liệu đã từ chối giá hoặc tồn kho. Nếu các giá trị là đúng, hãy áp dụng migration mới nhất rồi thử lại.",
     productSaveFailed:

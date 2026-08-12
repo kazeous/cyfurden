@@ -202,16 +202,49 @@ function availabilityLabel(
   product: ProductDto,
   t: import("@/lib/i18n").PublicBoothStrings,
 ) {
-  const available = product.variants.find((variant) =>
+  const availableVariants = product.variants.filter((variant) =>
     isPurchasableVariant(variant.status, variant.stockQuantity),
   );
-  if (!available) return t.productDetailAvailabilitySoldOut;
+  if (!availableVariants.length) return t.productDetailAvailabilitySoldOut;
+  if (availableVariants.length > 1) {
+    return t.productDetailOptionsAvailable(availableVariants.length);
+  }
+  return variantAvailabilityLabel(availableVariants[0]!, t);
+}
+
+function variantAvailabilityLabel(
+  variant: ProductDto["variants"][number],
+  t: import("@/lib/i18n").PublicBoothStrings,
+) {
+  if (!isPurchasableVariant(variant.status, variant.stockQuantity)) {
+    return t.productDetailAvailabilitySoldOut;
+  }
+  const available = variant;
   if (available.stockQuantity !== null) {
     return t.productDetailAvailabilityLeft(available.stockQuantity);
   }
   return available.status === "PREORDER"
     ? t.productDetailAvailabilityPreorder
     : t.productDetailAvailabilityAvailable;
+}
+
+function productPriceSummary(product: ProductDto) {
+  const purchasable = product.variants.filter((variant) =>
+    isPurchasableVariant(variant.status, variant.stockQuantity),
+  );
+  const candidates = purchasable.length ? purchasable : product.variants;
+  const prices = candidates.map((variant) =>
+    BigInt(variant.priceCents ?? product.priceCents),
+  );
+  const price = prices.length
+    ? prices.reduce((minimum, candidate) =>
+        candidate < minimum ? candidate : minimum,
+      )
+    : BigInt(product.priceCents);
+  return {
+    price,
+    hasRange: new Set(prices.map(String)).size > 1,
+  };
 }
 
 function ProductQr({
@@ -451,6 +484,7 @@ export function ManagedStorefront({
         localizedProducts.map((product) => ({
           ...product,
           categorySlug: product.category?.slug ?? null,
+          sortPriceCents: productPriceSummary(product).price.toString(),
         })),
         {
           query,
@@ -543,9 +577,14 @@ export function ManagedStorefront({
 
   const add = (product: ProductDto) => {
     if (!hydrated || !canAcceptReservations) return;
-    const variant = product.variants.find((item) =>
+    const purchasable = product.variants.filter((item) =>
       isPurchasableVariant(item.status, item.stockQuantity),
     );
+    if (purchasable.length > 1) {
+      openDetails(product);
+      return;
+    }
+    const variant = purchasable[0];
     if (!variant) return;
     updateCart((current) => {
       const existing = current.find((line) => line.variantId === variant.id);
@@ -792,19 +831,19 @@ export function ManagedStorefront({
           );
         }
 
-        const available = featuredProduct.variants.some((variant) =>
+        const availableVariants = featuredProduct.variants.filter((variant) =>
           isPurchasableVariant(variant.status, variant.stockQuantity),
         );
-        const firstAvailableVariant = featuredProduct.variants.find((variant) =>
-          isPurchasableVariant(variant.status, variant.stockQuantity),
-        );
-        const price =
-          firstAvailableVariant?.priceCents ?? featuredProduct.priceCents;
+        const available = availableVariants.length > 0;
+        const requiresChoice = availableVariants.length > 1;
+        const firstAvailableVariant = availableVariants[0];
+        const priceSummary = productPriceSummary(featuredProduct);
         const cartLine = firstAvailableVariant
           ? cart.find((line) => line.variantId === firstAvailableVariant.id)
           : undefined;
         const atStockLimit = Boolean(
-          firstAvailableVariant &&
+          !requiresChoice &&
+            firstAvailableVariant &&
             cartLine &&
             cartLine.quantity >=
               maximumPurchasableQuantity(firstAvailableVariant.stockQuantity),
@@ -864,7 +903,11 @@ export function ManagedStorefront({
                   {b(document.introduction)}
                 </p>
                 <div className={styles.featuredFacts}>
-                  <strong>{money(price, locale)}</strong>
+                  <strong>
+                    {priceSummary.hasRange
+                      ? t.productPriceFrom(money(priceSummary.price, locale))
+                      : money(priceSummary.price, locale)}
+                  </strong>
                   <span>{availabilityLabel(featuredProduct, t)}</span>
                 </div>
                 <div className={styles.featuredActions}>
@@ -876,17 +919,19 @@ export function ManagedStorefront({
                       !hydrated ||
                       !available ||
                       !canAcceptReservations ||
-                      atStockLimit
+                      (!requiresChoice && atStockLimit)
                     }
                   >
                     <CartIcon />
                     {!canAcceptReservations
                       ? t.productDetailReservationsPaused
-                      : atStockLimit
+                      : !requiresChoice && atStockLimit
                         ? t.productDetailStockLimitReached
-                        : available
-                          ? t.productDetailAddToBag
-                          : t.productDetailSoldOut}
+                        : requiresChoice
+                          ? t.productDetailChooseOptionsCta
+                          : available
+                            ? t.productDetailAddToBag
+                            : t.productDetailSoldOut}
                   </button>
                   <button
                     type="button"
@@ -1117,25 +1162,21 @@ export function ManagedStorefront({
                 className={`${styles.grid} ${viewMode === "list" ? styles.list : ""}`}
               >
                 {visibleProducts.map((product) => {
-                  const available = product.variants.some((variant) =>
+                  const availableVariants = product.variants.filter((variant) =>
                     isPurchasableVariant(variant.status, variant.stockQuantity),
                   );
-                  const firstAvailableVariant = product.variants.find(
-                    (variant) =>
-                      isPurchasableVariant(
-                        variant.status,
-                        variant.stockQuantity,
-                      ),
-                  );
-                  const price =
-                    firstAvailableVariant?.priceCents ?? product.priceCents;
+                  const available = availableVariants.length > 0;
+                  const requiresChoice = availableVariants.length > 1;
+                  const firstAvailableVariant = availableVariants[0];
+                  const priceSummary = productPriceSummary(product);
                   const cartLine = firstAvailableVariant
                     ? cart.find(
                         (line) => line.variantId === firstAvailableVariant.id,
                       )
                     : undefined;
                   const atStockLimit = Boolean(
-                    firstAvailableVariant &&
+                    !requiresChoice &&
+                      firstAvailableVariant &&
                       cartLine &&
                       cartLine.quantity >=
                         maximumPurchasableQuantity(
@@ -1189,7 +1230,13 @@ export function ManagedStorefront({
                           </div>
                         ) : null}
                         <div className={styles.cardFooter}>
-                          <strong>{money(price, locale)}</strong>
+                          <strong>
+                            {priceSummary.hasRange
+                              ? t.productPriceFrom(
+                                  money(priceSummary.price, locale),
+                                )
+                              : money(priceSummary.price, locale)}
+                          </strong>
                           <div className={styles.cardActions}>
                             <button
                               type="button"
@@ -1198,17 +1245,19 @@ export function ManagedStorefront({
                               aria-label={
                                 !canAcceptReservations
                                   ? t.productDetailReservationsPaused
-                                  : atStockLimit
+                                  : !requiresChoice && atStockLimit
                                     ? t.productDetailStockLimitReached
-                                    : available
-                                      ? `${t.productDetailAddToBag}: ${product.name}`
-                                      : t.productDetailSoldOut
+                                    : requiresChoice
+                                      ? `${t.productDetailChooseOptionsCta}: ${product.name}`
+                                      : available
+                                        ? `${t.productDetailAddToBag}: ${product.name}`
+                                        : t.productDetailSoldOut
                               }
                               disabled={
                                 !hydrated ||
                                 !available ||
                                 !canAcceptReservations ||
-                                atStockLimit
+                                (!requiresChoice && atStockLimit)
                               }
                             >
                               <CartIcon />
@@ -1470,7 +1519,16 @@ export function ManagedStorefront({
                       }}
                     >
                       {detailProduct.variants.map((variant) => (
-                        <option value={variant.id} key={variant.id}>
+                        <option
+                          value={variant.id}
+                          key={variant.id}
+                          disabled={
+                            !isPurchasableVariant(
+                              variant.status,
+                              variant.stockQuantity,
+                            )
+                          }
+                        >
                           {variant.label}
                           {isPurchasableVariant(
                             variant.status,
@@ -1496,7 +1554,11 @@ export function ManagedStorefront({
                       locale,
                     )}
                   </strong>
-                  <span>{availabilityLabel(detailProduct, t)}</span>
+                  <span>
+                    {selectedDetailVariant
+                      ? variantAvailabilityLabel(selectedDetailVariant, t)
+                      : availabilityLabel(detailProduct, t)}
+                  </span>
                 </div>
                 {selectedDetailVariant?.fulfillmentNote ? (
                   <p className={styles.detailNote}>

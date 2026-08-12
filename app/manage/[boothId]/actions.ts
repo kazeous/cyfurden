@@ -39,6 +39,13 @@ import {
   parseWholeVndPrice,
 } from "@/lib/product-fields";
 import { synchronizeProductInventoryStatus } from "@/lib/product-inventory";
+import {
+  MAX_PRODUCT_VARIANTS,
+  MAX_STOCK_QUANTITY,
+  parseProductVariantManifest,
+  ProductVariantScopeError,
+  synchronizeProductVariants,
+} from "@/lib/product-variants";
 import { MAX_PROMOTION_QUANTITY } from "@/lib/quantity-promotions";
 import {
   acceptTeamInvitation,
@@ -61,14 +68,10 @@ import {
   socialPlatforms,
 } from "@/lib/shop-settings";
 import { validateVietQrBeneficiary } from "@/lib/vietqr";
-import {
-  defaultPaymentContent,
-  defaultProductVariantLabel,
-} from "@/lib/system-content";
+import { defaultPaymentContent } from "@/lib/system-content";
 
 const editorRoles = ["OWNER", "ADMIN"] as const;
 const orderRoles = ["OWNER", "ADMIN", "STAFF"] as const;
-const MAX_STOCK_QUANTITY = 2_147_483_647;
 
 const readActionStrings = async () =>
   getWorkspaceStrings(await readLocaleCookie()).actions;
@@ -684,13 +687,6 @@ export async function deleteBoothAction(
 }
 
 const productStatusSchema = z.enum(["DRAFT", "LIVE", "SOLD_OUT", "HIDDEN"]);
-const variantStatusSchema = z.enum([
-  "AVAILABLE",
-  "LOW_STOCK",
-  "PREORDER",
-  "SOLD_OUT",
-  "HIDDEN",
-]);
 
 export type ProductSaveState = {
   error: string | null;
@@ -733,27 +729,22 @@ async function saveProduct(
 ): Promise<ProductSaveState> {
   const boothId = requiredText(formData, "boothId");
   const productId = optionalText(formData, "productId");
-  const variantId = optionalText(formData, "variantId");
   const { session, booth } = await requireBoothRole(boothId, editorRoles);
   const strings = await readActionStrings();
   const name = requiredText(formData, "name");
   const slug = slugify(requiredText(formData, "slug") || name);
-  const sku = normalizeProductSku(requiredText(formData, "sku"));
+  const rawSku = requiredText(formData, "sku");
+  const sku = rawSku ? normalizeProductSku(rawSku) : "";
   const rawPrice = requiredText(formData, "priceVnd");
   const priceVnd = parseWholeVndPrice(rawPrice);
   const description = requiredText(formData, "description");
   const eyebrow = requiredText(formData, "eyebrow");
   const shortDescription = requiredText(formData, "shortDescription");
-  const variantLabel =
-    requiredText(formData, "variantLabel") || defaultProductVariantLabel;
-  const fulfillmentNote = requiredText(formData, "fulfillmentNote");
-  const rawStockQuantity = requiredText(formData, "stockQuantity");
-  const stockQuantity = rawStockQuantity ? Number(rawStockQuantity) : null;
   if (
     name.length < 2 ||
     name.length > 120 ||
     !slug ||
-    !isValidProductSku(sku) ||
+    (sku && !isValidProductSku(sku)) ||
     priceVnd === null
   ) {
     return {
@@ -766,24 +757,52 @@ async function saveProduct(
     description.length < 1 ||
     description.length > 5_000 ||
     eyebrow.length > 80 ||
-    shortDescription.length > 240 ||
-    variantLabel.length > 80 ||
-    fulfillmentNote.length > 500
+    shortDescription.length > 240
   ) {
     return {
       error: strings.productCopyLimits,
     };
   }
-  if (
-    stockQuantity !== null &&
-    (!Number.isSafeInteger(stockQuantity) ||
-      stockQuantity < 0 ||
-      stockQuantity > MAX_STOCK_QUANTITY)
-  ) {
-    return {
-      error: strings.productStock(MAX_STOCK_QUANTITY.toLocaleString("en-US")),
-    };
+
+  let rawVariantManifest: unknown;
+  try {
+    rawVariantManifest = JSON.parse(requiredText(formData, "variantManifest"));
+  } catch {
+    return { error: strings.productVariantsInvalid };
   }
+  const variantManifestResult = parseProductVariantManifest(rawVariantManifest);
+  if (!variantManifestResult.success) {
+    const error = variantManifestResult.error;
+    if (error === "count") {
+      return { error: strings.productVariantsCount(MAX_PRODUCT_VARIANTS) };
+    }
+    if (error === "sku") {
+      return { error: strings.productVariantSku };
+    }
+    if (error === "duplicate-sku") {
+      return { error: strings.productVariantSkuDuplicate };
+    }
+    if (error === "label") {
+      return { error: strings.productVariantLabel };
+    }
+    if (error === "price") {
+      return {
+        error: strings.productVariantPrice(
+          MAX_PRODUCT_PRICE_VND.toLocaleString("en-US"),
+        ),
+      };
+    }
+    if (error === "stock") {
+      return {
+        error: strings.productStock(MAX_STOCK_QUANTITY.toLocaleString("en-US")),
+      };
+    }
+    if (error === "note") {
+      return { error: strings.productVariantNote };
+    }
+    return { error: strings.productVariantsInvalid };
+  }
+  const variantManifest = variantManifestResult.data;
 
   let rawImageManifest: unknown;
   try {
@@ -814,14 +833,8 @@ async function saveProduct(
   const statusResult = productStatusSchema.safeParse(
     requiredText(formData, "status"),
   );
-  const variantStatusResult = variantStatusSchema.safeParse(
-    requiredText(formData, "variantStatus"),
-  );
-  if (!statusResult.success || !variantStatusResult.success) {
-    return { error: strings.productStatuses };
-  }
+  if (!statusResult.success) return { error: strings.productStatuses };
   const status = statusResult.data;
-  const variantStatus = variantStatusResult.data;
   const tags = requiredText(formData, "tags")
     .split(",")
     .map((tag) => tag.trim().toLocaleLowerCase())
@@ -833,7 +846,6 @@ async function saveProduct(
         where: { id: productId, boothId },
         include: {
           images: { orderBy: { sortOrder: "asc" } },
-          variants: { orderBy: { sortOrder: "asc" }, take: 1 },
         },
       })
     : null;
@@ -916,111 +928,84 @@ async function saveProduct(
   let savedProductId: string;
 
   try {
-    savedProductId = await db.$transaction(async (transaction) => {
-      let nextProductId = productId;
-      const auditAction = productId ? "product.saved" : "product.created";
+    savedProductId = await db.$transaction(
+      async (transaction) => {
+        let nextProductId = productId;
+        const auditAction = productId ? "product.saved" : "product.created";
 
-      if (productId) {
-        const current = await transaction.product.findFirst({
-          where: { id: productId, boothId },
-        });
-        if (!current) throw new Error("Product not found in this booth.");
+        if (productId) {
+          const current = await transaction.product.findFirst({
+            where: { id: productId, boothId },
+          });
+          if (!current) throw new Error("Product not found in this booth.");
 
-        await transaction.product.update({
-          where: { id: productId },
-          data: {
-            name,
-            slug,
-            sku,
-            eyebrow: eyebrow || null,
-            shortDescription: shortDescription || null,
-            description,
-            priceCents,
-            status,
-            featured: booleanField(formData, "featured"),
-            tags,
-          },
-        });
-        const resolvedVariantId = variantId ?? existing?.variants[0]?.id;
-        if (resolvedVariantId) {
-          const updatedVariant = await transaction.productVariant.updateMany({
-            where: { id: resolvedVariantId, productId },
+          await transaction.product.update({
+            where: { id: productId },
             data: {
-              sku,
-              label: variantLabel,
+              name,
+              slug,
+              sku: sku || null,
+              eyebrow: eyebrow || null,
+              shortDescription: shortDescription || null,
+              description,
               priceCents,
-              status: variantStatus,
-              stockQuantity,
-              fulfillmentNote: fulfillmentNote || null,
+              status,
+              featured: booleanField(formData, "featured"),
+              tags,
             },
           });
-          if (!updatedVariant.count) {
-            throw new Error("Product variant not found in this product.");
-          }
         } else {
-          await transaction.productVariant.create({
+          const created = await transaction.product.create({
             data: {
-              productId,
-              sku,
-              label: variantLabel,
+              boothId,
+              name,
+              slug,
+              sku: sku || null,
+              eyebrow: eyebrow || null,
+              shortDescription: shortDescription || null,
+              description,
               priceCents,
-              status: variantStatus,
-              stockQuantity,
-              fulfillmentNote: fulfillmentNote || null,
+              status,
+              featured: booleanField(formData, "featured"),
+              tags,
             },
+            select: { id: true },
+          });
+          nextProductId = created.id;
+        }
+
+        if (!nextProductId) throw new Error("Product could not be saved.");
+        const variantSummary = await synchronizeProductVariants(
+          transaction,
+          nextProductId,
+          variantManifest,
+        );
+        await synchronizeProductInventoryStatus(transaction, [nextProductId]);
+        await transaction.productImage.deleteMany({
+          where: { productId: nextProductId },
+        });
+        for (const image of resolvedImages) {
+          await transaction.productImage.create({
+            data: { productId: nextProductId, ...image },
           });
         }
-      } else {
-        const created = await transaction.product.create({
+        await transaction.auditLog.create({
           data: {
             boothId,
-            name,
-            slug,
-            sku,
-            eyebrow: eyebrow || null,
-            shortDescription: shortDescription || null,
-            description,
-            priceCents,
-            status,
-            featured: booleanField(formData, "featured"),
-            tags,
-            variants: {
-              create: {
-                sku,
-                label: variantLabel,
-                priceCents,
-                status: variantStatus,
-                stockQuantity,
-                fulfillmentNote: fulfillmentNote || null,
-              },
+            actorUserId: session.user.id,
+            action: auditAction,
+            entityType: "Product",
+            entityId: nextProductId,
+            metadata: {
+              variants: variantManifest.length,
+              ...variantSummary,
             },
           },
-          select: { id: true },
         });
-        nextProductId = created.id;
-      }
-
-      if (!nextProductId) throw new Error("Product could not be saved.");
-      await synchronizeProductInventoryStatus(transaction, [nextProductId]);
-      await transaction.productImage.deleteMany({
-        where: { productId: nextProductId },
-      });
-      for (const image of resolvedImages) {
-        await transaction.productImage.create({
-          data: { productId: nextProductId, ...image },
-        });
-      }
-      await transaction.auditLog.create({
-        data: {
-          boothId,
-          actorUserId: session.user.id,
-          action: auditAction,
-          entityType: "Product",
-          entityId: nextProductId,
-        },
-      });
-      return nextProductId;
-    });
+        return nextProductId;
+      },
+      { isolationLevel: "Serializable" },
+    );
   } catch (error) {
     if (hasCode(error, "P2002")) {
       return {
@@ -1028,9 +1013,9 @@ async function saveProduct(
       };
     }
     if (
-      error instanceof Error &&
-      (error.message === "Product not found in this booth." ||
-        error.message === "Product variant not found in this product.")
+      error instanceof ProductVariantScopeError ||
+      (error instanceof Error &&
+        error.message === "Product not found in this booth.")
     ) {
       return {
         error: strings.productUnavailable,
