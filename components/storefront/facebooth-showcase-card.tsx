@@ -32,6 +32,7 @@ export function FaceboothShowcaseCard({
             fill
             sizes="(max-width: 720px) 100vw, 48vw"
             src={showcase.previewUrl}
+            unoptimized
           />
         ) : (
           <div className={styles.previewFallback} aria-hidden="true">

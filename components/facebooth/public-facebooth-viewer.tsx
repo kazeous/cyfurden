@@ -47,6 +47,7 @@ function ViewerFallback({
           priority
           sizes="(max-width: 900px) 100vw, 72vw"
           src={previewUrl}
+          unoptimized
         />
       ) : (
         <div className={styles.fallbackArt} aria-hidden="true">
@@ -174,6 +175,7 @@ export function PublicFaceboothViewer({
                       fill
                       sizes="(max-width: 620px) 100vw, 33vw"
                       src={item.artworkUrl}
+                      unoptimized
                     />
                   ) : (
                     <span>{strings.artworkFallback}</span>

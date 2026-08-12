@@ -19,6 +19,7 @@ test("Phase 15D adds the manager-only Facebooth hub without widening STAFF acces
   assert.match(hub, /duplicateFaceboothProjectAction/);
   assert.match(hub, /deleteFaceboothProjectAction/);
   assert.match(hub, /parseFaceboothExportFile/);
+  assert.equal((hub.match(/\bunoptimized\b/g) ?? []).length, 1);
   assert.match(route, /requireBoothRole\(boothId, \["OWNER", "ADMIN"\]\)/);
 });
 

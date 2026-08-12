@@ -61,6 +61,7 @@ function ProjectPreview({ project }: { project: FaceboothLibraryProject }) {
         fill
         sizes="(max-width: 700px) 100vw, 320px"
         src={project.previewUrl}
+        unoptimized
       />
     );
   }

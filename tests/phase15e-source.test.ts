@@ -44,6 +44,7 @@ test("Phase 15E gates and lazy-loads a display-only public viewer", async () => 
     /aria-hidden="true" className=\{styles\.fallbackUnderlay\}/,
   );
   assert.match(viewer, /displayOnly/);
+  assert.equal((viewer.match(/\bunoptimized\b/g) ?? []).length, 2);
   assert.doesNotMatch(
     viewer,
     /Product|cart|stock|reservation|promotion|gacha|payment/i,
@@ -52,6 +53,7 @@ test("Phase 15E gates and lazy-loads a display-only public viewer", async () => 
   assert.match(webgl, /showSelection=\{false\}/);
   assert.match(canvasRuntime, /!ready \|\| contextLost/);
   assert.match(storefront, /FaceboothShowcaseCard/);
+  assert.equal((card.match(/\bunoptimized\b/g) ?? []).length, 1);
   assert.doesNotMatch(card, /@react-three|three|facebooth-canvas/i);
   assert.doesNotMatch(
     `${publicRead}\n${route}\n${viewer}\n${webgl}`,
