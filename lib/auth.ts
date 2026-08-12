@@ -1,7 +1,12 @@
 import { prismaAdapter } from "@better-auth/prisma-adapter";
 import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
+import { admin, twoFactor } from "better-auth/plugins";
 import { db } from "@/lib/db";
+import {
+  platformAuthAccessControl,
+  platformAuthRoles,
+} from "@/lib/platform-auth-access";
 
 const googleEnabled = Boolean(
   process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET,
@@ -46,6 +51,37 @@ export const auth = betterAuth({
   database: prismaAdapter(db, {
     provider: "postgresql",
   }),
+  session: {
+    additionalFields: {
+      platformAuthenticatedAt: {
+        type: "date",
+        required: false,
+        input: false,
+      },
+    },
+  },
+  databaseHooks: {
+    session: {
+      create: {
+        async before(session, context) {
+          if (context?.path !== "/two-factor/verify-totp") return;
+          const existingSession = context.context.session?.session as
+            | { platformAuthenticatedAt?: Date | string | null }
+            | null
+            | undefined;
+          if (existingSession && !existingSession.platformAuthenticatedAt) {
+            return;
+          }
+          return {
+            data: {
+              ...session,
+              platformAuthenticatedAt: new Date(),
+            },
+          };
+        },
+      },
+    },
+  },
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
@@ -60,7 +96,19 @@ export const auth = betterAuth({
         },
       }
     : {},
-  plugins: [nextCookies()],
+  plugins: [
+    admin({
+      ac: platformAuthAccessControl,
+      roles: platformAuthRoles,
+      defaultRole: "user",
+      bannedUserMessage: "This account is currently unavailable.",
+    }),
+    twoFactor({
+      issuer: "Cyfurden",
+      trustDeviceMaxAge: 0,
+    }),
+    nextCookies(),
+  ],
 });
 
 export const isGoogleAuthEnabled = googleEnabled;

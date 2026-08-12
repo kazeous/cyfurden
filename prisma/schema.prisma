@@ -82,16 +82,89 @@ enum FaceboothProjectKind {
   SCENE
 }
 
+enum PlatformRole {
+  PLATFORM_VIEWER
+  PLATFORM_OPERATOR
+  PLATFORM_SUPER_ADMIN
+}
+
+enum PlatformGrantStatus {
+  ACTIVE
+  REVOKED
+}
+
+enum BoothServiceState {
+  ACTIVE
+  SUSPENDED
+  DELETION_PENDING
+}
+
+enum PlatformAuditTargetType {
+  PLATFORM
+  USER
+  BOOTH
+  MEMBERSHIP
+  PLATFORM_ROLE_GRANT
+  QUOTA
+  STORAGE_ASSET
+  STORAGE_RECONCILIATION
+  DELETION_REQUEST
+}
+
+enum PlatformDeletionTargetType {
+  USER
+  BOOTH
+}
+
+enum PlatformDeletionState {
+  PENDING
+  CANCELLED
+  FINALIZING
+  COMPLETED
+  BLOCKED
+}
+
+enum StorageAssetPurpose {
+  BOOTH_LOGO
+  PAYMENT_QR
+  PRODUCT_IMAGE
+  FACEBOOTH_ARTWORK
+  FACEBOOTH_PREVIEW
+}
+
+enum StorageAssetState {
+  RESERVED
+  VERIFIED
+  DETACHED
+  DELETION_PENDING
+  DELETED
+  MISSING
+  ORPHANED
+}
+
+enum StorageReconciliationStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
 model User {
   id                       String                 @id
   name                     String
   email                    String                 @unique
   emailVerified            Boolean                @default(false)
   image                    String?
+  role                     String?                @default("user")
+  banned                   Boolean?               @default(false)
+  banReason                String?
+  banExpires               DateTime?
+  twoFactorEnabled         Boolean?               @default(false)
   createdAt                DateTime               @default(now())
   updatedAt                DateTime               @updatedAt
   sessions                 Session[]
   accounts                 Account[]
+  twoFactors               TwoFactor[]
   ownedBooths              Booth[]                @relation("BoothOwner")
   memberships              BoothMembership[]
   invitationsSent          TeamInvitation[]       @relation("InvitationSender")
@@ -102,20 +175,24 @@ model User {
   faceboothProjectsUpdated FaceboothProject[]     @relation("FaceboothProjectUpdater")
   faceboothPublications    FaceboothPublication[] @relation("FaceboothPublisher")
   auditLogs                AuditLog[]
+  platformRoleGrant        PlatformRoleGrant?
+  quotaOverride            UserQuotaOverride?
 
   @@map("user")
 }
 
 model Session {
-  id        String   @id
-  expiresAt DateTime
-  token     String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  ipAddress String?
-  userAgent String?
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                      String    @id
+  expiresAt               DateTime
+  token                   String    @unique
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  ipAddress               String?
+  userAgent               String?
+  impersonatedBy          String?
+  platformAuthenticatedAt DateTime?
+  userId                  String
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("session")
@@ -154,36 +231,60 @@ model Verification {
   @@map("verification")
 }
 
+model TwoFactor {
+  id                      String    @id
+  secret                  String
+  backupCodes             String
+  userId                  String
+  verified                Boolean   @default(false)
+  failedVerificationCount Int       @default(0)
+  lockedUntil             DateTime?
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId])
+  @@index([secret])
+  @@map("twoFactor")
+}
+
 model Booth {
-  id                   String                   @id @default(cuid())
-  slug                 String                   @unique
-  name                 String
-  logoObjectKey        String?
-  socialLinks          Json?
-  status               BoothStatus              @default(DRAFT)
-  locale               String                   @default("en")
-  currency             String                   @default("VND")
-  ownerId              String
-  owner                User                     @relation("BoothOwner", fields: [ownerId], references: [id], onDelete: Restrict)
-  createdAt            DateTime                 @default(now())
-  updatedAt            DateTime                 @updatedAt
-  memberships          BoothMembership[]
-  invitations          TeamInvitation[]
-  storefront           StorefrontConfig?
-  paymentInstructions  BoothPaymentInstruction?
-  categories           Category[]
-  products             Product[]
-  promotions           QuantityPromotion[]
-  events               Event[]
-  orders               Order[]
-  gacha                GachaConfig?
-  gachaBanners         GachaBanner[]
-  faceboothProjects    FaceboothProject[]
-  faceboothPublication FaceboothPublication?
-  auditLogs            AuditLog[]
+  id                          String                     @id @default(cuid())
+  slug                        String                     @unique
+  name                        String
+  logoObjectKey               String?
+  socialLinks                 Json?
+  status                      BoothStatus                @default(DRAFT)
+  serviceState                BoothServiceState          @default(ACTIVE)
+  serviceReason               String?
+  serviceStateChangedByUserId String?
+  serviceStateChangedAt       DateTime?
+  serviceVersion              Int                        @default(1)
+  locale                      String                     @default("en")
+  currency                    String                     @default("VND")
+  ownerId                     String
+  owner                       User                       @relation("BoothOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  createdAt                   DateTime                   @default(now())
+  updatedAt                   DateTime                   @updatedAt
+  memberships                 BoothMembership[]
+  invitations                 TeamInvitation[]
+  storefront                  StorefrontConfig?
+  paymentInstructions         BoothPaymentInstruction?
+  categories                  Category[]
+  products                    Product[]
+  promotions                  QuantityPromotion[]
+  events                      Event[]
+  orders                      Order[]
+  gacha                       GachaConfig?
+  gachaBanners                GachaBanner[]
+  faceboothProjects           FaceboothProject[]
+  faceboothPublication        FaceboothPublication?
+  auditLogs                   AuditLog[]
+  quotaOverride               BoothQuotaOverride?
+  storageAssets               StorageAsset[]
+  storageReconciliations      StorageReconciliationRun[]
 
   @@index([ownerId])
   @@index([status])
+  @@index([serviceState])
 }
 
 model BoothMembership {
@@ -542,4 +643,157 @@ model AuditLog {
 
   @@index([boothId, createdAt])
   @@index([actorUserId])
+}
+
+model PlatformRoleGrant {
+  id              String              @id @default(cuid())
+  userId          String              @unique
+  role            PlatformRole
+  status          PlatformGrantStatus @default(ACTIVE)
+  grantedByUserId String
+  grantReason     String
+  grantedAt       DateTime            @default(now())
+  revokedByUserId String?
+  revokeReason    String?
+  revokedAt       DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([role, status])
+  @@index([grantedByUserId])
+}
+
+model PlatformAuditLog {
+  id             String                  @id @default(cuid())
+  actorUserId    String
+  action         String
+  targetType     PlatformAuditTargetType
+  targetId       String?
+  reason         String
+  beforeMetadata Json?
+  afterMetadata  Json?
+  correlationId  String
+  createdAt      DateTime                @default(now())
+
+  @@index([createdAt(sort: Desc)])
+  @@index([actorUserId, createdAt(sort: Desc)])
+  @@index([targetType, targetId, createdAt(sort: Desc)])
+  @@index([correlationId])
+}
+
+model PlatformDeletionRequest {
+  id                String                     @id @default(cuid())
+  targetType        PlatformDeletionTargetType
+  targetId          String
+  state             PlatformDeletionState      @default(PENDING)
+  requestedByUserId String
+  reason            String
+  requestedAt       DateTime                   @default(now())
+  coolingOffEndsAt  DateTime
+  blockers          Json?
+  cancelledByUserId String?
+  cancelledAt       DateTime?
+  finalizedByUserId String?
+  finalizedAt       DateTime?
+  lastErrorCode     String?
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+
+  @@index([targetType, targetId, state])
+  @@index([state, coolingOffEndsAt])
+}
+
+model PlatformQuotaDefault {
+  id                   String   @id @default("global")
+  maxOwnedBooths       Int      @default(5)
+  maxTeamSeats         Int      @default(10)
+  maxProducts          Int      @default(500)
+  maxFaceboothProjects Int      @default(100)
+  maxStorageBytes      BigInt   @default(5368709120)
+  updatedByUserId      String?
+  updateReason         String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model UserQuotaOverride {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  maxOwnedBooths  Int
+  updatedByUserId String
+  reason          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([updatedByUserId])
+}
+
+model BoothQuotaOverride {
+  id                   String   @id @default(cuid())
+  boothId              String   @unique
+  maxTeamSeats         Int?
+  maxProducts          Int?
+  maxFaceboothProjects Int?
+  maxStorageBytes      BigInt?
+  updatedByUserId      String
+  reason               String
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  booth                Booth    @relation(fields: [boothId], references: [id], onDelete: Cascade)
+
+  @@index([updatedByUserId])
+}
+
+model StorageAsset {
+  id                    String              @id @default(cuid())
+  boothId               String
+  objectKey             String              @unique
+  purpose               StorageAssetPurpose
+  byteLength            BigInt
+  verifiedMime          String?
+  state                 StorageAssetState   @default(RESERVED)
+  associatedRecordType  String?
+  associatedRecordId    String?
+  reservationExpiresAt  DateTime?
+  verifiedAt            DateTime?
+  detachedAt            DateTime?
+  deletionRequestedAt   DateTime?
+  deletedAt             DateTime?
+  deletionAttempts      Int                 @default(0)
+  lastDeletionErrorCode String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  booth                 Booth               @relation(fields: [boothId], references: [id], onDelete: Cascade)
+
+  @@index([boothId, state])
+  @@index([boothId, purpose, state])
+  @@index([state, reservationExpiresAt])
+  @@index([associatedRecordType, associatedRecordId])
+}
+
+model StorageReconciliationRun {
+  id                      String                      @id @default(cuid())
+  boothId                 String
+  status                  StorageReconciliationStatus @default(PENDING)
+  requestedByUserId       String
+  providerCursor          String?
+  trackedObjectCount      Int                         @default(0)
+  trackedBytes            BigInt                      @default(0)
+  reservedObjectCount     Int                         @default(0)
+  reservedBytes           BigInt                      @default(0)
+  untrackedObjectCount    Int                         @default(0)
+  untrackedBytes          BigInt                      @default(0)
+  missingObjectCount      Int                         @default(0)
+  sizeMismatchObjectCount Int                         @default(0)
+  safeErrorCode           String?
+  startedAt               DateTime?
+  completedAt             DateTime?
+  createdAt               DateTime                    @default(now())
+  updatedAt               DateTime                    @updatedAt
+  booth                   Booth                       @relation(fields: [boothId], references: [id], onDelete: Cascade)
+
+  @@index([boothId, createdAt(sort: Desc)])
+  @@index([status, createdAt])
 }

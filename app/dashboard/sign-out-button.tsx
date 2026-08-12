@@ -21,6 +21,7 @@ export function SignOutButton({ locale }: { locale: Locale }) {
 
   return (
     <button
+      aria-label={pending ? strings.signingOut : strings.signOut}
       className={styles.signOutButton}
       type="button"
       onClick={handleSignOut}

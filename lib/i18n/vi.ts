@@ -541,6 +541,46 @@ export const viCatalogue: Catalogue = {
     errorGeneric: "Có lỗi xảy ra. Vui lòng thử lại.",
     errorGoogleUnavailable:
       "Đăng nhập Google chưa được cấu hình cho bản triển khai này.",
+    twoFactorTitle: "Xác minh phiên đăng nhập",
+    twoFactorBody:
+      "Nhập mã sáu chữ số trong ứng dụng xác thực để hoàn tất đăng nhập.",
+    twoFactorEyebrow: "Xác thực hai bước",
+    twoFactorCodeLabel: "Mã từ ứng dụng xác thực",
+    twoFactorCodePlaceholder: "000000",
+    twoFactorSubmit: "Xác minh mã",
+    twoFactorPending: "Đang xác minh…",
+    twoFactorInvalid: "Mã chưa được chấp nhận. Kiểm tra và thử lại nhé.",
+    twoFactorExpired:
+      "Yêu cầu đăng nhập này đã hết hạn. Hãy quay lại và đăng nhập lại.",
+    twoFactorBackToSignIn: "Quay lại đăng nhập",
+    securityTitle: "Bảo mật tài khoản",
+    securityBody:
+      "Bảo vệ tài khoản bằng ứng dụng xác thực. Quyền quản trị nền tảng yêu cầu tài khoản mật khẩu và xác thực hai bước đã được xác minh.",
+    securityEyebrow: "Bảo vệ đăng nhập",
+    securityBack: "Quay lại danh sách booth",
+    securityCredentialRequired:
+      "Tài khoản này chưa có thông tin đăng nhập bằng mật khẩu. Không thể bật quyền quản trị nền tảng cho tài khoản chỉ dùng Google.",
+    securityCredentialSignInRequired:
+      "Hãy đăng xuất, rồi đăng nhập bằng mật khẩu và mã xác thực trước khi dùng quyền quản trị nền tảng.",
+    securityDisabled: "Xác thực hai bước chưa được bật.",
+    securityEnabled: "Xác thực hai bước đã được bật.",
+    securityPasswordLabel: "Mật khẩu hiện tại",
+    securityEnable: "Thiết lập ứng dụng xác thực",
+    securityEnabling: "Đang chuẩn bị…",
+    securityScanTitle: "Thêm Cyfurden vào ứng dụng xác thực",
+    securityScanBody:
+      "Quét mã QR này, sau đó nhập mã sáu chữ số hiển thị trong ứng dụng.",
+    securityQrAlt: "Mã QR thiết lập ứng dụng xác thực",
+    securityVerify: "Hoàn tất thiết lập",
+    securityVerifying: "Đang xác minh…",
+    securityBackupTitle: "Lưu mã khôi phục",
+    securityBackupBody:
+      "Cất các mã này ở nơi an toàn. Mỗi mã chỉ dùng một lần để khôi phục tài khoản và không thay thế bước xác minh nền tảng.",
+    securityComplete: "Xác thực hai bước đã sẵn sàng.",
+    securityRefreshTitle: "Làm mới xác minh nền tảng",
+    securityRefreshBody:
+      "Nhập mã xác thực mới trước thao tác nền tảng được bảo vệ. Bước xác minh có hiệu lực trong 15 phút.",
+    securityRefreshed: "Đã làm mới xác minh nền tảng.",
     pageBrandAria: "Trang chủ Cyfurden",
     pageBrandSubline: "Studio booth dành cho nghệ sĩ độc lập",
     pageBackHome: "Về trang chủ",

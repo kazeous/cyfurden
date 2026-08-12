@@ -95,6 +95,9 @@ export function AuthForm({
     setPending(true);
 
     try {
+      if (!isSignUp) {
+        window.sessionStorage.setItem("cyfurden:auth-return-to", destination);
+      }
       const result = isSignUp
         ? await signUp.email({
             callbackURL: destination,
@@ -120,6 +123,16 @@ export function AuthForm({
         return;
       }
 
+      if (
+        !isSignUp &&
+        result.data &&
+        "twoFactorRedirect" in result.data &&
+        result.data.twoFactorRedirect === true
+      ) {
+        return;
+      }
+
+      window.sessionStorage.removeItem("cyfurden:auth-return-to");
       router.replace(destination);
       router.refresh();
     } catch {

@@ -552,6 +552,46 @@ export const enCatalogue: Catalogue = {
     errorGeneric: "Something went wrong. Try again.",
     errorGoogleUnavailable:
       "Google sign-in is not configured for this deployment.",
+    twoFactorTitle: "Verify your sign-in",
+    twoFactorBody:
+      "Enter the six-digit code from your authenticator app to finish signing in.",
+    twoFactorEyebrow: "Two-factor authentication",
+    twoFactorCodeLabel: "Authenticator code",
+    twoFactorCodePlaceholder: "000000",
+    twoFactorSubmit: "Verify code",
+    twoFactorPending: "Verifying…",
+    twoFactorInvalid: "That code was not accepted. Check it and try again.",
+    twoFactorExpired:
+      "This sign-in challenge expired. Return to sign in and start again.",
+    twoFactorBackToSignIn: "Back to sign in",
+    securityTitle: "Account security",
+    securityBody:
+      "Protect this account with an authenticator app. Platform access requires a password account and verified two-factor authentication.",
+    securityEyebrow: "Sign-in protection",
+    securityBack: "Back to your booths",
+    securityCredentialRequired:
+      "This account does not have a password credential. Platform access cannot be enabled for a Google-only account.",
+    securityCredentialSignInRequired:
+      "Sign out, then sign in with your password and authenticator code before using platform controls.",
+    securityDisabled: "Two-factor authentication is not enabled.",
+    securityEnabled: "Two-factor authentication is enabled.",
+    securityPasswordLabel: "Current password",
+    securityEnable: "Set up authenticator",
+    securityEnabling: "Preparing…",
+    securityScanTitle: "Add Cyfurden to your authenticator",
+    securityScanBody:
+      "Scan this QR code, then enter the six-digit code shown by the app.",
+    securityQrAlt: "Authenticator setup QR code",
+    securityVerify: "Finish setup",
+    securityVerifying: "Verifying…",
+    securityBackupTitle: "Save your recovery codes",
+    securityBackupBody:
+      "Store these codes somewhere safe. Each code can be used once for account recovery; it does not satisfy platform step-up verification.",
+    securityComplete: "Two-factor authentication is ready.",
+    securityRefreshTitle: "Refresh platform verification",
+    securityRefreshBody:
+      "Enter a fresh authenticator code before a protected platform action. The step-up remains current for 15 minutes.",
+    securityRefreshed: "Platform verification refreshed.",
     pageBrandAria: "Cyfurden home",
     pageBrandSubline: "An independent-artist booth studio",
     pageBackHome: "Back to home",

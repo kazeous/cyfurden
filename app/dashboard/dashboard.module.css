@@ -26,6 +26,7 @@
 .brand,
 .accountActions,
 .signOutButton,
+.securityLink,
 .pageHeader,
 .boothCardHead,
 .boothMeta,
@@ -99,6 +100,20 @@
   font-weight: 800;
 }
 
+.securityLink {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--forest-dark);
+  background: var(--color-panel);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.securityLink svg,
 .signOutButton svg,
 .primaryAction svg,
 .secondaryAction svg,
@@ -574,10 +589,12 @@
 
   .brand small,
   .accountName,
+  .securityLink span,
   .signOutButton span {
     display: none;
   }
 
+  .securityLink,
   .signOutButton {
     width: 44px;
     justify-content: center;
