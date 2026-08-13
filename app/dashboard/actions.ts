@@ -4,12 +4,12 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { requireUser } from "@/lib/authorization";
-import { canOwnAnotherBooth } from "@/lib/booth-limit";
-import { db } from "@/lib/db";
 import { isReservedBoothSlug } from "@/lib/demo-booth";
 import { DEFAULT_GACHA_RATES } from "@/lib/gacha-rates";
 import { readLocaleCookie } from "@/lib/i18n/server-locale";
 import { getWorkspaceStrings } from "@/lib/i18n/workspace";
+import { checkOwnedBoothQuota } from "@/lib/platform-quotas";
+import { runSerializableTransaction } from "@/lib/serializable-transaction";
 import { createDefaultStorefrontDocument } from "@/lib/storefront-document";
 import {
   defaultPaymentContent,
@@ -64,95 +64,76 @@ export async function createBooth(
     };
   }
 
-  let boothId: string | null = null;
+  let boothResult: { id: string | null; limit: number } | null = null;
 
   try {
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      try {
-        boothId = await db.$transaction(
-          async (transaction) => {
-            const ownedBoothCount = await transaction.booth.count({
-              where: { ownerId: session.user.id },
-            });
-            if (!canOwnAnotherBooth(ownedBoothCount)) return null;
+    boothResult = await runSerializableTransaction(async (transaction) => {
+      const quota = await checkOwnedBoothQuota(transaction, session.user.id);
+      if (!quota.allowed) return { id: null, limit: quota.limit };
 
-            const initialStorefrontDocument = createDefaultStorefrontDocument(
-              parsed.data.name,
-            );
-            const booth = await transaction.booth.create({
-              data: {
-                name: parsed.data.name,
-                slug: parsed.data.slug,
-                ownerId: session.user.id,
-                status: "DRAFT",
-              },
-              select: { id: true },
-            });
+      const initialStorefrontDocument = createDefaultStorefrontDocument(
+        parsed.data.name,
+      );
+      const booth = await transaction.booth.create({
+        data: {
+          name: parsed.data.name,
+          slug: parsed.data.slug,
+          ownerId: session.user.id,
+          status: "DRAFT",
+        },
+        select: { id: true },
+      });
 
-            await Promise.all([
-              transaction.boothMembership.create({
-                data: {
-                  boothId: booth.id,
-                  userId: session.user.id,
-                  role: "OWNER",
-                  status: "ACTIVE",
-                },
-              }),
-              transaction.storefrontConfig.create({
-                data: {
-                  boothId: booth.id,
-                  draftDocument: initialStorefrontDocument,
-                  updatedById: session.user.id,
-                },
-              }),
-              transaction.boothPaymentInstruction.create({
-                data: {
-                  boothId: booth.id,
-                  bankName: "",
-                  bankCode: null,
-                  accountName: "",
-                  accountNumber: "",
-                  paymentLabel: defaultPaymentContent.label,
-                  instructions: defaultPaymentContent.instructions,
-                  disclaimer: defaultPaymentContent.disclaimer,
-                },
-              }),
-              transaction.gachaConfig.create({
-                data: {
-                  boothId: booth.id,
-                  enabled: false,
-                  rates: { ...DEFAULT_GACHA_RATES },
-                },
-              }),
-              transaction.quantityPromotion.create({
-                data: {
-                  boothId: booth.id,
-                  name: defaultPromotionName,
-                  active: false,
-                },
-              }),
-            ]);
-
-            return booth.id;
+      await Promise.all([
+        transaction.boothMembership.create({
+          data: {
+            boothId: booth.id,
+            userId: session.user.id,
+            role: "OWNER",
+            status: "ACTIVE",
           },
-          {
-            isolationLevel: "Serializable",
+        }),
+        transaction.storefrontConfig.create({
+          data: {
+            boothId: booth.id,
+            draftDocument: initialStorefrontDocument,
+            updatedById: session.user.id,
           },
-        );
+        }),
+        transaction.boothPaymentInstruction.create({
+          data: {
+            boothId: booth.id,
+            bankName: "",
+            bankCode: null,
+            accountName: "",
+            accountNumber: "",
+            paymentLabel: defaultPaymentContent.label,
+            instructions: defaultPaymentContent.instructions,
+            disclaimer: defaultPaymentContent.disclaimer,
+          },
+        }),
+        transaction.gachaConfig.create({
+          data: {
+            boothId: booth.id,
+            enabled: false,
+            rates: { ...DEFAULT_GACHA_RATES },
+          },
+        }),
+        transaction.quantityPromotion.create({
+          data: {
+            boothId: booth.id,
+            name: defaultPromotionName,
+            active: false,
+          },
+        }),
+      ]);
 
-        break;
-      } catch (error) {
-        const isSerializationConflict =
-          error instanceof Prisma.PrismaClientKnownRequestError &&
-          error.code === "P2034";
-        if (isSerializationConflict && attempt < 2) continue;
-        throw error;
-      }
-    }
+      return { id: booth.id, limit: quota.limit };
+    });
 
-    if (!boothId) {
+    if (!boothResult.id) {
       return {
-        message: strings.boothLimit,
+        message: strings.boothLimit(boothResult.limit),
       };
     }
   } catch (error) {
@@ -174,5 +155,5 @@ export async function createBooth(
     };
   }
 
-  redirect(`/manage/${boothId}/storefront`);
+  redirect(`/manage/${boothResult.id}/storefront`);
 }

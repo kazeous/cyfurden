@@ -50,7 +50,10 @@ import {
   synchronizeProductVariants,
 } from "@/lib/product-variants";
 import { MAX_PROMOTION_QUANTITY } from "@/lib/quantity-promotions";
+import { checkProductQuota } from "@/lib/platform-quotas";
 import { requireBoothServiceAccess } from "@/lib/platform-targets";
+import { runSerializableTransaction } from "@/lib/serializable-transaction";
+import { attachStorageAssets, detachStorageAssets } from "@/lib/storage-ledger";
 import {
   acceptTeamInvitation,
   createTeamInvitation,
@@ -316,34 +319,36 @@ export async function saveBoothSettingsAction(
           updatedById: session.user.id,
         },
       });
-      await transaction.boothPaymentInstruction.upsert({
-        where: { boothId },
-        create: {
-          boothId,
-          bankName: payment.bankName,
-          bankCode: payment.bankCode || null,
-          accountName: payment.accountName,
-          accountNumber: payment.accountNumber,
-          paymentLabel: payment.paymentLabel,
-          qrObjectKey,
-          transferReferenceTemplate:
-            payment.transferReferenceTemplate || "{code}",
-          instructions: payment.instructions,
-          disclaimer: payment.disclaimer || defaultPaymentContent.disclaimer,
-        },
-        update: {
-          bankName: payment.bankName,
-          bankCode: payment.bankCode || null,
-          accountName: payment.accountName,
-          accountNumber: payment.accountNumber,
-          paymentLabel: payment.paymentLabel,
-          qrObjectKey,
-          transferReferenceTemplate:
-            payment.transferReferenceTemplate || "{code}",
-          instructions: payment.instructions,
-          disclaimer: payment.disclaimer || defaultPaymentContent.disclaimer,
-        },
-      });
+      const paymentInstruction =
+        await transaction.boothPaymentInstruction.upsert({
+          where: { boothId },
+          create: {
+            boothId,
+            bankName: payment.bankName,
+            bankCode: payment.bankCode || null,
+            accountName: payment.accountName,
+            accountNumber: payment.accountNumber,
+            paymentLabel: payment.paymentLabel,
+            qrObjectKey,
+            transferReferenceTemplate:
+              payment.transferReferenceTemplate || "{code}",
+            instructions: payment.instructions,
+            disclaimer: payment.disclaimer || defaultPaymentContent.disclaimer,
+          },
+          update: {
+            bankName: payment.bankName,
+            bankCode: payment.bankCode || null,
+            accountName: payment.accountName,
+            accountNumber: payment.accountNumber,
+            paymentLabel: payment.paymentLabel,
+            qrObjectKey,
+            transferReferenceTemplate:
+              payment.transferReferenceTemplate || "{code}",
+            instructions: payment.instructions,
+            disclaimer: payment.disclaimer || defaultPaymentContent.disclaimer,
+          },
+          select: { id: true },
+        });
       await transaction.booth.update({
         where: { id: boothId },
         data: {
@@ -352,6 +357,31 @@ export async function saveBoothSettingsAction(
           socialLinks: compactBoothSocialLinks(socialResult.data),
         },
       });
+      await detachStorageAssets(transaction, {
+        boothId,
+        objectKeys: [booth.logoObjectKey, existingPayment?.qrObjectKey].filter(
+          (objectKey): objectKey is string =>
+            Boolean(objectKey) &&
+            objectKey !== logoObjectKey &&
+            objectKey !== qrObjectKey,
+        ),
+      });
+      if (logoObjectKey) {
+        await attachStorageAssets(transaction, {
+          boothId,
+          objectKeys: [logoObjectKey],
+          associatedRecordType: "Booth",
+          associatedRecordId: boothId,
+        });
+      }
+      if (qrObjectKey) {
+        await attachStorageAssets(transaction, {
+          boothId,
+          objectKeys: [qrObjectKey],
+          associatedRecordType: "BoothPaymentInstruction",
+          associatedRecordId: paymentInstruction.id,
+        });
+      }
       await transaction.auditLog.create({
         data: {
           boothId,
@@ -547,34 +577,36 @@ export async function saveStorefrontAction(
           updatedById: session.user.id,
         },
       });
-      await transaction.boothPaymentInstruction.upsert({
-        where: { boothId },
-        create: {
-          boothId,
-          bankName: payment.bankName,
-          bankCode: payment.bankCode || null,
-          accountName: payment.accountName,
-          accountNumber: payment.accountNumber,
-          paymentLabel: payment.paymentLabel,
-          qrObjectKey,
-          transferReferenceTemplate:
-            payment.transferReferenceTemplate || "{code}",
-          instructions: payment.instructions,
-          disclaimer: payment.disclaimer || defaultPaymentContent.disclaimer,
-        },
-        update: {
-          bankName: payment.bankName,
-          bankCode: payment.bankCode || null,
-          accountName: payment.accountName,
-          accountNumber: payment.accountNumber,
-          paymentLabel: payment.paymentLabel,
-          qrObjectKey,
-          transferReferenceTemplate:
-            payment.transferReferenceTemplate || "{code}",
-          instructions: payment.instructions,
-          disclaimer: payment.disclaimer || defaultPaymentContent.disclaimer,
-        },
-      });
+      const paymentInstruction =
+        await transaction.boothPaymentInstruction.upsert({
+          where: { boothId },
+          create: {
+            boothId,
+            bankName: payment.bankName,
+            bankCode: payment.bankCode || null,
+            accountName: payment.accountName,
+            accountNumber: payment.accountNumber,
+            paymentLabel: payment.paymentLabel,
+            qrObjectKey,
+            transferReferenceTemplate:
+              payment.transferReferenceTemplate || "{code}",
+            instructions: payment.instructions,
+            disclaimer: payment.disclaimer || defaultPaymentContent.disclaimer,
+          },
+          update: {
+            bankName: payment.bankName,
+            bankCode: payment.bankCode || null,
+            accountName: payment.accountName,
+            accountNumber: payment.accountNumber,
+            paymentLabel: payment.paymentLabel,
+            qrObjectKey,
+            transferReferenceTemplate:
+              payment.transferReferenceTemplate || "{code}",
+            instructions: payment.instructions,
+            disclaimer: payment.disclaimer || defaultPaymentContent.disclaimer,
+          },
+          select: { id: true },
+        });
       await transaction.booth.update({
         where: { id: boothId },
         data: {
@@ -583,6 +615,31 @@ export async function saveStorefrontAction(
           socialLinks: compactBoothSocialLinks(socialResult.data),
         },
       });
+      await detachStorageAssets(transaction, {
+        boothId,
+        objectKeys: [booth.logoObjectKey, existingPayment?.qrObjectKey].filter(
+          (objectKey): objectKey is string =>
+            Boolean(objectKey) &&
+            objectKey !== logoObjectKey &&
+            objectKey !== qrObjectKey,
+        ),
+      });
+      if (logoObjectKey) {
+        await attachStorageAssets(transaction, {
+          boothId,
+          objectKeys: [logoObjectKey],
+          associatedRecordType: "Booth",
+          associatedRecordId: boothId,
+        });
+      }
+      if (qrObjectKey) {
+        await attachStorageAssets(transaction, {
+          boothId,
+          objectKeys: [qrObjectKey],
+          associatedRecordType: "BoothPaymentInstruction",
+          associatedRecordId: paymentInstruction.id,
+        });
+      }
       await transaction.auditLog.create({
         data: {
           boothId,
@@ -663,6 +720,13 @@ const hasCode = (error: unknown, code: string) =>
   error !== null &&
   "code" in error &&
   (error as { code?: unknown }).code === code;
+
+class ProductQuotaExceededError extends Error {
+  constructor(public readonly limit: number) {
+    super("PRODUCT_QUOTA_EXCEEDED");
+    this.name = "ProductQuotaExceededError";
+  }
+}
 
 export async function saveProductAction(
   previousState: ProductSaveState,
@@ -893,86 +957,102 @@ async function saveProduct(
   let savedProductId: string;
 
   try {
-    savedProductId = await db.$transaction(
-      async (transaction) => {
-        await requireBoothServiceAccess(boothId, "MUTATION", transaction);
-        let nextProductId = productId;
-        const auditAction = productId ? "product.saved" : "product.created";
+    savedProductId = await runSerializableTransaction(async (transaction) => {
+      await requireBoothServiceAccess(boothId, "MUTATION", transaction);
+      let nextProductId = productId;
+      const auditAction = productId ? "product.saved" : "product.created";
 
-        if (productId) {
-          const current = await transaction.product.findFirst({
-            where: { id: productId, boothId },
-          });
-          if (!current) throw new Error("Product not found in this booth.");
-
-          await transaction.product.update({
-            where: { id: productId },
-            data: {
-              name,
-              slug,
-              sku: sku || null,
-              eyebrow: eyebrow || null,
-              shortDescription: shortDescription || null,
-              description,
-              priceCents,
-              status,
-              featured: booleanField(formData, "featured"),
-              tags,
-            },
-          });
-        } else {
-          const created = await transaction.product.create({
-            data: {
-              boothId,
-              name,
-              slug,
-              sku: sku || null,
-              eyebrow: eyebrow || null,
-              shortDescription: shortDescription || null,
-              description,
-              priceCents,
-              status,
-              featured: booleanField(formData, "featured"),
-              tags,
-            },
-            select: { id: true },
-          });
-          nextProductId = created.id;
-        }
-
-        if (!nextProductId) throw new Error("Product could not be saved.");
-        const variantSummary = await synchronizeProductVariants(
-          transaction,
-          nextProductId,
-          variantManifest,
-        );
-        await synchronizeProductInventoryStatus(transaction, [nextProductId]);
-        await transaction.productImage.deleteMany({
-          where: { productId: nextProductId },
+      if (productId) {
+        const current = await transaction.product.findFirst({
+          where: { id: productId, boothId },
         });
-        for (const image of resolvedImages) {
-          await transaction.productImage.create({
-            data: { productId: nextProductId, ...image },
-          });
-        }
-        await transaction.auditLog.create({
+        if (!current) throw new Error("Product not found in this booth.");
+
+        await transaction.product.update({
+          where: { id: productId },
           data: {
-            boothId,
-            actorUserId: session.user.id,
-            action: auditAction,
-            entityType: "Product",
-            entityId: nextProductId,
-            metadata: {
-              variants: variantManifest.length,
-              ...variantSummary,
-            },
+            name,
+            slug,
+            sku: sku || null,
+            eyebrow: eyebrow || null,
+            shortDescription: shortDescription || null,
+            description,
+            priceCents,
+            status,
+            featured: booleanField(formData, "featured"),
+            tags,
           },
         });
-        return nextProductId;
-      },
-      { isolationLevel: "Serializable" },
-    );
+      } else {
+        const quota = await checkProductQuota(transaction, boothId);
+        if (!quota.allowed) {
+          throw new ProductQuotaExceededError(quota.limit);
+        }
+        const created = await transaction.product.create({
+          data: {
+            boothId,
+            name,
+            slug,
+            sku: sku || null,
+            eyebrow: eyebrow || null,
+            shortDescription: shortDescription || null,
+            description,
+            priceCents,
+            status,
+            featured: booleanField(formData, "featured"),
+            tags,
+          },
+          select: { id: true },
+        });
+        nextProductId = created.id;
+      }
+
+      if (!nextProductId) throw new Error("Product could not be saved.");
+      const variantSummary = await synchronizeProductVariants(
+        transaction,
+        nextProductId,
+        variantManifest,
+      );
+      await synchronizeProductInventoryStatus(transaction, [nextProductId]);
+      await detachStorageAssets(transaction, {
+        boothId,
+        objectKeys: existing?.images.map((image) => image.objectKey) ?? [],
+        associatedRecordType: "ProductImage",
+      });
+      await transaction.productImage.deleteMany({
+        where: { productId: nextProductId },
+      });
+      for (const image of resolvedImages) {
+        const createdImage = await transaction.productImage.create({
+          data: { productId: nextProductId, ...image },
+          select: { id: true },
+        });
+        await attachStorageAssets(transaction, {
+          boothId,
+          objectKeys: [image.objectKey],
+          associatedRecordType: "ProductImage",
+          associatedRecordId: createdImage.id,
+        });
+      }
+      await transaction.auditLog.create({
+        data: {
+          boothId,
+          actorUserId: session.user.id,
+          action: auditAction,
+          entityType: "Product",
+          entityId: nextProductId,
+          metadata: {
+            variants: variantManifest.length,
+            ...variantSummary,
+          },
+        },
+      });
+      return nextProductId;
+    });
   } catch (error) {
+    if (error instanceof ProductQuotaExceededError) {
+      return { error: strings.productQuotaExceeded(error.limit) };
+    }
     if (hasCode(error, "P2002")) {
       return {
         error: strings.productUnique,
@@ -1831,7 +1911,7 @@ export async function inviteTeamMemberAction(
   }
   if (result.kind === "capacity") {
     return {
-      error: strings.invitationCapacity,
+      error: strings.invitationCapacity(result.limit),
     };
   }
 
@@ -1901,7 +1981,7 @@ export async function updateTeamMemberAction(
     return { error: strings.memberOwnerChange };
   }
   if (result.kind === "capacity") {
-    return { error: strings.memberCapacity };
+    return { error: strings.memberCapacity(result.limit) };
   }
   revalidatePath(`/manage/${boothId}/team`);
   return { success: strings.memberUpdated };

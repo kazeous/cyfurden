@@ -6,6 +6,7 @@ import {
   presignedUploadRequestSchema,
 } from "@/lib/oracle-presign";
 import { requireBoothServiceAccess } from "@/lib/platform-targets";
+import { StorageLedgerError } from "@/lib/storage-ledger";
 
 export const runtime = "nodejs";
 
@@ -69,6 +70,19 @@ export async function POST(request: Request) {
     const presign = await createBoothUploadPresign(parsed.data);
     return NextResponse.json(presign, { status: 200 });
   } catch (error) {
+    if (
+      error instanceof StorageLedgerError &&
+      error.code === "STORAGE_QUOTA_EXCEEDED"
+    ) {
+      return NextResponse.json(
+        {
+          code: error.code,
+          error:
+            "This booth has reached its storage quota. Remove unused media or ask a platform operator to raise it.",
+        },
+        { status: 409 },
+      );
+    }
     console.error("Presigned booth upload creation failed", {
       error,
       purpose: parsed.data.purpose,

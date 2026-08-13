@@ -1073,8 +1073,8 @@ const englishWorkspaceCatalogue = {
       "Use lowercase letters, numbers, and single hyphens only.",
     boothSlugReserved: "That booth address is reserved for the Cyfurden demo.",
     checkFields: "Check the highlighted fields and try again.",
-    boothLimit:
-      "You already own 5 booths. Archive or delete one before creating another.",
+    boothLimit: (maximum: number) =>
+      `You already own ${maximum} booths. Archive or delete one before creating another.`,
     boothSlugUsed: "That booth address is already in use. Try another one.",
     chooseDifferentSlug: "Choose a different booth address.",
     boothCreateFailed:
@@ -1143,6 +1143,8 @@ const englishWorkspaceCatalogue = {
       "The database rejected the price or stock value. If those values are correct, apply the latest database migrations and try again.",
     productSaveFailed:
       "We could not save this product. Check the fields and try again.",
+    productQuotaExceeded: (maximum: number) =>
+      `This booth already has ${maximum} products. Remove a product or ask a platform operator to raise the quota.`,
     promotionQualifying:
       "Choose at least one qualifying product before going live.",
     promotionReward: "Choose at least one reward product before going live.",
@@ -1190,8 +1192,8 @@ const englishWorkspaceCatalogue = {
     invitationAlreadyMember: "This person already belongs to the booth.",
     invitationAlreadyActive:
       "An active invitation already exists for this email.",
-    invitationCapacity:
-      "This booth has filled all 10 active-member and pending-invitation places.",
+    invitationCapacity: (maximum: number) =>
+      `This booth has filled all ${maximum} active-member and pending-invitation places.`,
     invitationRevokeFailed: "The invitation could not be revoked. Try again.",
     invitationInactive: "This invitation is no longer active.",
     invitationRevoked: "Invitation revoked.",
@@ -1199,7 +1201,8 @@ const englishWorkspaceCatalogue = {
     memberUpdateFailed: "Member access could not be updated. Try again.",
     memberMissing: "This member could not be found.",
     memberOwnerChange: "The booth owner cannot be changed here.",
-    memberCapacity: "Revoke an invitation before enabling this member.",
+    memberCapacity: (maximum: number) =>
+      `This booth has filled all ${maximum} places. Revoke an invitation before enabling this member.`,
     memberUpdated: "Member access updated.",
     memberRemoveFailed: "Member could not be removed. Try again.",
     memberOwnerRemove: "The booth owner cannot be removed.",
@@ -2275,8 +2278,8 @@ const vietnameseWorkspaceCatalogue: WorkspaceCatalogue = {
       "Chỉ dùng chữ thường, số và dấu gạch nối đơn trong địa chỉ booth.",
     boothSlugReserved: "Địa chỉ này được dành riêng cho booth demo Cyfurden.",
     checkFields: "Hãy kiểm tra các trường được đánh dấu rồi thử lại.",
-    boothLimit:
-      "Bạn đã sở hữu 5 booth. Hãy lưu trữ hoặc xóa một booth trước khi tạo booth khác.",
+    boothLimit: (maximum) =>
+      `Bạn đã sở hữu ${maximum} booth. Hãy lưu trữ hoặc xóa một booth trước khi tạo booth khác.`,
     boothSlugUsed: "Địa chỉ booth này đã được dùng. Hãy chọn địa chỉ khác.",
     chooseDifferentSlug: "Hãy chọn một địa chỉ booth khác.",
     boothCreateFailed: "Hiện chưa thể tạo booth. Vui lòng thử lại.",
@@ -2340,6 +2343,8 @@ const vietnameseWorkspaceCatalogue: WorkspaceCatalogue = {
       "Cơ sở dữ liệu đã từ chối giá hoặc tồn kho. Nếu các giá trị là đúng, hãy áp dụng migration mới nhất rồi thử lại.",
     productSaveFailed:
       "Không thể lưu sản phẩm. Hãy kiểm tra các trường rồi thử lại.",
+    productQuotaExceeded: (maximum) =>
+      `Booth này đã có ${maximum} sản phẩm. Hãy xóa một sản phẩm hoặc nhờ người vận hành nền tảng tăng hạn mức.`,
     promotionQualifying:
       "Hãy chọn ít nhất một sản phẩm đủ điều kiện trước khi bật khuyến mãi.",
     promotionReward:
@@ -2384,8 +2389,8 @@ const vietnameseWorkspaceCatalogue: WorkspaceCatalogue = {
     invitationCreateFailed: "Không thể tạo lời mời. Vui lòng thử lại.",
     invitationAlreadyMember: "Người này đã là thành viên của booth.",
     invitationAlreadyActive: "Email này đã có một lời mời đang hoạt động.",
-    invitationCapacity:
-      "Booth đã dùng hết 10 vị trí thành viên hoạt động và lời mời đang chờ.",
+    invitationCapacity: (maximum) =>
+      `Booth đã dùng hết ${maximum} vị trí thành viên hoạt động và lời mời đang chờ.`,
     invitationRevokeFailed: "Không thể thu hồi lời mời. Hãy thử lại.",
     invitationInactive: "Lời mời này không còn hoạt động.",
     invitationRevoked: "Đã thu hồi lời mời.",
@@ -2393,7 +2398,8 @@ const vietnameseWorkspaceCatalogue: WorkspaceCatalogue = {
     memberUpdateFailed: "Không thể cập nhật quyền truy cập. Hãy thử lại.",
     memberMissing: "Không tìm thấy thành viên này.",
     memberOwnerChange: "Không thể thay đổi chủ booth tại đây.",
-    memberCapacity: "Hãy thu hồi một lời mời trước khi bật thành viên này.",
+    memberCapacity: (maximum) =>
+      `Booth đã dùng hết ${maximum} vị trí. Hãy thu hồi một lời mời trước khi bật thành viên này.`,
     memberUpdated: "Đã cập nhật quyền truy cập thành viên.",
     memberRemoveFailed: "Không thể xóa thành viên. Hãy thử lại.",
     memberOwnerRemove: "Không thể xóa chủ booth.",

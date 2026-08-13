@@ -180,52 +180,49 @@ export async function authorizeTransactionalPlatformSession(
   },
 ): Promise<PlatformAccessResult> {
   const now = input.now ?? new Date();
-  const [user, credential, verifiedTotp, grant, session, deletion] =
-    await Promise.all([
-      transaction.user.findUnique({
-        where: { id: input.userId },
-        select: {
-          id: true,
-          role: true,
-          banned: true,
-          banExpires: true,
-          twoFactorEnabled: true,
-        },
-      }),
-      transaction.account.findFirst({
-        where: {
-          userId: input.userId,
-          providerId: "credential",
-          password: { not: null },
-        },
-        select: { id: true },
-      }),
-      transaction.twoFactor.findFirst({
-        where: { userId: input.userId, verified: true },
-        select: { id: true },
-      }),
-      transaction.platformRoleGrant.findUnique({
-        where: { userId: input.userId },
-        select: { role: true, status: true },
-      }),
-      transaction.session.findUnique({
-        where: { id: input.sessionId },
-        select: {
-          id: true,
-          userId: true,
-          expiresAt: true,
-          platformAuthenticatedAt: true,
-        },
-      }),
-      transaction.platformDeletionRequest.findFirst({
-        where: {
-          targetType: "USER",
-          targetId: input.userId,
-          state: { in: ["PENDING", "FINALIZING", "BLOCKED"] },
-        },
-        select: { id: true },
-      }),
-    ]);
+  const user = await transaction.user.findUnique({
+    where: { id: input.userId },
+    select: {
+      id: true,
+      role: true,
+      banned: true,
+      banExpires: true,
+      twoFactorEnabled: true,
+    },
+  });
+  const credential = await transaction.account.findFirst({
+    where: {
+      userId: input.userId,
+      providerId: "credential",
+      password: { not: null },
+    },
+    select: { id: true },
+  });
+  const verifiedTotp = await transaction.twoFactor.findFirst({
+    where: { userId: input.userId, verified: true },
+    select: { id: true },
+  });
+  const grant = await transaction.platformRoleGrant.findUnique({
+    where: { userId: input.userId },
+    select: { role: true, status: true },
+  });
+  const session = await transaction.session.findUnique({
+    where: { id: input.sessionId },
+    select: {
+      id: true,
+      userId: true,
+      expiresAt: true,
+      platformAuthenticatedAt: true,
+    },
+  });
+  const deletion = await transaction.platformDeletionRequest.findFirst({
+    where: {
+      targetType: "USER",
+      targetId: input.userId,
+      state: { in: ["PENDING", "FINALIZING", "BLOCKED"] },
+    },
+    select: { id: true },
+  });
 
   if (!user || deletion) {
     return { allowed: false, reason: "ACCOUNT_UNAVAILABLE" };

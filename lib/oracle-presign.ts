@@ -19,6 +19,12 @@ import { ProductImageValidationError } from "@/lib/payment-qr";
 import { requireBoothServiceAccess } from "@/lib/platform-targets";
 import { inspectOracleImageBytes } from "@/lib/oracle-image-verification";
 import { isBoothLogoObjectKey } from "@/lib/shop-settings";
+import {
+  cancelStorageReservation,
+  reserveStorageAsset,
+  storagePurposeForPresign,
+  verifyReservedStorageAsset,
+} from "@/lib/storage-ledger";
 
 export { presignedUploadRequestSchema } from "@/lib/oracle-presign-contract";
 
@@ -56,17 +62,29 @@ export async function createBoothUploadPresign({
     purpose,
     contentType,
   });
+  await reserveStorageAsset({
+    boothId,
+    objectKey,
+    purpose: storagePurposeForPresign(purpose),
+    byteLength: contentLength,
+  });
 
-  const uploadUrl = await getSignedUrl(
-    createOracleClient(config),
-    new PutObjectCommand({
-      Bucket: config.bucket,
-      ContentLength: contentLength,
-      ContentType: contentType,
-      Key: objectKey,
-    }),
-    { expiresIn: PRESIGNED_UPLOAD_EXPIRES_IN_SECONDS },
-  );
+  let uploadUrl: string;
+  try {
+    uploadUrl = await getSignedUrl(
+      createOracleClient(config),
+      new PutObjectCommand({
+        Bucket: config.bucket,
+        ContentLength: contentLength,
+        ContentType: contentType,
+        Key: objectKey,
+      }),
+      { expiresIn: PRESIGNED_UPLOAD_EXPIRES_IN_SECONDS },
+    );
+  } catch (error) {
+    await cancelStorageReservation(boothId, objectKey);
+    throw error;
+  }
 
   return {
     objectKey,
@@ -103,8 +121,9 @@ export async function verifyBoothLogoUpload({
         "The uploaded logo could not be read from object storage.",
       );
     }
-    const { contentTypeMatches } = inspectOracleImageBytes(
-      new Uint8Array(await result.Body.transformToByteArray()),
+    const bytes = new Uint8Array(await result.Body.transformToByteArray());
+    const { contentTypeMatches, image } = inspectOracleImageBytes(
+      bytes,
       result.ContentType,
     );
     if (!contentTypeMatches) {
@@ -112,6 +131,13 @@ export async function verifyBoothLogoUpload({
         "The uploaded logo content does not match its image type.",
       );
     }
+    await verifyReservedStorageAsset({
+      boothId,
+      objectKey,
+      purpose: "BOOTH_LOGO",
+      byteLength: bytes.byteLength,
+      verifiedMime: image.contentType,
+    });
     return objectKey;
   } catch (error) {
     if (error instanceof OracleLogoVerificationError) throw error;
@@ -150,8 +176,9 @@ export async function verifyBoothProductImageUpload({
         "The uploaded product image could not be read from object storage.",
       );
     }
-    const { contentTypeMatches } = inspectOracleImageBytes(
-      new Uint8Array(await result.Body.transformToByteArray()),
+    const bytes = new Uint8Array(await result.Body.transformToByteArray());
+    const { contentTypeMatches, image } = inspectOracleImageBytes(
+      bytes,
       result.ContentType,
     );
     if (!contentTypeMatches) {
@@ -159,6 +186,13 @@ export async function verifyBoothProductImageUpload({
         "The uploaded product image does not match its declared image type.",
       );
     }
+    await verifyReservedStorageAsset({
+      boothId,
+      objectKey,
+      purpose: "PRODUCT_IMAGE",
+      byteLength: bytes.byteLength,
+      verifiedMime: image.contentType,
+    });
     return objectKey;
   } catch (error) {
     if (error instanceof OracleProductImageVerificationError) throw error;
@@ -201,8 +235,9 @@ export async function verifyBoothFaceboothUpload({
         "The uploaded Facebooth asset could not be read from object storage.",
       );
     }
-    const { contentTypeMatches } = inspectOracleImageBytes(
-      new Uint8Array(await result.Body.transformToByteArray()),
+    const bytes = new Uint8Array(await result.Body.transformToByteArray());
+    const { contentTypeMatches, image } = inspectOracleImageBytes(
+      bytes,
       result.ContentType,
     );
     if (!contentTypeMatches) {
@@ -210,6 +245,14 @@ export async function verifyBoothFaceboothUpload({
         "The uploaded Facebooth asset does not match its declared image type.",
       );
     }
+    await verifyReservedStorageAsset({
+      boothId,
+      objectKey,
+      purpose:
+        purpose === "artwork" ? "FACEBOOTH_ARTWORK" : "FACEBOOTH_PREVIEW",
+      byteLength: bytes.byteLength,
+      verifiedMime: image.contentType,
+    });
     return objectKey;
   } catch (error) {
     if (error instanceof OracleFaceboothAssetVerificationError) throw error;

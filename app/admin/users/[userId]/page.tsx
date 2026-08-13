@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PlatformAuditList } from "@/components/platform-admin/platform-audit-list";
 import { PlatformUserLifecycleControls } from "@/components/platform-admin/platform-lifecycle-controls";
+import { PlatformUserQuotaControls } from "@/components/platform-admin/platform-resource-controls";
 import {
   PlatformPageHeader,
   PlatformStatusBadge,
@@ -17,6 +18,7 @@ import {
 import { readLocaleCookie } from "@/lib/i18n/server-locale";
 import { requirePlatformPermission } from "@/lib/platform-authorization";
 import { readPlatformUserDetail } from "@/lib/platform-inventory";
+import { platformRoleHasPermission } from "@/lib/platform-policy";
 
 export async function generateMetadata(): Promise<Metadata> {
   const strings = getPlatformAdminStrings(await readLocaleCookie());
@@ -63,6 +65,14 @@ export default async function PlatformUserDetailPage({
           locale={locale}
           platformRole={access.role}
           state={user.state}
+          targetUserId={user.id}
+        />
+      ) : null}
+
+      {platformRoleHasPermission(access.role, "quota.manage") ? (
+        <PlatformUserQuotaControls
+          configured={user.quota.configured}
+          locale={locale}
           targetUserId={user.id}
         />
       ) : null}
@@ -143,6 +153,14 @@ export default async function PlatformUserDetailPage({
                     ? strings.common.defaultValue
                     : strings.common.configured}
                 </small>
+                <span
+                  className={styles.limitState}
+                  data-over={user.quota.overLimit || undefined}
+                >
+                  {user.quota.overLimit
+                    ? strings.boothDetail.overLimit
+                    : strings.boothDetail.withinLimit}
+                </span>
               </dd>
             </div>
             <div>

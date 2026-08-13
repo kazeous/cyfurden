@@ -19,6 +19,9 @@ import {
 } from "@/lib/facebooth-documents";
 import { isBoothFaceboothObjectKey } from "@/lib/oracle-presign-contract";
 import { requireBoothServiceAccess } from "@/lib/platform-targets";
+import { checkFaceboothProjectQuota } from "@/lib/platform-quotas";
+import { runSerializableTransaction } from "@/lib/serializable-transaction";
+import { attachStorageAssets, detachStorageAssets } from "@/lib/storage-ledger";
 
 type TransactionClient = Parameters<Parameters<typeof db.$transaction>[0]>[0];
 
@@ -124,6 +127,16 @@ function hasValidAssetKeys(
   );
 }
 
+function projectStorageObjectKeys(
+  document: FaceboothProjectDocument,
+  previewObjectKey?: string | null,
+) {
+  return [
+    ...collectFaceboothArtworkObjectKeys(document),
+    ...(previewObjectKey ? [previewObjectKey] : []),
+  ];
+}
+
 async function hasValidSceneReferences(
   transaction: TransactionClient,
   boothId: string,
@@ -174,7 +187,7 @@ export async function createFaceboothProject(input: {
   actorUserId: string;
   project: unknown;
 }) {
-  return db.$transaction(async (transaction) => {
+  return runSerializableTransaction(async (transaction) => {
     await requireBoothServiceAccess(input.boothId, "MUTATION", transaction);
     if (!(await hasManagerMembership(transaction, input))) {
       return { kind: "forbidden" } as const;
@@ -205,6 +218,10 @@ export async function createFaceboothProject(input: {
     ) {
       return { kind: "invalid-references" } as const;
     }
+    const quota = await checkFaceboothProjectQuota(transaction, input.boothId);
+    if (!quota.allowed) {
+      return { kind: "quota", limit: quota.limit } as const;
+    }
 
     const project = await transaction.faceboothProject.create({
       data: {
@@ -218,6 +235,12 @@ export async function createFaceboothProject(input: {
         updatedById: input.actorUserId,
       },
       select: projectSelect,
+    });
+    await attachStorageAssets(transaction, {
+      boothId: input.boothId,
+      objectKeys: projectStorageObjectKeys(document),
+      associatedRecordType: "FaceboothProject",
+      associatedRecordId: project.id,
     });
     await transaction.auditLog.create({
       data: {
@@ -239,7 +262,7 @@ export async function importFaceboothProject(input: {
   actorUserId: string;
   project: unknown;
 }) {
-  return db.$transaction(async (transaction) => {
+  return runSerializableTransaction(async (transaction) => {
     await requireBoothServiceAccess(input.boothId, "MUTATION", transaction);
     if (!(await hasManagerMembership(transaction, input))) {
       return { kind: "forbidden" } as const;
@@ -262,6 +285,23 @@ export async function importFaceboothProject(input: {
 
     let document: FaceboothProjectDocument = parsedDocument;
     const importedMerchIds: string[] = [];
+    const importedMerchCount =
+      document.kind === "SCENE"
+        ? new Set(
+            document.merchSnapshots.map(
+              (snapshot) =>
+                `${snapshot.sourceProjectId}:${snapshot.sourceEditVersion}`,
+            ),
+          ).size
+        : 0;
+    const quota = await checkFaceboothProjectQuota(
+      transaction,
+      input.boothId,
+      importedMerchCount + 1,
+    );
+    if (!quota.allowed) {
+      return { kind: "quota", limit: quota.limit } as const;
+    }
     if (document.kind === "SCENE") {
       const sourceIdByRevision = new Map<string, string>();
       for (const snapshot of document.merchSnapshots) {
@@ -307,6 +347,12 @@ export async function importFaceboothProject(input: {
         updatedById: input.actorUserId,
       },
       select: projectSelect,
+    });
+    await attachStorageAssets(transaction, {
+      boothId: input.boothId,
+      objectKeys: projectStorageObjectKeys(document),
+      associatedRecordType: "FaceboothProject",
+      associatedRecordId: project.id,
     });
     await transaction.auditLog.create({
       data: {
@@ -412,6 +458,7 @@ export async function saveFaceboothProject(input: {
       select: {
         kind: true,
         editVersion: true,
+        document: true,
         previewObjectKey: true,
       },
     });
@@ -452,6 +499,10 @@ export async function saveFaceboothProject(input: {
     ) {
       return { kind: "invalid-assets" } as const;
     }
+    const previousDocument = parseFaceboothProjectDocument(
+      existing.kind,
+      existing.document,
+    );
 
     const updated = await transaction.faceboothProject.updateMany({
       where: {
@@ -484,6 +535,23 @@ export async function saveFaceboothProject(input: {
     const project = await transaction.faceboothProject.findFirstOrThrow({
       where: { id: input.projectId, boothId: input.boothId },
       select: projectSelect,
+    });
+    if (previousDocument) {
+      await detachStorageAssets(transaction, {
+        boothId: input.boothId,
+        objectKeys: projectStorageObjectKeys(
+          previousDocument,
+          existing.previewObjectKey,
+        ),
+        associatedRecordType: "FaceboothProject",
+        associatedRecordId: project.id,
+      });
+    }
+    await attachStorageAssets(transaction, {
+      boothId: input.boothId,
+      objectKeys: projectStorageObjectKeys(document, previewObjectKey),
+      associatedRecordType: "FaceboothProject",
+      associatedRecordId: project.id,
     });
     await transaction.auditLog.create({
       data: {
@@ -569,7 +637,7 @@ export async function duplicateFaceboothProject(input: {
   actorUserId: string;
   name: unknown;
 }) {
-  return db.$transaction(async (transaction) => {
+  return runSerializableTransaction(async (transaction) => {
     await requireBoothServiceAccess(input.boothId, "MUTATION", transaction);
     if (!(await hasManagerMembership(transaction, input))) {
       return { kind: "forbidden" } as const;
@@ -599,6 +667,10 @@ export async function duplicateFaceboothProject(input: {
     ) {
       return { kind: "invalid-references" } as const;
     }
+    const quota = await checkFaceboothProjectQuota(transaction, input.boothId);
+    if (!quota.allowed) {
+      return { kind: "quota", limit: quota.limit } as const;
+    }
     const project = await transaction.faceboothProject.create({
       data: {
         boothId: input.boothId,
@@ -612,6 +684,12 @@ export async function duplicateFaceboothProject(input: {
         updatedById: input.actorUserId,
       },
       select: projectSelect,
+    });
+    await attachStorageAssets(transaction, {
+      boothId: input.boothId,
+      objectKeys: projectStorageObjectKeys(document, source.previewObjectKey),
+      associatedRecordType: "FaceboothProject",
+      associatedRecordId: project.id,
     });
     await transaction.auditLog.create({
       data: {
@@ -642,7 +720,13 @@ export async function deleteFaceboothProject(input: {
     }
     const project = await transaction.faceboothProject.findFirst({
       where: { id: input.projectId, boothId: input.boothId },
-      select: { id: true, kind: true, name: true, previewObjectKey: true },
+      select: {
+        id: true,
+        kind: true,
+        name: true,
+        document: true,
+        previewObjectKey: true,
+      },
     });
     if (!project) return { kind: "missing" } as const;
 
@@ -667,7 +751,22 @@ export async function deleteFaceboothProject(input: {
       }
     }
 
+    const document = parseFaceboothProjectDocument(
+      project.kind,
+      project.document,
+    );
     await transaction.faceboothProject.delete({ where: { id: project.id } });
+    if (document) {
+      await detachStorageAssets(transaction, {
+        boothId: input.boothId,
+        objectKeys: projectStorageObjectKeys(
+          document,
+          project.previewObjectKey,
+        ),
+        associatedRecordType: "FaceboothProject",
+        associatedRecordId: project.id,
+      });
+    }
     await transaction.auditLog.create({
       data: {
         boothId: input.boothId,

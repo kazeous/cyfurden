@@ -165,6 +165,8 @@ const catalogues = {
     importInvalid: "This project file is invalid or damaged.",
     importUnsupported: "This Facebooth project version is not supported.",
     importFailed: "The project could not be imported.",
+    projectQuota: (maximum: number) =>
+      `This booth already uses its ${maximum}-project Facebooth quota. Delete a project or ask a platform operator to raise the quota.`,
     recoveryAvailable: "A local recovery draft is available.",
     restoreDraft: "Restore draft",
     discardDraft: "Discard draft",
@@ -363,6 +365,8 @@ const catalogues = {
     importInvalid: "Tệp dự án không hợp lệ hoặc đã hỏng.",
     importUnsupported: "Phiên bản dự án Facebooth này chưa được hỗ trợ.",
     importFailed: "Không thể nhập dự án.",
+    projectQuota: (maximum: number) =>
+      `Booth đã dùng hết hạn mức ${maximum} dự án Facebooth. Hãy xóa một dự án hoặc nhờ người vận hành nền tảng tăng hạn mức.`,
     recoveryAvailable: "Có bản nháp khôi phục trên thiết bị này.",
     restoreDraft: "Khôi phục bản nháp",
     discardDraft: "Bỏ bản nháp",

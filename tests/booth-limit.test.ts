@@ -12,6 +12,11 @@ const dashboardActionPath = new URL(
   "../app/dashboard/actions.ts",
   import.meta.url,
 );
+const quotaServicePath = new URL("../lib/platform-quotas.ts", import.meta.url);
+const serializablePath = new URL(
+  "../lib/serializable-transaction.ts",
+  import.meta.url,
+);
 
 test("an owner can create booths until reaching the five-booth cap", () => {
   assert.equal(MAX_OWNED_BOOTHS, 5);
@@ -38,10 +43,16 @@ test("dashboard ownership is derived from the booth owner, not membership role",
 
 test("booth creation enforces the cap in a retried serializable transaction", async () => {
   const source = await readFile(dashboardActionPath, "utf8");
+  const quotaSource = await readFile(quotaServicePath, "utf8");
+  const transactionSource = await readFile(serializablePath, "utf8");
 
-  assert.match(source, /transaction\.booth\.count/);
-  assert.match(source, /where: \{ ownerId: session\.user\.id \}/);
-  assert.match(source, /canOwnAnotherBooth\(ownedBoothCount\)/);
-  assert.match(source, /isolationLevel: "Serializable"/);
-  assert.match(source, /error\.code === "P2034"/);
+  assert.match(
+    source,
+    /checkOwnedBoothQuota\(transaction, session\.user\.id\)/,
+  );
+  assert.match(source, /runSerializableTransaction/);
+  assert.match(quotaSource, /transaction\.booth\.count/);
+  assert.match(quotaSource, /where: \{ ownerId: userId \}/);
+  assert.match(transactionSource, /isolationLevel: "Serializable"/);
+  assert.match(transactionSource, /error\.code === "P2034"/);
 });

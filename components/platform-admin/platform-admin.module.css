@@ -689,6 +689,11 @@
   background: var(--color-warning-soft);
 }
 
+.actionFeedback[data-status="running"] {
+  color: var(--color-warning-ink);
+  background: var(--color-warning-soft);
+}
+
 .actionFeedback ul {
   padding-left: var(--space-lg);
   margin: var(--space-xs) 0 0;

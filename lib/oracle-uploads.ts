@@ -11,6 +11,13 @@ import {
   validatePaymentQrBytes,
 } from "@/lib/payment-qr";
 import { requireBoothServiceAccess } from "@/lib/platform-targets";
+import {
+  recordStorageDeletionResult,
+  requestStorageAssetDeletion,
+  reserveStorageAsset,
+  StorageLedgerError,
+  verifyReservedStorageAsset,
+} from "@/lib/storage-ledger";
 
 export type OracleUploadConfig = {
   accessKeyId: string;
@@ -84,6 +91,7 @@ export async function uploadPaymentQr({
   boothId: string;
   file: File;
 }) {
+  let reservedObjectKey: string | null = null;
   try {
     await requireBoothServiceAccess(boothId, "MUTATION");
     const image = validatePaymentQrBytes(
@@ -92,6 +100,13 @@ export async function uploadPaymentQr({
     const config = getOracleUploadConfig();
     const safeBoothId = boothId.replace(/[^a-zA-Z0-9_-]/g, "");
     const objectKey = `booths/${safeBoothId}/payment/qr-${randomUUID()}.${image.extension}`;
+    await reserveStorageAsset({
+      boothId,
+      objectKey,
+      purpose: "PAYMENT_QR",
+      byteLength: image.bytes.byteLength,
+    });
+    reservedObjectKey = objectKey;
 
     await createOracleClient(config).send(
       new PutObjectCommand({
@@ -103,10 +118,30 @@ export async function uploadPaymentQr({
         Key: objectKey,
       }),
     );
+    await verifyReservedStorageAsset({
+      boothId,
+      objectKey,
+      purpose: "PAYMENT_QR",
+      byteLength: image.bytes.byteLength,
+      verifiedMime: image.contentType,
+    });
 
     return objectKey;
   } catch (error) {
+    if (reservedObjectKey) {
+      const deletion = await deleteOracleObjectsStrict([reservedObjectKey]);
+      await recordStorageDeletionResult(deletion);
+    }
     if (error instanceof OracleQrUploadError) throw error;
+    if (
+      error instanceof StorageLedgerError &&
+      error.code === "STORAGE_QUOTA_EXCEEDED"
+    ) {
+      throw new OracleQrUploadError(
+        "This booth has reached its storage quota. Remove unused media or ask a platform operator to raise it.",
+        { cause: error },
+      );
+    }
     if (error instanceof PaymentQrValidationError) {
       throw new OracleQrUploadError(error.message, { cause: error });
     }
@@ -120,25 +155,27 @@ export async function uploadPaymentQr({
 }
 
 export async function discardUploadedPaymentQr(objectKey: string) {
-  try {
-    const config = getOracleUploadConfig();
-    await createOracleClient(config).send(
-      new DeleteObjectCommand({ Bucket: config.bucket, Key: objectKey }),
-    );
-  } catch (error) {
-    console.error("Could not discard unattached payment QR upload", error);
+  await requestStorageAssetDeletion([objectKey]);
+  const result = await deleteOracleObjectsStrict([objectKey]);
+  await recordStorageDeletionResult(result);
+  if (result.failedObjectKeys.length) {
+    console.error("Could not discard unattached payment QR upload", {
+      code: result.safeErrorCode,
+    });
   }
+  return result;
 }
 
 export async function discardUploadedProductImage(objectKey: string) {
-  try {
-    const config = getOracleUploadConfig();
-    await createOracleClient(config).send(
-      new DeleteObjectCommand({ Bucket: config.bucket, Key: objectKey }),
-    );
-  } catch (error) {
-    console.error("Could not discard unattached product image", error);
+  await requestStorageAssetDeletion([objectKey]);
+  const result = await deleteOracleObjectsStrict([objectKey]);
+  await recordStorageDeletionResult(result);
+  if (result.failedObjectKeys.length) {
+    console.error("Could not discard unattached product image", {
+      code: result.safeErrorCode,
+    });
   }
+  return result;
 }
 
 export type OracleDeletionResult = {

@@ -1,8 +1,11 @@
 import { createHash, randomBytes } from "node:crypto";
 import { db } from "@/lib/db";
+import { checkTeamSeatQuota } from "@/lib/platform-quotas";
 import { requireBoothServiceAccess } from "@/lib/platform-targets";
-
-type TransactionClient = Parameters<Parameters<typeof db.$transaction>[0]>[0];
+import {
+  runSerializableTransaction,
+  type TransactionClient,
+} from "@/lib/serializable-transaction";
 
 export const TEAM_ACCESS_LIMIT = 10;
 export const TEAM_INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -23,13 +26,13 @@ type CreateInvitationResult =
     }
   | { kind: "already-member" }
   | { kind: "already-invited" }
-  | { kind: "capacity" };
+  | { kind: "capacity"; limit: number };
 
 type UpdateMemberResult =
   | { kind: "updated" }
   | { kind: "missing" }
   | { kind: "owner-protected" }
-  | { kind: "capacity" };
+  | { kind: "capacity"; limit: number };
 
 type RemoveMemberResult =
   | { kind: "removed" }
@@ -47,29 +50,6 @@ export type AcceptInvitationResult =
         | "owner-protected";
       invitedEmail?: string;
     };
-
-const hasPrismaCode = (error: unknown, code: string) =>
-  typeof error === "object" &&
-  error !== null &&
-  "code" in error &&
-  (error as { code?: unknown }).code === code;
-
-async function runSerializable<T>(
-  operation: (transaction: TransactionClient) => Promise<T>,
-) {
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      return await db.$transaction(operation, {
-        isolationLevel: "Serializable",
-      });
-    } catch (error) {
-      if (hasPrismaCode(error, "P2034") && attempt < 2) continue;
-      throw error;
-    }
-  }
-
-  throw new Error("Serializable team transaction exhausted its retries.");
-}
 
 async function expireStaleInvitations(
   transaction: TransactionClient,
@@ -96,43 +76,31 @@ export async function createTeamInvitation(input: {
   const tokenHash = createHash("sha256").update(token).digest("hex");
   const expiresAt = new Date(now.getTime() + TEAM_INVITATION_TTL_MS);
 
-  return runSerializable(async (transaction) => {
+  return runSerializableTransaction(async (transaction) => {
     await requireBoothServiceAccess(input.boothId, "MUTATION", transaction);
     await expireStaleInvitations(transaction, input.boothId, now);
-    const [existingMember, pendingInvite, activeMembers, pendingInvites] =
-      await Promise.all([
-        transaction.boothMembership.findFirst({
-          where: {
-            boothId: input.boothId,
-            user: { email: { equals: email, mode: "insensitive" } },
-          },
-          select: { id: true },
-        }),
-        transaction.teamInvitation.findFirst({
-          where: {
-            boothId: input.boothId,
-            email: { equals: email, mode: "insensitive" },
-            status: "PENDING",
-            expiresAt: { gt: now },
-          },
-          select: { id: true },
-        }),
-        transaction.boothMembership.count({
-          where: { boothId: input.boothId, status: "ACTIVE" },
-        }),
-        transaction.teamInvitation.count({
-          where: {
-            boothId: input.boothId,
-            status: "PENDING",
-            expiresAt: { gt: now },
-          },
-        }),
-      ]);
+    const existingMember = await transaction.boothMembership.findFirst({
+      where: {
+        boothId: input.boothId,
+        user: { email: { equals: email, mode: "insensitive" } },
+      },
+      select: { id: true },
+    });
+    const pendingInvite = await transaction.teamInvitation.findFirst({
+      where: {
+        boothId: input.boothId,
+        email: { equals: email, mode: "insensitive" },
+        status: "PENDING",
+        expiresAt: { gt: now },
+      },
+      select: { id: true },
+    });
+    const quota = await checkTeamSeatQuota(transaction, input.boothId, now);
 
     if (existingMember) return { kind: "already-member" };
     if (pendingInvite) return { kind: "already-invited" };
-    if (activeMembers + pendingInvites >= TEAM_ACCESS_LIMIT) {
-      return { kind: "capacity" };
+    if (!quota.allowed) {
+      return { kind: "capacity", limit: quota.limit };
     }
 
     const invitation = await transaction.teamInvitation.create({
@@ -207,7 +175,7 @@ export async function updateTeamMemberAccess(input: {
 }): Promise<UpdateMemberResult> {
   const now = input.now ?? new Date();
 
-  return runSerializable(async (transaction) => {
+  return runSerializableTransaction(async (transaction) => {
     await requireBoothServiceAccess(input.boothId, "MUTATION", transaction);
     await expireStaleInvitations(transaction, input.boothId, now);
     const membership = await transaction.boothMembership.findFirst({
@@ -223,20 +191,9 @@ export async function updateTeamMemberAccess(input: {
     }
 
     if (membership.status !== "ACTIVE" && input.status === "ACTIVE") {
-      const [activeMembers, pendingInvites] = await Promise.all([
-        transaction.boothMembership.count({
-          where: { boothId: input.boothId, status: "ACTIVE" },
-        }),
-        transaction.teamInvitation.count({
-          where: {
-            boothId: input.boothId,
-            status: "PENDING",
-            expiresAt: { gt: now },
-          },
-        }),
-      ]);
-      if (activeMembers + pendingInvites >= TEAM_ACCESS_LIMIT) {
-        return { kind: "capacity" };
+      const quota = await checkTeamSeatQuota(transaction, input.boothId, now);
+      if (!quota.allowed) {
+        return { kind: "capacity", limit: quota.limit };
       }
     }
 
@@ -306,7 +263,7 @@ export async function acceptTeamInvitation(input: {
   const userEmail = input.userEmail.trim().toLocaleLowerCase();
   const now = input.now ?? new Date();
 
-  return runSerializable(async (transaction) => {
+  return runSerializableTransaction(async (transaction) => {
     const invitation = await transaction.teamInvitation.findUnique({
       where: { tokenHash },
       include: {

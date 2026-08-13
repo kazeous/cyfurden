@@ -1,7 +1,9 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import type { PlatformAccessResult } from "@/lib/platform-access";
-import { platformPolicy, type PlatformPermission } from "@/lib/platform-policy";
+import type { PlatformPermission } from "@/lib/platform-policy";
+import { readPlatformQuotaDefaults } from "@/lib/platform-quotas";
+import { expireStaleStorageReservations } from "@/lib/storage-ledger";
 
 export const PLATFORM_INVENTORY_PAGE_SIZE = 20;
 export const PLATFORM_AUDIT_PAGE_SIZE = 30;
@@ -85,25 +87,7 @@ function accountState(
   return "ACTIVE" as const;
 }
 
-async function readQuotaDefaults() {
-  const stored = await db.platformQuotaDefault.findUnique({
-    where: { id: "global" },
-    select: {
-      maxOwnedBooths: true,
-      maxTeamSeats: true,
-      maxProducts: true,
-      maxFaceboothProjects: true,
-      maxStorageBytes: true,
-      updatedAt: true,
-    },
-  });
-  return (
-    stored ?? {
-      ...platformPolicy.quotaDefaults,
-      updatedAt: null,
-    }
-  );
-}
+const readQuotaDefaults = () => readPlatformQuotaDefaults();
 
 const inlineSensitiveValuePattern =
   /((?:password|secret|token|cookie|authorization|bank\s*(?:account|details?)|account\s*number|transfer\s*reference|customer\s*(?:address|note|phone)|shipping\s*address)\s*(?::|=)\s*)([^,;\n]+)/gi;
@@ -113,6 +97,7 @@ const safeAuditMetadataKeys = new Set([
   "active",
   "actorRole",
   "byteLength",
+  "boothId",
   "configuredUserId",
   "credentialAccount",
   "enabled",
@@ -122,6 +107,7 @@ const safeAuditMetadataKeys = new Set([
   "maxProducts",
   "maxStorageBytes",
   "maxTeamSeats",
+  "missingObjectCount",
   "newRole",
   "newState",
   "newValue",
@@ -135,16 +121,23 @@ const safeAuditMetadataKeys = new Set([
   "previousState",
   "previousValue",
   "purpose",
+  "reservedBytes",
+  "reservedObjectCount",
   "role",
   "serviceState",
   "serviceVersion",
   "state",
   "status",
+  "trackedBytes",
+  "trackedObjectCount",
   "targetBoothId",
   "targetUserId",
   "twoFactorEnabled",
+  "untrackedBytes",
+  "untrackedObjectCount",
   "verified",
   "version",
+  "runId",
 ]);
 
 export function redactPlatformInventoryText(value: string) {
@@ -374,12 +367,14 @@ export async function readPlatformOverview(
   now = new Date(),
 ) {
   assertPlatformAccess(access, "platform.read");
+  await expireStaleStorageReservations(undefined, now);
   const [
     accounts,
     boothServiceStates,
     boothPublicationStates,
     storage,
     configuredQuotaBytes,
+    quotaDefaults,
     latestReconciliation,
     recentAudit,
   ] = await Promise.all([
@@ -388,6 +383,7 @@ export async function readPlatformOverview(
     db.booth.groupBy({ by: ["status"], _count: { _all: true } }),
     readStorageCounts(now),
     readConfiguredStorageQuota(),
+    readQuotaDefaults(),
     db.storageReconciliationRun.findFirst({
       select: { status: true, completedAt: true, createdAt: true },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -406,6 +402,17 @@ export async function readPlatformOverview(
   );
   return {
     accounts,
+    quotaDefaults: {
+      maxOwnedBooths: quotaDefaults.maxOwnedBooths,
+      maxTeamSeats: quotaDefaults.maxTeamSeats,
+      maxProducts: quotaDefaults.maxProducts,
+      maxFaceboothProjects: quotaDefaults.maxFaceboothProjects,
+      maxStorageBytes: quotaDefaults.maxStorageBytes.toString(),
+      maxStorageMiB: (
+        quotaDefaults.maxStorageBytes /
+        (BigInt(1_024) * BigInt(1_024))
+      ).toString(),
+    },
     booths: {
       total: totalBooths,
       active: service.ACTIVE ?? 0,
@@ -597,11 +604,18 @@ export async function readPlatformUserDetail(
       orderBy: { requestedAt: "desc" },
     }),
     readSafeAuditRows(
-      { targetType: "USER", targetId: normalizedId },
+      {
+        OR: [
+          { targetType: "USER", targetId: normalizedId },
+          { targetType: "QUOTA", targetId: normalizedId },
+        ],
+      },
       { take: 12 },
     ),
   ]);
   if (!user) return null;
+  const effectiveOwnedBoothLimit =
+    user.quotaOverride?.maxOwnedBooths ?? defaults.maxOwnedBooths;
   return {
     id: user.id,
     name: user.name,
@@ -624,7 +638,8 @@ export async function readPlatformUserDetail(
     memberships: user.memberships,
     quota: {
       configured: user.quotaOverride?.maxOwnedBooths ?? null,
-      effective: user.quotaOverride?.maxOwnedBooths ?? defaults.maxOwnedBooths,
+      effective: effectiveOwnedBoothLimit,
+      overLimit: user.ownedBooths.length > effectiveOwnedBoothLimit,
       updatedAt: user.quotaOverride?.updatedAt ?? null,
     },
     deletionRequest,
@@ -704,6 +719,7 @@ export async function readPlatformBooths(
   now = new Date(),
 ) {
   assertPlatformAccess(access, "platform.read");
+  await expireStaleStorageReservations(undefined, now);
   const page = normalizePlatformPage(input.page);
   const search = normalizePlatformSearch(input.search);
   const where = boothSearchWhere(search);
@@ -779,10 +795,12 @@ export async function readPlatformBoothDetail(
   assertPlatformAccess(access, "platform.read");
   const normalizedId = normalizePlatformSearch(boothId);
   if (!normalizedId || normalizedId !== boothId) return null;
+  await expireStaleStorageReservations(normalizedId, now);
   const [
     booth,
     defaults,
     storageGroups,
+    storageAssets,
     deletionRequest,
     latestReconciliation,
     audit,
@@ -841,6 +859,20 @@ export async function readPlatformBoothDetail(
       _count: { _all: true },
       _sum: { byteLength: true },
     }),
+    db.storageAsset.findMany({
+      where: { boothId: normalizedId, ...activeStorageWhere(now) },
+      select: {
+        id: true,
+        objectKey: true,
+        purpose: true,
+        state: true,
+        byteLength: true,
+        createdAt: true,
+        verifiedAt: true,
+      },
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      take: 50,
+    }),
     db.platformDeletionRequest.findFirst({
       where: {
         targetType: "BOOTH",
@@ -853,6 +885,7 @@ export async function readPlatformBoothDetail(
     db.storageReconciliationRun.findFirst({
       where: { boothId: normalizedId },
       select: {
+        id: true,
         status: true,
         trackedObjectCount: true,
         trackedBytes: true,
@@ -863,13 +896,20 @@ export async function readPlatformBoothDetail(
         missingObjectCount: true,
         sizeMismatchObjectCount: true,
         safeErrorCode: true,
+        startedAt: true,
         completedAt: true,
         createdAt: true,
       },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     }),
     readSafeAuditRows(
-      { targetType: "BOOTH", targetId: normalizedId },
+      {
+        OR: [
+          { targetType: "BOOTH", targetId: normalizedId },
+          { targetType: "QUOTA", targetId: normalizedId },
+          { targetType: "STORAGE_RECONCILIATION", targetId: normalizedId },
+        ],
+      },
       { take: 12 },
     ),
   ]);
@@ -883,7 +923,20 @@ export async function readPlatformBoothDetail(
     maxStorageBytes: (
       booth.quotaOverride?.maxStorageBytes ?? defaults.maxStorageBytes
     ).toString(),
-    configured: Boolean(booth.quotaOverride),
+    configured: {
+      maxTeamSeats: booth.quotaOverride?.maxTeamSeats ?? null,
+      maxProducts: booth.quotaOverride?.maxProducts ?? null,
+      maxFaceboothProjects: booth.quotaOverride?.maxFaceboothProjects ?? null,
+      maxStorageBytes: booth.quotaOverride?.maxStorageBytes?.toString() ?? null,
+      maxStorageMiB:
+        booth.quotaOverride?.maxStorageBytes === null ||
+        booth.quotaOverride?.maxStorageBytes === undefined
+          ? null
+          : (
+              booth.quotaOverride.maxStorageBytes /
+              (BigInt(1_024) * BigInt(1_024))
+            ).toString(),
+    },
     updatedAt: booth.quotaOverride?.updatedAt ?? null,
   };
   let countedStorageBytes = BigInt(0);
@@ -937,6 +990,18 @@ export async function readPlatformBoothDetail(
     deletionBlockers: { retainedOrderReferences: booth._count.orders },
     deletionRequest,
     storage,
+    storageAssets: storageAssets.map((asset) => {
+      const objectName = asset.objectKey.split("/").at(-1) ?? "object";
+      return {
+        id: asset.id,
+        safeObjectKey: `…/${objectName.slice(-36)}`,
+        purpose: asset.purpose,
+        state: asset.state,
+        byteLength: asset.byteLength.toString(),
+        createdAt: asset.createdAt,
+        verifiedAt: asset.verifiedAt,
+      };
+    }),
     latestReconciliation: latestReconciliation
       ? {
           ...latestReconciliation,
@@ -955,6 +1020,7 @@ export async function readPlatformStorage(
   now = new Date(),
 ) {
   assertPlatformAccess(access, "platform.read");
+  await expireStaleStorageReservations(undefined, now);
   const page = normalizePlatformPage(input.page);
   const search = normalizePlatformSearch(input.search);
   const where = boothSearchWhere(search);

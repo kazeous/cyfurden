@@ -127,7 +127,13 @@ export function FaceboothLibrary({
       });
       if (result.kind === "created") {
         router.push(`/manage/${boothId}/facebooth/${result.project.id}`);
-      } else setMessage(strings.importFailed);
+      } else {
+        setMessage(
+          result.kind === "quota"
+            ? strings.projectQuota(result.limit)
+            : strings.importFailed,
+        );
+      }
     });
 
   const renameProject = (project: FaceboothLibraryProject) =>
@@ -150,7 +156,13 @@ export function FaceboothLibrary({
         `${project.name} ${strings.copySuffix}`.slice(0, 120),
       );
       if (result.kind === "duplicated") router.refresh();
-      else setMessage(strings.importFailed);
+      else {
+        setMessage(
+          result.kind === "quota"
+            ? strings.projectQuota(result.limit)
+            : strings.importFailed,
+        );
+      }
     });
 
   const deleteProject = (project: FaceboothLibraryProject) =>
@@ -237,7 +249,13 @@ export function FaceboothLibrary({
           ...parsed.package.project,
           document,
         });
-        if (result.kind !== "imported") throw new Error(strings.importFailed);
+        if (result.kind !== "imported") {
+          throw new Error(
+            result.kind === "quota"
+              ? strings.projectQuota(result.limit)
+              : strings.importFailed,
+          );
+        }
         router.push(`/manage/${boothId}/facebooth/${result.project.id}`);
       } catch (error) {
         setMessage(
@@ -246,7 +264,9 @@ export function FaceboothLibrary({
             ? strings.importUnsupported
             : error instanceof FaceboothPortableError
               ? strings.importInvalid
-              : strings.importFailed,
+              : error instanceof Error
+                ? error.message
+                : strings.importFailed,
         );
       }
     });

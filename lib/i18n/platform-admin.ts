@@ -21,7 +21,7 @@ const englishPlatformAdminCatalogue = {
     mobileNavigationLabel: "Platform sections",
     readOnly: "Read-only",
     readOnlyNote:
-      "Phase 17B is inspection-only. Lifecycle, quota, and reconciliation actions remain disabled.",
+      "This Viewer session can inspect Phase 17D quota and storage records but cannot mutate them.",
     overview: "Overview",
     overviewShort: "Home",
     users: "Users",
@@ -40,9 +40,9 @@ const englishPlatformAdminCatalogue = {
       PLATFORM_OPERATOR: "Operator",
       PLATFORM_SUPER_ADMIN: "Super Admin",
     },
-    mutationEnabled: "Lifecycle controls",
+    mutationEnabled: "Resource controls",
     mutationNote:
-      "Phase 17C lifecycle controls are enabled according to the current platform role. Quota, storage reconciliation, and health mutations remain disabled.",
+      "Lifecycle, typed quota, and bounded storage-reconciliation controls are enabled according to the current platform role. Health controls remain gated.",
   },
   common: {
     search: "Search",
@@ -257,6 +257,9 @@ const englishPlatformAdminCatalogue = {
     objects: "Objects",
     bytes: "Bytes",
     noStorage: "No tracked storage assets for this booth.",
+    recentAssets: "Recent ledger assets",
+    safeObjectKey: "Short object key",
+    verifiedAt: "Verified",
     reconciliation: "Latest reconciliation",
     noReconciliation: "This booth has not been reconciled.",
     deletion: "Deletion readiness",
@@ -321,11 +324,55 @@ const englishPlatformAdminCatalogue = {
       TARGET_NOT_FOUND: "The target is no longer available.",
     },
   },
+  resourceControls: {
+    defaultsTitle: "Global quota defaults",
+    defaultsDescription:
+      "Update the typed defaults inherited by accounts and booths without overrides. Existing resources remain unchanged if a default is reduced below usage.",
+    userTitle: "Owned-booth quota control",
+    userDescription:
+      "Set an account-specific owned-booth limit, or leave it blank to inherit the global default. Lower limits block only future booth creation.",
+    boothTitle: "Booth quota controls",
+    boothDescription:
+      "Set optional service overrides. Blank values inherit the global defaults; reducing a limit never deletes or hides existing resources.",
+    maxOwnedBooths: "Maximum owned booths",
+    maxTeamSeats: "Maximum active seats + pending invitations",
+    maxProducts: "Maximum products",
+    maxFaceboothProjects: "Maximum Facebooth projects",
+    maxStorageMiB: "Maximum storage (MiB)",
+    blankInherits: "Leave blank to use the global default.",
+    saveQuota: "Save quota override",
+    saveDefaults: "Save global defaults",
+    reconciliationTitle: "Manual Oracle reconciliation",
+    reconciliationDescription:
+      "Process one bounded provider page, backfill referenced legacy objects, and record drift. Repeat while the latest run remains Running.",
+    reconcile: "Process next page",
+    pending: "Applying…",
+    quotaSuccess: "The quota override was saved and audited.",
+    reconciliationRunning:
+      "This page completed. The reconciliation is still running; process the next page.",
+    reconciliationSuccess:
+      "Reconciliation completed and its drift summary was audited.",
+    noChange: "The requested quota values are already current.",
+    errors: {
+      AUTHORIZATION_DENIED: "This platform role cannot perform that action.",
+      CONCURRENT_UPDATE: "The target changed concurrently. Refresh and retry.",
+      INVALID_REASON: "Enter a private reason of 1–500 characters.",
+      INVALID_TARGET: "The target identifier is invalid.",
+      INVALID_VALUE: "Enter positive quota values within the supported bounds.",
+      TARGET_NOT_FOUND: "The target is no longer available.",
+      RUN_IN_PROGRESS:
+        "Another reconciliation request is processing this booth. Retry after it finishes.",
+      PROVIDER_UNAVAILABLE:
+        "Oracle reconciliation failed safely. The ledger page was not partially applied.",
+      RUN_UNAVAILABLE:
+        "The reconciliation run changed concurrently. Refresh and retry.",
+    },
+  },
   storage: {
     metadataTitle: "Platform storage",
     title: "Storage inventory",
     description:
-      "Read-only PostgreSQL ledger totals and per-booth usage. Reconciliation actions remain disabled until a later authorized phase.",
+      "PostgreSQL ledger totals, per-booth usage, drift confidence, and bounded manual Oracle reconciliation.",
     searchLabel: "Booth storage search",
     searchPlaceholder: "Booth ID, slug, or name",
     tracked: "Tracked",
@@ -382,7 +429,7 @@ const vietnamesePlatformAdminCatalogue: PlatformAdminCatalogue = {
     mobileNavigationLabel: "Khu vực nền tảng",
     readOnly: "Chỉ đọc",
     readOnlyNote:
-      "Giai đoạn 17B chỉ cho phép kiểm tra. Các thao tác vòng đời, hạn mức và đối soát vẫn bị tắt.",
+      "Phiên Người xem này có thể kiểm tra hạn mức và lưu trữ Giai đoạn 17D nhưng không thể thay đổi.",
     overview: "Tổng quan",
     overviewShort: "Tổng quan",
     users: "Người dùng",
@@ -401,9 +448,9 @@ const vietnamesePlatformAdminCatalogue: PlatformAdminCatalogue = {
       PLATFORM_OPERATOR: "Người vận hành",
       PLATFORM_SUPER_ADMIN: "Super Admin",
     },
-    mutationEnabled: "Điều khiển vòng đời",
+    mutationEnabled: "Điều khiển tài nguyên",
     mutationNote:
-      "Điều khiển vòng đời Giai đoạn 17C được bật theo vai trò nền tảng hiện tại. Thay đổi hạn mức, đối soát lưu trữ và tình trạng dịch vụ vẫn bị tắt.",
+      "Điều khiển vòng đời, hạn mức có kiểu và đối soát lưu trữ giới hạn được bật theo vai trò nền tảng hiện tại. Điều khiển sức khỏe vẫn bị chặn.",
   },
   common: {
     search: "Tìm kiếm",
@@ -620,6 +667,9 @@ const vietnamesePlatformAdminCatalogue: PlatformAdminCatalogue = {
     objects: "Đối tượng",
     bytes: "Dung lượng",
     noStorage: "Booth này chưa có tài sản lưu trữ được theo dõi.",
+    recentAssets: "Tài sản sổ cái gần đây",
+    safeObjectKey: "Khóa đối tượng rút gọn",
+    verifiedAt: "Đã xác minh",
     reconciliation: "Lần đối soát gần nhất",
     noReconciliation: "Booth này chưa được đối soát.",
     deletion: "Điều kiện xóa",
@@ -687,11 +737,57 @@ const vietnamesePlatformAdminCatalogue: PlatformAdminCatalogue = {
       TARGET_NOT_FOUND: "Đối tượng không còn khả dụng.",
     },
   },
+  resourceControls: {
+    defaultsTitle: "Mặc định hạn mức toàn cục",
+    defaultsDescription:
+      "Cập nhật các mặc định có kiểu được kế thừa bởi tài khoản và booth không có giá trị ghi đè. Tài nguyên hiện có không thay đổi nếu giảm mặc định xuống dưới mức dùng.",
+    userTitle: "Điều khiển hạn mức booth sở hữu",
+    userDescription:
+      "Đặt giới hạn booth sở hữu riêng cho tài khoản hoặc để trống để kế thừa mặc định toàn cục. Giới hạn thấp hơn chỉ chặn tạo booth mới.",
+    boothTitle: "Điều khiển hạn mức booth",
+    boothDescription:
+      "Đặt các giá trị ghi đè dịch vụ không bắt buộc. Giá trị trống kế thừa mặc định toàn cục; giảm giới hạn không bao giờ xóa hoặc ẩn tài nguyên hiện có.",
+    maxOwnedBooths: "Số booth sở hữu tối đa",
+    maxTeamSeats: "Số ghế hoạt động + lời mời đang chờ tối đa",
+    maxProducts: "Số sản phẩm tối đa",
+    maxFaceboothProjects: "Số dự án Facebooth tối đa",
+    maxStorageMiB: "Dung lượng lưu trữ tối đa (MiB)",
+    blankInherits: "Để trống để dùng mặc định toàn cục.",
+    saveQuota: "Lưu giá trị ghi đè hạn mức",
+    saveDefaults: "Lưu mặc định toàn cục",
+    reconciliationTitle: "Đối soát Oracle thủ công",
+    reconciliationDescription:
+      "Xử lý một trang nhà cung cấp có giới hạn, bổ sung đối tượng cũ đang được tham chiếu và ghi nhận sai lệch. Lặp lại khi lần chạy mới nhất vẫn Đang chạy.",
+    reconcile: "Xử lý trang tiếp theo",
+    pending: "Đang áp dụng…",
+    quotaSuccess: "Giá trị ghi đè hạn mức đã được lưu và ghi nhật ký.",
+    reconciliationRunning:
+      "Trang này đã hoàn tất. Đối soát vẫn đang chạy; hãy xử lý trang tiếp theo.",
+    reconciliationSuccess:
+      "Đối soát đã hoàn tất và bản tóm tắt sai lệch đã được ghi nhật ký.",
+    noChange: "Các giá trị hạn mức yêu cầu đã là giá trị hiện tại.",
+    errors: {
+      AUTHORIZATION_DENIED:
+        "Vai trò nền tảng này không thể thực hiện thao tác.",
+      CONCURRENT_UPDATE:
+        "Đối tượng đã thay đổi đồng thời. Hãy tải lại và thử lại.",
+      INVALID_REASON: "Nhập lý do riêng tư từ 1–500 ký tự.",
+      INVALID_TARGET: "Mã định danh đối tượng không hợp lệ.",
+      INVALID_VALUE: "Nhập giá trị hạn mức dương trong phạm vi được hỗ trợ.",
+      TARGET_NOT_FOUND: "Đối tượng không còn khả dụng.",
+      RUN_IN_PROGRESS:
+        "Một yêu cầu đối soát khác đang xử lý booth này. Hãy thử lại sau khi hoàn tất.",
+      PROVIDER_UNAVAILABLE:
+        "Đối soát Oracle đã thất bại an toàn. Trang sổ cái không bị áp dụng một phần.",
+      RUN_UNAVAILABLE:
+        "Lần chạy đối soát đã thay đổi đồng thời. Hãy tải lại và thử lại.",
+    },
+  },
   storage: {
     metadataTitle: "Lưu trữ nền tảng",
     title: "Kho lưu trữ",
     description:
-      "Tổng sổ cái PostgreSQL và mức dùng từng booth ở chế độ chỉ đọc. Thao tác đối soát vẫn bị tắt đến giai đoạn được ủy quyền sau.",
+      "Tổng sổ cái PostgreSQL, mức dùng từng booth, độ tin cậy sai lệch và đối soát Oracle thủ công có giới hạn.",
     searchLabel: "Tìm lưu trữ booth",
     searchPlaceholder: "ID, slug hoặc tên booth",
     tracked: "Đang theo dõi",

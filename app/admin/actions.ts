@@ -21,11 +21,26 @@ import {
   suspendPlatformBooth,
   suspendPlatformUser,
 } from "@/lib/platform-lifecycle";
+import {
+  PlatformQuotaMutationError,
+  updateBoothQuotaOverride,
+  updatePlatformQuotaDefaults,
+  updateUserQuotaOverride,
+} from "@/lib/platform-quotas";
+import {
+  reconcileBoothStorage,
+  StorageReconciliationError,
+} from "@/lib/storage-reconciliation";
 
 export type PlatformLifecycleActionState = {
   status: "idle" | "success" | "error" | "preview";
   message: string;
   details?: string[];
+};
+
+export type PlatformResourceActionState = {
+  status: "idle" | "success" | "error" | "running";
+  message: string;
 };
 
 function text(formData: FormData, key: string) {
@@ -35,6 +50,19 @@ function text(formData: FormData, key: string) {
 function positiveInteger(formData: FormData, key: string) {
   const value = Number.parseInt(text(formData, key), 10);
   return Number.isSafeInteger(value) && value > 0 ? value : 0;
+}
+
+function optionalQuotaInteger(formData: FormData, key: string) {
+  const value = text(formData, key);
+  if (!value) return null;
+  return /^\d{1,10}$/.test(value) ? Number.parseInt(value, 10) : Number.NaN;
+}
+
+function optionalStorageBytes(formData: FormData) {
+  const mebibytes = text(formData, "maxStorageMiB");
+  if (!mebibytes) return null;
+  if (!/^\d{1,10}$/.test(mebibytes)) return BigInt(0);
+  return BigInt(mebibytes) * BigInt(1_024) * BigInt(1_024);
 }
 
 function optionalDateTime(formData: FormData, key: string) {
@@ -327,5 +355,167 @@ export async function platformBoothLifecycleAction(
     const fallback =
       strings ?? getPlatformAdminStrings(await readLocaleCookie());
     return { status: "error", message: lifecycleErrorMessage(error, fallback) };
+  }
+}
+
+function resourceErrorMessage(
+  error: unknown,
+  strings: ReturnType<typeof getPlatformAdminStrings>,
+) {
+  if (
+    error instanceof PlatformQuotaMutationError ||
+    error instanceof StorageReconciliationError
+  ) {
+    return strings.resourceControls.errors[error.code];
+  }
+  if (error instanceof PlatformLifecycleError) {
+    return strings.resourceControls.errors.AUTHORIZATION_DENIED;
+  }
+  return strings.resourceControls.errors.CONCURRENT_UPDATE;
+}
+
+export async function platformUserQuotaAction(
+  _previousState: PlatformResourceActionState,
+  formData: FormData,
+): Promise<PlatformResourceActionState> {
+  let strings: ReturnType<typeof getPlatformAdminStrings> | null = null;
+  try {
+    const context = await actionContext();
+    strings = context.strings;
+    const targetUserId = text(formData, "targetUserId");
+    const result = await updateUserQuotaOverride({
+      actorUserId: context.actorUserId,
+      actorSessionId: context.actorSessionId,
+      targetUserId,
+      maxOwnedBooths: optionalQuotaInteger(formData, "maxOwnedBooths"),
+      reason: text(formData, "reason"),
+    });
+    revalidatePath(`/admin/users/${encodeURIComponent(targetUserId)}`);
+    revalidatePath("/admin/users");
+    revalidatePath("/admin");
+    return {
+      status: "success",
+      message:
+        result.status === "NO_CHANGE"
+          ? context.strings.resourceControls.noChange
+          : context.strings.resourceControls.quotaSuccess,
+    };
+  } catch (error) {
+    const fallback =
+      strings ?? getPlatformAdminStrings(await readLocaleCookie());
+    return { status: "error", message: resourceErrorMessage(error, fallback) };
+  }
+}
+
+export async function platformDefaultQuotaAction(
+  _previousState: PlatformResourceActionState,
+  formData: FormData,
+): Promise<PlatformResourceActionState> {
+  let strings: ReturnType<typeof getPlatformAdminStrings> | null = null;
+  try {
+    const context = await actionContext();
+    strings = context.strings;
+    const result = await updatePlatformQuotaDefaults({
+      actorUserId: context.actorUserId,
+      actorSessionId: context.actorSessionId,
+      maxOwnedBooths:
+        optionalQuotaInteger(formData, "maxOwnedBooths") ?? Number.NaN,
+      maxTeamSeats:
+        optionalQuotaInteger(formData, "maxTeamSeats") ?? Number.NaN,
+      maxProducts: optionalQuotaInteger(formData, "maxProducts") ?? Number.NaN,
+      maxFaceboothProjects:
+        optionalQuotaInteger(formData, "maxFaceboothProjects") ?? Number.NaN,
+      maxStorageBytes: optionalStorageBytes(formData) ?? BigInt(0),
+      reason: text(formData, "reason"),
+    });
+    revalidatePath("/admin");
+    revalidatePath("/admin/users");
+    revalidatePath("/admin/booths");
+    revalidatePath("/admin/storage");
+    return {
+      status: "success",
+      message:
+        result.status === "NO_CHANGE"
+          ? context.strings.resourceControls.noChange
+          : context.strings.resourceControls.quotaSuccess,
+    };
+  } catch (error) {
+    const fallback =
+      strings ?? getPlatformAdminStrings(await readLocaleCookie());
+    return { status: "error", message: resourceErrorMessage(error, fallback) };
+  }
+}
+
+export async function platformBoothQuotaAction(
+  _previousState: PlatformResourceActionState,
+  formData: FormData,
+): Promise<PlatformResourceActionState> {
+  let strings: ReturnType<typeof getPlatformAdminStrings> | null = null;
+  try {
+    const context = await actionContext();
+    strings = context.strings;
+    const boothId = text(formData, "boothId");
+    const result = await updateBoothQuotaOverride({
+      actorUserId: context.actorUserId,
+      actorSessionId: context.actorSessionId,
+      boothId,
+      maxTeamSeats: optionalQuotaInteger(formData, "maxTeamSeats"),
+      maxProducts: optionalQuotaInteger(formData, "maxProducts"),
+      maxFaceboothProjects: optionalQuotaInteger(
+        formData,
+        "maxFaceboothProjects",
+      ),
+      maxStorageBytes: optionalStorageBytes(formData),
+      reason: text(formData, "reason"),
+    });
+    revalidatePath(`/admin/booths/${encodeURIComponent(boothId)}`);
+    revalidatePath("/admin/booths");
+    revalidatePath("/admin/storage");
+    revalidatePath("/admin");
+    return {
+      status: "success",
+      message:
+        result.status === "NO_CHANGE"
+          ? context.strings.resourceControls.noChange
+          : context.strings.resourceControls.quotaSuccess,
+    };
+  } catch (error) {
+    const fallback =
+      strings ?? getPlatformAdminStrings(await readLocaleCookie());
+    return { status: "error", message: resourceErrorMessage(error, fallback) };
+  }
+}
+
+export async function platformStorageReconciliationAction(
+  _previousState: PlatformResourceActionState,
+  formData: FormData,
+): Promise<PlatformResourceActionState> {
+  let strings: ReturnType<typeof getPlatformAdminStrings> | null = null;
+  try {
+    const context = await actionContext();
+    strings = context.strings;
+    const boothId = text(formData, "boothId");
+    const result = await reconcileBoothStorage({
+      actorUserId: context.actorUserId,
+      actorSessionId: context.actorSessionId,
+      boothId,
+      reason: text(formData, "reason"),
+    });
+    revalidatePath(`/admin/booths/${encodeURIComponent(boothId)}`);
+    revalidatePath("/admin/storage");
+    revalidatePath("/admin");
+    return result.status === "RUNNING"
+      ? {
+          status: "running",
+          message: context.strings.resourceControls.reconciliationRunning,
+        }
+      : {
+          status: "success",
+          message: context.strings.resourceControls.reconciliationSuccess,
+        };
+  } catch (error) {
+    const fallback =
+      strings ?? getPlatformAdminStrings(await readLocaleCookie());
+    return { status: "error", message: resourceErrorMessage(error, fallback) };
   }
 }

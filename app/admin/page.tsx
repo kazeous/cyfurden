@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PlatformAuditList } from "@/components/platform-admin/platform-audit-list";
+import { PlatformDefaultQuotaControls } from "@/components/platform-admin/platform-resource-controls";
 import {
   PlatformPageHeader,
   PlatformStatusBadge,
@@ -14,6 +15,7 @@ import {
 import { readLocaleCookie } from "@/lib/i18n/server-locale";
 import { requirePlatformPermission } from "@/lib/platform-authorization";
 import { readPlatformOverview } from "@/lib/platform-inventory";
+import { platformRoleHasPermission } from "@/lib/platform-policy";
 
 export default async function PlatformOverviewPage() {
   const [access, locale] = await Promise.all([
@@ -29,9 +31,20 @@ export default async function PlatformOverviewPage() {
         title={strings.overview.title}
         description={strings.overview.description}
         actions={
-          <span className={styles.readOnlyChip}>{strings.shell.readOnly}</span>
+          <span className={styles.readOnlyChip}>
+            {platformRoleHasPermission(access.role, "quota.manage")
+              ? strings.shell.mutationEnabled
+              : strings.shell.readOnly}
+          </span>
         }
       />
+
+      {platformRoleHasPermission(access.role, "quota.manage") ? (
+        <PlatformDefaultQuotaControls
+          defaults={overview.quotaDefaults}
+          locale={locale}
+        />
+      ) : null}
 
       <div className={styles.sectionGrid}>
         <section className={styles.inventorySection}>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PlatformAuditList } from "@/components/platform-admin/platform-audit-list";
 import { PlatformBoothLifecycleControls } from "@/components/platform-admin/platform-lifecycle-controls";
+import { PlatformBoothResourceControls } from "@/components/platform-admin/platform-resource-controls";
 import {
   PlatformPageHeader,
   PlatformStatusBadge,
@@ -17,6 +18,7 @@ import {
 import { readLocaleCookie } from "@/lib/i18n/server-locale";
 import { requirePlatformPermission } from "@/lib/platform-authorization";
 import { readPlatformBoothDetail } from "@/lib/platform-inventory";
+import { platformRoleHasPermission } from "@/lib/platform-policy";
 
 export async function generateMetadata(): Promise<Metadata> {
   const strings = getPlatformAdminStrings(await readLocaleCookie());
@@ -63,6 +65,15 @@ export default async function PlatformBoothDetailPage({
           platformRole={access.role}
           serviceState={booth.serviceState}
           serviceVersion={booth.serviceVersion}
+        />
+      ) : null}
+
+      {platformRoleHasPermission(access.role, "quota.manage") &&
+      platformRoleHasPermission(access.role, "storage.reconcile") ? (
+        <PlatformBoothResourceControls
+          boothId={booth.id}
+          configured={booth.quota.configured}
+          locale={locale}
         />
       ) : null}
 
@@ -307,6 +318,47 @@ export default async function PlatformBoothDetailPage({
               {strings.boothDetail.noStorage}
             </p>
           )}
+          {booth.storageAssets.length ? (
+            <>
+              <h3>{strings.boothDetail.recentAssets}</h3>
+              <ol className={styles.membershipList}>
+                {booth.storageAssets.map((asset) => (
+                  <li key={asset.id}>
+                    <div className={styles.membershipHeader}>
+                      <div>
+                        <strong>
+                          {strings.common.purposeLabel(asset.purpose)}
+                        </strong>
+                        <small className={styles.mono}>
+                          {strings.boothDetail.safeObjectKey}:{" "}
+                          {asset.safeObjectKey}
+                        </small>
+                      </div>
+                      <PlatformStatusBadge
+                        state={asset.state}
+                        label={strings.common.stateLabel(asset.state)}
+                      />
+                    </div>
+                    <div className={styles.membershipMeta}>
+                      <span>
+                        {formatPlatformBytes(asset.byteLength, locale)}
+                      </span>
+                      <span>
+                        {strings.common.created}:{" "}
+                        {formatPlatformDateTime(asset.createdAt, locale)}
+                      </span>
+                      <span>
+                        {strings.boothDetail.verifiedAt}:{" "}
+                        {asset.verifiedAt
+                          ? formatPlatformDateTime(asset.verifiedAt, locale)
+                          : strings.common.notRecorded}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </>
+          ) : null}
         </section>
 
         <section className={styles.detailSection}>
