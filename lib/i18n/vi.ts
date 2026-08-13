@@ -558,6 +558,7 @@ export const viCatalogue: Catalogue = {
       "Bảo vệ tài khoản bằng ứng dụng xác thực. Quyền quản trị nền tảng yêu cầu tài khoản mật khẩu và xác thực hai bước đã được xác minh.",
     securityEyebrow: "Bảo vệ đăng nhập",
     securityBack: "Quay lại danh sách booth",
+    securityBackPlatform: "Quay lại vận hành nền tảng",
     securityCredentialRequired:
       "Tài khoản này chưa có thông tin đăng nhập bằng mật khẩu. Không thể bật quyền quản trị nền tảng cho tài khoản chỉ dùng Google.",
     securityCredentialSignInRequired:

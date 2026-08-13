@@ -46,7 +46,11 @@ export function normalizePlatformPage(value: unknown) {
 
 export function normalizePlatformSearch(value: unknown) {
   if (typeof value !== "string") return "";
-  return value.trim().replace(/\s+/g, " ").slice(0, MAX_SEARCH_LENGTH);
+  return value
+    .replace(/[\u0000-\u001f\u007f]/g, " ")
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, MAX_SEARCH_LENGTH);
 }
 
 function assertPlatformAccess(
@@ -90,9 +94,9 @@ function accountState(
 const readQuotaDefaults = () => readPlatformQuotaDefaults();
 
 const inlineSensitiveValuePattern =
-  /((?:password|secret|token|cookie|authorization|bank\s*(?:account|details?)|account\s*number|transfer\s*reference|customer\s*(?:address|note|phone)|shipping\s*address)\s*(?::|=)\s*)([^,;\n]+)/gi;
+  /((?:password|secret|token|cookie|authorization|api\s*key|access\s*key|connection\s*string|database\s*url|object\s*key|signed\s*url|bank\s*(?:account|details?)|account\s*number|transfer\s*reference|customer\s*(?:address|note|phone)|shipping\s*address)\s*(?::|=)\s*)([^,;\n]+)/gi;
 const sensitiveAuditKeyPattern =
-  /(password|secret|token|cookie|authorization|accountnumber|bankdetail|transferreference|customer(address|note|phone|email)|shippingaddress|ordercontent|payment)/i;
+  /(password|secret|token|cookie|authorization|apikey|accesskey|connectionstring|databaseurl|objectkey|signedurl|accountnumber|bankdetail|transferreference|customer(address|note|phone|email)|shippingaddress|ordercontent|payment)/i;
 const safeAuditMetadataKeys = new Set([
   "active",
   "actorRole",
@@ -143,6 +147,7 @@ const safeAuditMetadataKeys = new Set([
 export function redactPlatformInventoryText(value: string) {
   return value
     .slice(0, 500)
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "")
     .replace(inlineSensitiveValuePattern, "$1[REDACTED]");
 }
 
@@ -230,13 +235,15 @@ async function readSafeAuditRows(
       name: null,
       email: null,
     },
-    action: row.action,
+    action: redactPlatformInventoryText(row.action).slice(0, 120),
     targetType: row.targetType,
-    targetId: row.targetId,
+    targetId: row.targetId
+      ? redactPlatformInventoryText(row.targetId).slice(0, 240)
+      : null,
     reason: redactPlatformInventoryText(row.reason),
     beforeMetadata: serializeSafeAuditMetadata(row.beforeMetadata),
     afterMetadata: serializeSafeAuditMetadata(row.afterMetadata),
-    correlationId: row.correlationId,
+    correlationId: redactPlatformInventoryText(row.correlationId).slice(0, 120),
     createdAt: row.createdAt,
   }));
 }
@@ -1114,7 +1121,10 @@ function normalizeAuditDate(value: unknown, endOfDay: boolean) {
   const date = new Date(
     `${value}T${endOfDay ? "23:59:59.999" : "00:00:00.000"}Z`,
   );
-  return Number.isNaN(date.getTime()) ? null : date;
+  return Number.isNaN(date.getTime()) ||
+    date.toISOString().slice(0, 10) !== value
+    ? null
+    : date;
 }
 
 export async function readPlatformAudit(
@@ -1168,8 +1178,8 @@ export async function readPlatformAudit(
       targetType: filters.targetType,
       targetId: filters.targetId,
       action: filters.action,
-      from: filters.from ? (firstSearchParam(input.from as string) ?? "") : "",
-      to: filters.to ? (firstSearchParam(input.to as string) ?? "") : "",
+      from: filters.from ? filters.from.toISOString().slice(0, 10) : "",
+      to: filters.to ? filters.to.toISOString().slice(0, 10) : "",
     },
     pagination: pagination(page, total, PLATFORM_AUDIT_PAGE_SIZE),
     audit,

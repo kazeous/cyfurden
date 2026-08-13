@@ -11,6 +11,7 @@ import {
   finalizePlatformOwnershipTransfer,
   finalizePlatformUserDeletion,
   PlatformLifecycleError,
+  type PlatformLifecycleErrorCode,
   previewPlatformDeletion,
   previewPlatformOwnershipTransfer,
   requestPlatformDeletion,
@@ -35,6 +36,7 @@ import {
 export type PlatformLifecycleActionState = {
   status: "idle" | "success" | "error" | "preview";
   message: string;
+  code?: PlatformLifecycleErrorCode;
   details?: string[];
 };
 
@@ -210,7 +212,11 @@ export async function platformUserLifecycleAction(
     }
     const fallback =
       strings ?? getPlatformAdminStrings(await readLocaleCookie());
-    return { status: "error", message: lifecycleErrorMessage(error, fallback) };
+    return {
+      status: "error",
+      message: lifecycleErrorMessage(error, fallback),
+      code: error instanceof PlatformLifecycleError ? error.code : undefined,
+    };
   }
 }
 
@@ -354,7 +360,11 @@ export async function platformBoothLifecycleAction(
     }
     const fallback =
       strings ?? getPlatformAdminStrings(await readLocaleCookie());
-    return { status: "error", message: lifecycleErrorMessage(error, fallback) };
+    return {
+      status: "error",
+      message: lifecycleErrorMessage(error, fallback),
+      code: error instanceof PlatformLifecycleError ? error.code : undefined,
+    };
   }
 }
 

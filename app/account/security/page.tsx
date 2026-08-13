@@ -13,11 +13,43 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t.securityTitle, description: t.securityBody };
 }
 
-export default async function AccountSecurityPage() {
+export function normalizePlatformSecurityReturnTo(value: unknown) {
+  if (
+    typeof value !== "string" ||
+    value.length > 500 ||
+    !value.startsWith("/admin") ||
+    /[\u0000-\u001f\u007f]/.test(value)
+  ) {
+    return null;
+  }
+  try {
+    const parsed = new URL(value, "https://cyfurden.invalid");
+    if (
+      parsed.origin !== "https://cyfurden.invalid" ||
+      !/^\/admin(?:\/|$)/.test(parsed.pathname)
+    ) {
+      return null;
+    }
+    return `${parsed.pathname}${parsed.search}`;
+  } catch {
+    return null;
+  }
+}
+
+export default async function AccountSecurityPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const [session, locale] = await Promise.all([
     requireUser("/account/security"),
     readLocaleCookie(),
   ]);
+  const rawSearchParams = await searchParams;
+  const rawReturnTo = Array.isArray(rawSearchParams.returnTo)
+    ? rawSearchParams.returnTo[0]
+    : rawSearchParams.returnTo;
+  const returnTo = normalizePlatformSecurityReturnTo(rawReturnTo);
   const t = translate(locale, "publicAuth");
   const user = await db.user.findUniqueOrThrow({
     where: { id: session.user.id },
@@ -37,8 +69,8 @@ export default async function AccountSecurityPage() {
   return (
     <main className={styles.page}>
       <section className={styles.card}>
-        <Link className={styles.back} href="/dashboard">
-          ← {t.securityBack}
+        <Link className={styles.back} href={returnTo ?? "/dashboard"}>
+          ← {returnTo ? t.securityBackPlatform : t.securityBack}
         </Link>
         <header className={styles.heading}>
           <p className={styles.eyebrow}>{t.securityEyebrow}</p>
@@ -53,6 +85,7 @@ export default async function AccountSecurityPage() {
           platformSessionAuthenticated={Boolean(
             session.session.platformAuthenticatedAt,
           )}
+          returnTo={returnTo}
         />
       </section>
     </main>

@@ -368,6 +368,7 @@ export type PublicAuthStrings = {
   securityBody: string;
   securityEyebrow: string;
   securityBack: string;
+  securityBackPlatform: string;
   securityCredentialRequired: string;
   securityCredentialSignInRequired: string;
   securityDisabled: string;

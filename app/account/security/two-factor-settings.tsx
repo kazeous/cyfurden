@@ -19,12 +19,14 @@ export function TwoFactorSettings({
   locale,
   platformGrantActive,
   platformSessionAuthenticated,
+  returnTo,
 }: {
   credentialEnabled: boolean;
   initialEnabled: boolean;
   locale: Locale;
   platformGrantActive: boolean;
   platformSessionAuthenticated: boolean;
+  returnTo: string | null;
 }) {
   const router = useRouter();
   const t = translate(locale, "publicAuth");
@@ -99,6 +101,10 @@ export function TwoFactorSettings({
         setMessage(t.securityRefreshed);
       }
       setSuccess(true);
+      if (returnTo) {
+        router.push(returnTo);
+        return;
+      }
       router.refresh();
     } catch {
       setMessage(t.errorGeneric);

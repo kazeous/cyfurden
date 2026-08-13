@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useActionState, useState } from "react";
 import {
   platformBoothLifecycleAction,
@@ -19,8 +21,16 @@ const initialPlatformLifecycleActionState = {
   message: "",
 } satisfies PlatformLifecycleActionState;
 
-function ActionFeedback({ state }: { state: PlatformLifecycleActionState }) {
+function ActionFeedback({
+  state,
+  strings,
+}: {
+  state: PlatformLifecycleActionState;
+  strings: PlatformAdminCatalogue;
+}) {
+  const pathname = usePathname();
   if (!state.message) return null;
+  const stepUpHref = `/account/security?returnTo=${encodeURIComponent(pathname)}`;
   return (
     <div
       className={styles.actionFeedback}
@@ -34,6 +44,11 @@ function ActionFeedback({ state }: { state: PlatformLifecycleActionState }) {
             <li key={detail}>{detail}</li>
           ))}
         </ul>
+      ) : null}
+      {state.code === "STEP_UP_REQUIRED" ? (
+        <Link className={styles.inlineLink} href={stepUpHref}>
+          {strings.lifecycle.refreshStepUp}
+        </Link>
       ) : null}
     </div>
   );
@@ -157,7 +172,7 @@ export function PlatformUserLifecycleControls({
           {pending ? strings.lifecycle.pending : strings.lifecycle.submit}
         </button>
       </form>
-      <ActionFeedback state={state} />
+      <ActionFeedback state={state} strings={strings} />
     </section>
   );
 }
@@ -368,7 +383,7 @@ export function PlatformBoothLifecycleControls({
           </div>
         </form>
       ) : null}
-      <ActionFeedback state={state} />
+      <ActionFeedback state={state} strings={strings} />
     </section>
   );
 }

@@ -12,7 +12,9 @@ const MAX_METADATA_ARRAY_ITEMS = 25;
 const MAX_METADATA_STRING_LENGTH = 500;
 
 const sensitiveKeyPattern =
-  /(password|secret|token|cookie|authorization|accountnumber|bankdetail|transferreference|customer(address|note|phone|email)|shippingaddress)/i;
+  /(password|secret|token|cookie|authorization|apikey|accesskey|connectionstring|databaseurl|objectkey|signedurl|accountnumber|bankdetail|transferreference|customer(address|note|phone|email)|shippingaddress|ordercontent|payment)/i;
+const sensitiveInlineValuePattern =
+  /((?:password|secret|token|cookie|authorization|api\s*key|access\s*key|connection\s*string|database\s*url|object\s*key|signed\s*url|bank\s*(?:account|details?)|account\s*number|transfer\s*reference|customer\s*(?:address|note|phone)|shipping\s*address)\s*(?::|=)\s*)([^,;\n]+)/gi;
 
 type AuditClient = Pick<Prisma.TransactionClient, "platformAuditLog">;
 
@@ -50,7 +52,7 @@ function redactValue(value: unknown, depth: number): unknown {
   }
   if (typeof value === "bigint") return value.toString();
   if (typeof value === "string") {
-    return value.slice(0, MAX_METADATA_STRING_LENGTH);
+    return redactPlatformAuditText(value).slice(0, MAX_METADATA_STRING_LENGTH);
   }
   if (value instanceof Date) return value.toISOString();
   if (Array.isArray(value)) {
@@ -71,6 +73,12 @@ function redactValue(value: unknown, depth: number): unknown {
     );
   }
   return String(value).slice(0, MAX_METADATA_STRING_LENGTH);
+}
+
+export function redactPlatformAuditText(value: string) {
+  return value
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "")
+    .replace(sensitiveInlineValuePattern, "$1[REDACTED]");
 }
 
 export function redactPlatformAuditMetadata(
@@ -108,10 +116,12 @@ export async function recordPlatformAudit(
     "Platform audit action",
     MAX_ACTION_LENGTH,
   );
-  const reason = requireBoundedText(
-    input.reason,
-    "Platform audit reason",
-    MAX_REASON_LENGTH,
+  const reason = redactPlatformAuditText(
+    requireBoundedText(
+      input.reason,
+      "Platform audit reason",
+      MAX_REASON_LENGTH,
+    ),
   );
   const targetId = input.targetId
     ? requireBoundedText(

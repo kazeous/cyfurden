@@ -569,6 +569,7 @@ export const enCatalogue: Catalogue = {
       "Protect this account with an authenticator app. Platform access requires a password account and verified two-factor authentication.",
     securityEyebrow: "Sign-in protection",
     securityBack: "Back to your booths",
+    securityBackPlatform: "Back to platform operations",
     securityCredentialRequired:
       "This account does not have a password credential. Platform access cannot be enabled for a Google-only account.",
     securityCredentialSignInRequired:

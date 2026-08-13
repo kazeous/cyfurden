@@ -42,7 +42,7 @@ const englishPlatformAdminCatalogue = {
     },
     mutationEnabled: "Resource controls",
     mutationNote:
-      "Lifecycle, typed quota, and bounded storage-reconciliation controls are enabled according to the current platform role. Health controls remain gated.",
+      "Lifecycle, typed quota, and bounded storage-reconciliation controls follow the current platform role. Current health is private and read-only.",
   },
   common: {
     search: "Search",
@@ -102,6 +102,10 @@ const englishPlatformAdminCatalogue = {
         DELETED: "Deleted",
         MISSING: "Missing",
         ORPHANED: "Orphaned",
+        HEALTHY: "Healthy",
+        DEGRADED: "Degraded",
+        UNAVAILABLE: "Unavailable",
+        UNKNOWN: "Unknown",
       })[state] ?? state.replaceAll("_", " ").toLowerCase(),
     roleLabel: (role: string) =>
       ({ OWNER: "Owner", ADMIN: "Admin", STAFF: "Staff" })[role] ?? role,
@@ -139,6 +143,29 @@ const englishPlatformAdminCatalogue = {
     drift: "Drift",
     configuredQuota: "Configured quota",
     lastReconciliation: "Last reconciliation",
+    currentHealth: "Current health",
+    healthDescription:
+      "Point-in-time application, PostgreSQL, and Oracle checks with a brief shared cache.",
+    healthCurrentOnly:
+      "These are current dependency signals, not historical uptime, an SLA, or an incident timeline.",
+    application: "Application",
+    postgresql: "PostgreSQL",
+    oracle: "Oracle Object Storage",
+    release: "Release",
+    latency: "Latency",
+    checked: "Checked",
+    nextCheck: "Cache refresh after",
+    milliseconds: (value: number) => `${value} ms`,
+    healthError: (code: string) =>
+      ({
+        RELEASE_ID_UNAVAILABLE: "Release ID is not configured",
+        POSTGRES_TIMEOUT: "PostgreSQL check timed out",
+        POSTGRES_UNAVAILABLE: "PostgreSQL check failed",
+        ORACLE_NOT_CONFIGURED: "Oracle check is not configured",
+        ORACLE_TIMEOUT: "Oracle check timed out",
+        ORACLE_ACCESS_DENIED: "Oracle denied the metadata check",
+        ORACLE_UNAVAILABLE: "Oracle check failed",
+      })[code] ?? "No normalized error",
     recentAudit: "Recent platform audit",
     recentAuditDescription: "The latest bounded, defensively redacted events.",
     noAudit: "No platform audit events have been recorded.",
@@ -450,7 +477,7 @@ const vietnamesePlatformAdminCatalogue: PlatformAdminCatalogue = {
     },
     mutationEnabled: "Điều khiển tài nguyên",
     mutationNote:
-      "Điều khiển vòng đời, hạn mức có kiểu và đối soát lưu trữ giới hạn được bật theo vai trò nền tảng hiện tại. Điều khiển sức khỏe vẫn bị chặn.",
+      "Điều khiển vòng đời, hạn mức có kiểu và đối soát lưu trữ giới hạn tuân theo vai trò nền tảng hiện tại. Tình trạng hiện tại là riêng tư và chỉ đọc.",
   },
   common: {
     search: "Tìm kiếm",
@@ -510,6 +537,10 @@ const vietnamesePlatformAdminCatalogue: PlatformAdminCatalogue = {
         DELETED: "Đã xóa",
         MISSING: "Bị thiếu",
         ORPHANED: "Mồ côi",
+        HEALTHY: "Khỏe mạnh",
+        DEGRADED: "Suy giảm",
+        UNAVAILABLE: "Không khả dụng",
+        UNKNOWN: "Chưa xác định",
       })[state] ?? state.replaceAll("_", " ").toLowerCase(),
     roleLabel: (role) =>
       ({ OWNER: "Chủ booth", ADMIN: "Quản trị", STAFF: "Nhân viên" })[role] ??
@@ -548,6 +579,29 @@ const vietnamesePlatformAdminCatalogue: PlatformAdminCatalogue = {
     drift: "Sai lệch",
     configuredQuota: "Hạn mức đã cấu hình",
     lastReconciliation: "Lần đối soát gần nhất",
+    currentHealth: "Tình trạng hiện tại",
+    healthDescription:
+      "Kiểm tra tức thời ứng dụng, PostgreSQL và Oracle với bộ nhớ đệm dùng chung trong thời gian ngắn.",
+    healthCurrentOnly:
+      "Đây là tín hiệu phụ thuộc hiện tại, không phải thời gian hoạt động lịch sử, SLA hoặc dòng thời gian sự cố.",
+    application: "Ứng dụng",
+    postgresql: "PostgreSQL",
+    oracle: "Oracle Object Storage",
+    release: "Bản phát hành",
+    latency: "Độ trễ",
+    checked: "Đã kiểm tra",
+    nextCheck: "Làm mới bộ nhớ đệm sau",
+    milliseconds: (value) => `${value} mili giây`,
+    healthError: (code) =>
+      ({
+        RELEASE_ID_UNAVAILABLE: "Chưa cấu hình ID bản phát hành",
+        POSTGRES_TIMEOUT: "Kiểm tra PostgreSQL đã hết thời gian",
+        POSTGRES_UNAVAILABLE: "Kiểm tra PostgreSQL thất bại",
+        ORACLE_NOT_CONFIGURED: "Chưa cấu hình kiểm tra Oracle",
+        ORACLE_TIMEOUT: "Kiểm tra Oracle đã hết thời gian",
+        ORACLE_ACCESS_DENIED: "Oracle từ chối kiểm tra siêu dữ liệu",
+        ORACLE_UNAVAILABLE: "Kiểm tra Oracle thất bại",
+      })[code] ?? "Không có lỗi chuẩn hóa",
     recentAudit: "Nhật ký nền tảng gần đây",
     recentAuditDescription:
       "Các sự kiện mới nhất đã được giới hạn và che dữ liệu khi hiển thị.",

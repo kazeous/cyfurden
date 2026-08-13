@@ -399,7 +399,8 @@
 .statusBadge[data-state="ACTIVE"],
 .statusBadge[data-state="PUBLISHED"],
 .statusBadge[data-state="VERIFIED"],
-.statusBadge[data-state="COMPLETED"] {
+.statusBadge[data-state="COMPLETED"],
+.statusBadge[data-state="HEALTHY"] {
   border-color: var(--color-success-line);
   color: var(--color-success-ink);
   background: var(--color-success-soft);
@@ -408,7 +409,8 @@
 .statusBadge[data-state="ACTIVE"] > span,
 .statusBadge[data-state="PUBLISHED"] > span,
 .statusBadge[data-state="VERIFIED"] > span,
-.statusBadge[data-state="COMPLETED"] > span {
+.statusBadge[data-state="COMPLETED"] > span,
+.statusBadge[data-state="HEALTHY"] > span {
   background: var(--color-success);
 }
 
@@ -417,7 +419,8 @@
 .statusBadge[data-state="BLOCKED"],
 .statusBadge[data-state="FAILED"],
 .statusBadge[data-state="MISSING"],
-.statusBadge[data-state="ORPHANED"] {
+.statusBadge[data-state="ORPHANED"],
+.statusBadge[data-state="UNAVAILABLE"] {
   border-color: var(--color-error-line);
   color: var(--color-error-ink);
   background: var(--color-error-soft);
@@ -428,14 +431,17 @@
 .statusBadge[data-state="BLOCKED"] > span,
 .statusBadge[data-state="FAILED"] > span,
 .statusBadge[data-state="MISSING"] > span,
-.statusBadge[data-state="ORPHANED"] > span {
+.statusBadge[data-state="ORPHANED"] > span,
+.statusBadge[data-state="UNAVAILABLE"] > span {
   background: var(--color-error);
 }
 
 .statusBadge[data-state="PENDING"],
 .statusBadge[data-state="FINALIZING"],
 .statusBadge[data-state="RESERVED"],
-.statusBadge[data-state="RUNNING"] {
+.statusBadge[data-state="RUNNING"],
+.statusBadge[data-state="DEGRADED"],
+.statusBadge[data-state="UNKNOWN"] {
   border-color: var(--color-warning-line);
   color: var(--color-warning-ink);
   background: var(--color-warning-soft);
@@ -444,7 +450,9 @@
 .statusBadge[data-state="PENDING"] > span,
 .statusBadge[data-state="FINALIZING"] > span,
 .statusBadge[data-state="RESERVED"] > span,
-.statusBadge[data-state="RUNNING"] > span {
+.statusBadge[data-state="RUNNING"] > span,
+.statusBadge[data-state="DEGRADED"] > span,
+.statusBadge[data-state="UNKNOWN"] > span {
   background: var(--color-warning);
 }
 
@@ -811,12 +819,17 @@
 
 .mobileList,
 .membershipList,
-.auditList {
+.auditList,
+.healthGrid {
   display: grid;
   gap: var(--space-sm);
   padding: 0;
   margin: 0;
   list-style: none;
+}
+
+.healthGrid {
+  margin-top: var(--space-md);
 }
 
 .resourceCard,
@@ -1391,6 +1404,10 @@
 
   .sectionGrid {
     grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+  }
+
+  .healthGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .sectionGrid > :last-child:nth-child(3) {

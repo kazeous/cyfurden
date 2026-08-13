@@ -14,6 +14,7 @@ import {
 } from "@/lib/i18n/platform-admin";
 import { readLocaleCookie } from "@/lib/i18n/server-locale";
 import { requirePlatformPermission } from "@/lib/platform-authorization";
+import { readPlatformCurrentHealth } from "@/lib/platform-health";
 import { readPlatformOverview } from "@/lib/platform-inventory";
 import { platformRoleHasPermission } from "@/lib/platform-policy";
 
@@ -22,8 +23,31 @@ export default async function PlatformOverviewPage() {
     requirePlatformPermission("platform.read"),
     readLocaleCookie(),
   ]);
-  const [overview] = await Promise.all([readPlatformOverview(access)]);
+  const [overview, health] = await Promise.all([
+    readPlatformOverview(access),
+    readPlatformCurrentHealth(access),
+  ]);
   const strings = getPlatformAdminStrings(locale);
+  const healthChecks = [
+    {
+      key: "application",
+      label: strings.overview.application,
+      releaseId: health.releaseId,
+      result: health.application,
+    },
+    {
+      key: "postgresql",
+      label: strings.overview.postgresql,
+      releaseId: null,
+      result: health.postgresql,
+    },
+    {
+      key: "oracle",
+      label: strings.overview.oracle,
+      releaseId: null,
+      result: health.oracle,
+    },
+  ] as const;
 
   return (
     <>
@@ -189,6 +213,69 @@ export default async function PlatformOverviewPage() {
           </div>
         </section>
       </div>
+
+      <section
+        className={styles.inventorySection}
+        style={{ marginTop: "var(--space-lg)" }}
+      >
+        <div className={styles.sectionHeader}>
+          <div>
+            <h2>{strings.overview.currentHealth}</h2>
+            <p>{strings.overview.healthDescription}</p>
+          </div>
+        </div>
+        <p className={styles.sectionDescription}>
+          {strings.overview.healthCurrentOnly}
+        </p>
+        <ol className={styles.healthGrid}>
+          {healthChecks.map((check) => (
+            <li className={styles.resourceCard} key={check.key}>
+              <div className={styles.resourceCardHeader}>
+                <div>
+                  <strong>{check.label}</strong>
+                  {check.key === "application" ? (
+                    <small>
+                      {strings.overview.release}:{" "}
+                      {check.releaseId ?? strings.common.notAvailable}
+                    </small>
+                  ) : null}
+                </div>
+                <PlatformStatusBadge
+                  state={check.result.state}
+                  label={strings.common.stateLabel(check.result.state)}
+                />
+              </div>
+              <div className={styles.resourceCardFacts}>
+                <div>
+                  <span>{strings.overview.latency}</span>
+                  <strong>
+                    {check.result.latencyMs === null
+                      ? strings.common.notAvailable
+                      : strings.overview.milliseconds(check.result.latencyMs)}
+                  </strong>
+                </div>
+                <div>
+                  <span>{strings.overview.checked}</span>
+                  <strong>
+                    {formatPlatformDateTime(check.result.checkedAt, locale)}
+                  </strong>
+                </div>
+              </div>
+              <div className={styles.resourceCardFooter}>
+                <span>
+                  {check.result.errorCode
+                    ? strings.overview.healthError(check.result.errorCode)
+                    : "—"}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ol>
+        <div className={styles.publicationLine}>
+          <strong>{strings.overview.nextCheck}</strong>
+          <span>{formatPlatformDateTime(health.cacheExpiresAt, locale)}</span>
+        </div>
+      </section>
 
       <section
         className={styles.inventorySection}
