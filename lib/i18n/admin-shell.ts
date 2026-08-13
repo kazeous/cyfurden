@@ -42,6 +42,11 @@ export type AdminShellStrings = {
   signingOut: string;
   accountDescription: string;
   productsCount: (count: number) => string;
+  suspendedTitle: string;
+  suspendedBody: string;
+  deletionPendingTitle: string;
+  deletionPendingBody: string;
+  privateServiceReason: string;
 };
 
 const roleNames: Record<Locale, Record<string, string>> = {
@@ -104,6 +109,13 @@ const catalogues: Record<Locale, AdminShellStrings> = {
     accountDescription: "Cyfurden account",
     productsCount: (count) =>
       `${count} ${count === 1 ? "product" : "products"}`,
+    suspendedTitle: "Booth suspended · read-only workspace",
+    suspendedBody:
+      "Platform operations suspended this booth. Existing members can review private records, but public access and every mutation are disabled.",
+    deletionPendingTitle: "Booth deletion pending · read-only workspace",
+    deletionPendingBody:
+      "This booth is in its cooling-off or finalization workflow. Existing members can review private records, but public access and every mutation are disabled.",
+    privateServiceReason: "Private operator reason",
   },
   vi: {
     metadataTitle: "Quản lý booth",
@@ -150,6 +162,13 @@ const catalogues: Record<Locale, AdminShellStrings> = {
     signingOut: "Đang đăng xuất…",
     accountDescription: "Tài khoản Cyfurden",
     productsCount: (count) => `${count} sản phẩm`,
+    suspendedTitle: "Booth đã tạm ngưng · chỉ có quyền xem",
+    suspendedBody:
+      "Bộ phận vận hành nền tảng đã tạm ngưng booth này. Thành viên hiện tại vẫn có thể xem dữ liệu riêng tư, nhưng truy cập công khai và mọi thay đổi đều bị khóa.",
+    deletionPendingTitle: "Booth đang chờ xóa · chỉ có quyền xem",
+    deletionPendingBody:
+      "Booth này đang trong thời gian chờ hoặc quy trình hoàn tất xóa. Thành viên hiện tại vẫn có thể xem dữ liệu riêng tư, nhưng truy cập công khai và mọi thay đổi đều bị khóa.",
+    privateServiceReason: "Lý do vận hành riêng tư",
   },
 };
 

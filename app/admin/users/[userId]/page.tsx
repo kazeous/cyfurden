@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PlatformAuditList } from "@/components/platform-admin/platform-audit-list";
+import { PlatformUserLifecycleControls } from "@/components/platform-admin/platform-lifecycle-controls";
 import {
   PlatformPageHeader,
   PlatformStatusBadge,
@@ -48,9 +49,23 @@ export default async function PlatformUserDetailPage({
         title={strings.userDetail.title}
         description={strings.userDetail.description}
         actions={
-          <span className={styles.readOnlyChip}>{strings.shell.readOnly}</span>
+          <span className={styles.readOnlyChip}>
+            {access.role === "PLATFORM_VIEWER"
+              ? strings.shell.readOnly
+              : strings.shell.mutationEnabled}
+          </span>
         }
       />
+
+      {access.role !== "PLATFORM_VIEWER" ? (
+        <PlatformUserLifecycleControls
+          email={user.email}
+          locale={locale}
+          platformRole={access.role}
+          state={user.state}
+          targetUserId={user.id}
+        />
+      ) : null}
 
       <div className={styles.detailGrid}>
         <section className={styles.detailSection}>

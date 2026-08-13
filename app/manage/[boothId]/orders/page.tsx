@@ -137,7 +137,7 @@ export default async function OrdersPage({
 }) {
   const { boothId } = await params;
   const query = await searchParams;
-  const [{ membership }, locale] = await Promise.all([
+  const [{ booth, membership }, locale] = await Promise.all([
     requireBoothSection(boothId, "orders"),
     readLocaleCookie(),
   ]);
@@ -159,7 +159,9 @@ export default async function OrdersPage({
   ];
   const statusLabel = (status: OrderStatus) =>
     workspaceStrings.common.orderStatusLabels[status];
-  await expireStaleOrders(boothId);
+  if (booth.serviceState === "ACTIVE") {
+    await expireStaleOrders(boothId);
+  }
 
   const selectedMode = parseOrderViewMode(query.mode);
   const selectedStatus = parseStatus(firstValue(query.status));

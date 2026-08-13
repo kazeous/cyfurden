@@ -135,7 +135,13 @@ export function AdminShell({
   role,
   children,
 }: {
-  booth: { id: string; slug: string; name: string };
+  booth: {
+    id: string;
+    slug: string;
+    name: string;
+    serviceState: "ACTIVE" | "SUSPENDED" | "DELETION_PENDING";
+    serviceReason: string | null;
+  };
   booths: AdminBoothOption[];
   locale: Locale;
   productCount: number;
@@ -229,7 +235,34 @@ export function AdminShell({
           </div>
         </header>
 
-        <main className={styles.adminMain}>{children}</main>
+        <main className={styles.adminMain}>
+          {booth.serviceState !== "ACTIVE" ? (
+            <section className={styles.serviceBanner} role="status">
+              <strong>
+                {booth.serviceState === "SUSPENDED"
+                  ? strings.suspendedTitle
+                  : strings.deletionPendingTitle}
+              </strong>
+              <p>
+                {booth.serviceState === "SUSPENDED"
+                  ? strings.suspendedBody
+                  : strings.deletionPendingBody}
+              </p>
+              {booth.serviceReason ? (
+                <p>
+                  <b>{strings.privateServiceReason}:</b> {booth.serviceReason}
+                </p>
+              ) : null}
+            </section>
+          ) : null}
+          {booth.serviceState === "ACTIVE" ? (
+            children
+          ) : (
+            <fieldset className={styles.readOnlyWorkspace} disabled>
+              {children}
+            </fieldset>
+          )}
+        </main>
 
         <nav
           className={styles.mobileBottomNav}

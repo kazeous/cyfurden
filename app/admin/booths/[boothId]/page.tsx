@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PlatformAuditList } from "@/components/platform-admin/platform-audit-list";
+import { PlatformBoothLifecycleControls } from "@/components/platform-admin/platform-lifecycle-controls";
 import {
   PlatformPageHeader,
   PlatformStatusBadge,
@@ -45,9 +46,25 @@ export default async function PlatformBoothDetailPage({
         title={strings.boothDetail.title}
         description={strings.boothDetail.description}
         actions={
-          <span className={styles.readOnlyChip}>{strings.shell.readOnly}</span>
+          <span className={styles.readOnlyChip}>
+            {access.role === "PLATFORM_VIEWER"
+              ? strings.shell.readOnly
+              : strings.shell.mutationEnabled}
+          </span>
         }
       />
+
+      {access.role !== "PLATFORM_VIEWER" ? (
+        <PlatformBoothLifecycleControls
+          boothId={booth.id}
+          boothSlug={booth.slug}
+          locale={locale}
+          memberships={booth.memberships}
+          platformRole={access.role}
+          serviceState={booth.serviceState}
+          serviceVersion={booth.serviceVersion}
+        />
+      ) : null}
 
       <div className={styles.detailGrid}>
         <section className={styles.detailSection}>

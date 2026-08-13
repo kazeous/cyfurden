@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { db } from "@/lib/db";
+import { requireBoothServiceAccess } from "@/lib/platform-targets";
 
 type TransactionClient = Parameters<Parameters<typeof db.$transaction>[0]>[0];
 
@@ -96,6 +97,7 @@ export async function createTeamInvitation(input: {
   const expiresAt = new Date(now.getTime() + TEAM_INVITATION_TTL_MS);
 
   return runSerializable(async (transaction) => {
+    await requireBoothServiceAccess(input.boothId, "MUTATION", transaction);
     await expireStaleInvitations(transaction, input.boothId, now);
     const [existingMember, pendingInvite, activeMembers, pendingInvites] =
       await Promise.all([
@@ -171,6 +173,7 @@ export async function revokeTeamInvitation(input: {
   actorUserId: string;
 }) {
   return db.$transaction(async (transaction) => {
+    await requireBoothServiceAccess(input.boothId, "MUTATION", transaction);
     const revoked = await transaction.teamInvitation.updateMany({
       where: {
         id: input.invitationId,
@@ -205,6 +208,7 @@ export async function updateTeamMemberAccess(input: {
   const now = input.now ?? new Date();
 
   return runSerializable(async (transaction) => {
+    await requireBoothServiceAccess(input.boothId, "MUTATION", transaction);
     await expireStaleInvitations(transaction, input.boothId, now);
     const membership = await transaction.boothMembership.findFirst({
       where: { id: input.membershipId, boothId: input.boothId },
@@ -260,6 +264,7 @@ export async function removeTeamMember(input: {
   actorUserId: string;
 }): Promise<RemoveMemberResult> {
   return db.$transaction(async (transaction) => {
+    await requireBoothServiceAccess(input.boothId, "MUTATION", transaction);
     const membership = await transaction.boothMembership.findFirst({
       where: { id: input.membershipId, boothId: input.boothId },
       include: { booth: { select: { ownerId: true } } },
@@ -304,9 +309,16 @@ export async function acceptTeamInvitation(input: {
   return runSerializable(async (transaction) => {
     const invitation = await transaction.teamInvitation.findUnique({
       where: { tokenHash },
-      include: { booth: { select: { ownerId: true } } },
+      include: {
+        booth: { select: { ownerId: true, serviceState: true } },
+      },
     });
     if (!invitation) return { kind: "invalid" };
+    await requireBoothServiceAccess(
+      invitation.boothId,
+      "MUTATION",
+      transaction,
+    );
     if (!isTeamInviteRole(invitation.role)) return { kind: "invalid" };
     if (invitation.status !== "PENDING") return { kind: "inactive" };
     if (invitation.expiresAt <= now) {

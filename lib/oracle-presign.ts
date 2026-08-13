@@ -16,6 +16,7 @@ import {
   getOracleUploadConfig,
 } from "@/lib/oracle-uploads";
 import { ProductImageValidationError } from "@/lib/payment-qr";
+import { requireBoothServiceAccess } from "@/lib/platform-targets";
 import { inspectOracleImageBytes } from "@/lib/oracle-image-verification";
 import { isBoothLogoObjectKey } from "@/lib/shop-settings";
 
@@ -48,6 +49,7 @@ export async function createBoothUploadPresign({
   contentType,
   contentLength,
 }: z.infer<typeof presignedUploadRequestSchema>) {
+  await requireBoothServiceAccess(boothId, "MUTATION");
   const config = getOracleUploadConfig();
   const objectKey = buildBoothUploadObjectKey({
     boothId,
@@ -84,6 +86,7 @@ export async function verifyBoothLogoUpload({
   boothId: string;
   objectKey: string;
 }) {
+  await requireBoothServiceAccess(boothId, "MUTATION");
   if (!isBoothLogoObjectKey(boothId, objectKey)) {
     throw new OracleLogoVerificationError(
       "The uploaded logo does not belong to this booth.",
@@ -130,6 +133,7 @@ export async function verifyBoothProductImageUpload({
   boothId: string;
   objectKey: string;
 }) {
+  await requireBoothServiceAccess(boothId, "MUTATION");
   if (!isBoothProductImageObjectKey(boothId, objectKey)) {
     throw new OracleProductImageVerificationError(
       "The uploaded product image does not belong to this booth.",
@@ -180,6 +184,7 @@ export async function verifyBoothFaceboothUpload({
   objectKey: string;
   purpose: FaceboothUploadPurpose;
 }) {
+  await requireBoothServiceAccess(boothId, "MUTATION");
   if (!isBoothFaceboothObjectKey(boothId, purpose, objectKey)) {
     throw new OracleFaceboothAssetVerificationError(
       "The uploaded Facebooth asset does not belong to this booth or purpose.",

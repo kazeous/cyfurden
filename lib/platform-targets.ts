@@ -1,3 +1,4 @@
+import type { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 
 export type PlatformTargetReference =
@@ -173,4 +174,25 @@ export function assertBoothServiceAccess(
   throw new PlatformTargetError(
     access === "PUBLIC_READ" ? "BOOTH_UNAVAILABLE" : "BOOTH_READ_ONLY",
   );
+}
+
+type BoothServiceClient = Pick<Prisma.TransactionClient, "booth">;
+
+export async function requireBoothServiceAccess(
+  boothId: string,
+  access: "PUBLIC_READ" | "MEMBER_READ" | "MUTATION",
+  client: BoothServiceClient = db,
+) {
+  const booth = await client.booth.findUnique({
+    where: { id: boothId },
+    select: {
+      id: true,
+      serviceState: true,
+      serviceReason: true,
+      serviceVersion: true,
+    },
+  });
+  if (!booth) throw new PlatformTargetError("TARGET_NOT_FOUND");
+  assertBoothServiceAccess(booth.serviceState, access);
+  return booth;
 }

@@ -20,7 +20,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const booth = await db.booth.findUnique({
-    where: { slug },
+    where: { slug, serviceState: "ACTIVE" },
     include: { storefront: true },
   });
   const locale = booth?.storefront?.publishedDocument

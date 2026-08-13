@@ -18,6 +18,7 @@ import {
   type FaceboothSceneDocument,
 } from "@/lib/facebooth-documents";
 import { isBoothFaceboothObjectKey } from "@/lib/oracle-presign-contract";
+import { requireBoothServiceAccess } from "@/lib/platform-targets";
 
 type TransactionClient = Parameters<Parameters<typeof db.$transaction>[0]>[0];
 
@@ -174,6 +175,7 @@ export async function createFaceboothProject(input: {
   project: unknown;
 }) {
   return db.$transaction(async (transaction) => {
+    await requireBoothServiceAccess(input.boothId, "MUTATION", transaction);
     if (!(await hasManagerMembership(transaction, input))) {
       return { kind: "forbidden" } as const;
     }
@@ -238,6 +240,7 @@ export async function importFaceboothProject(input: {
   project: unknown;
 }) {
   return db.$transaction(async (transaction) => {
+    await requireBoothServiceAccess(input.boothId, "MUTATION", transaction);
     if (!(await hasManagerMembership(transaction, input))) {
       return { kind: "forbidden" } as const;
     }
@@ -392,6 +395,7 @@ export async function saveFaceboothProject(input: {
   project: unknown;
 }) {
   return db.$transaction(async (transaction) => {
+    await requireBoothServiceAccess(input.boothId, "MUTATION", transaction);
     if (!(await hasManagerMembership(transaction, input))) {
       return { kind: "forbidden" } as const;
     }
@@ -505,6 +509,7 @@ export async function renameFaceboothProject(input: {
   rename: unknown;
 }) {
   return db.$transaction(async (transaction) => {
+    await requireBoothServiceAccess(input.boothId, "MUTATION", transaction);
     if (!(await hasManagerMembership(transaction, input))) {
       return { kind: "forbidden" } as const;
     }
@@ -565,6 +570,7 @@ export async function duplicateFaceboothProject(input: {
   name: unknown;
 }) {
   return db.$transaction(async (transaction) => {
+    await requireBoothServiceAccess(input.boothId, "MUTATION", transaction);
     if (!(await hasManagerMembership(transaction, input))) {
       return { kind: "forbidden" } as const;
     }
@@ -630,6 +636,7 @@ export async function deleteFaceboothProject(input: {
   actorUserId: string;
 }) {
   return db.$transaction(async (transaction) => {
+    await requireBoothServiceAccess(input.boothId, "MUTATION", transaction);
     if (!(await hasManagerMembership(transaction, input))) {
       return { kind: "forbidden" } as const;
     }
@@ -685,6 +692,7 @@ export async function publishFaceboothSnapshot(input: {
   publication: unknown;
 }) {
   return db.$transaction(async (transaction) => {
+    await requireBoothServiceAccess(input.boothId, "MUTATION", transaction);
     if (!(await hasManagerMembership(transaction, input))) {
       return { kind: "forbidden" } as const;
     }
@@ -867,6 +875,7 @@ export async function unpublishFaceboothSnapshot(input: {
   actorUserId: string;
 }) {
   return db.$transaction(async (transaction) => {
+    await requireBoothServiceAccess(input.boothId, "MUTATION", transaction);
     if (!(await hasManagerMembership(transaction, input))) {
       return { kind: "forbidden" } as const;
     }

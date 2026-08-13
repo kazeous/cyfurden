@@ -16,6 +16,7 @@ import {
   resolveOracleObjectUrl,
 } from "@/lib/oracle-images";
 import { parseReservationCode, reservationPath } from "@/lib/reservation-code";
+import { assertBoothServiceAccess } from "@/lib/platform-targets";
 import { readBoothSocialLinks, socialPlatforms } from "@/lib/shop-settings";
 import {
   readStorefrontDocument,
@@ -55,6 +56,18 @@ const getManagedBooth = cache(async (slug: string) => {
   }
 });
 
+function isPublicBoothAvailable<
+  T extends { serviceState: "ACTIVE" | "SUSPENDED" | "DELETION_PENDING" },
+>(booth: T | null): booth is T {
+  if (!booth) return false;
+  try {
+    assertBoothServiceAccess(booth.serviceState, "PUBLIC_READ");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -63,7 +76,7 @@ export async function generateMetadata({
   const { slug } = await params;
   const managed = await getManagedBooth(slug);
   if (
-    !managed ||
+    !isPublicBoothAvailable(managed) ||
     managed.status !== "PUBLISHED" ||
     !managed.storefront?.publishedDocument
   ) {
@@ -104,7 +117,7 @@ export default async function PublicBoothPage({
   const { order } = await searchParams;
   const managed = await getManagedBooth(slug);
   if (
-    !managed ||
+    !isPublicBoothAvailable(managed) ||
     managed.status !== "PUBLISHED" ||
     !managed.storefront?.publishedDocument
   ) {

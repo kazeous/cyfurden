@@ -22,6 +22,7 @@ import {
 import { publicOrderFulfillmentSchema } from "@/lib/order-fulfillment";
 import { synchronizeProductInventoryStatus } from "@/lib/product-inventory";
 import { applyQuantityPromotions } from "@/lib/quantity-promotions";
+import { assertBoothServiceAccess } from "@/lib/platform-targets";
 import { readStorefrontDocument } from "@/lib/storefront-document";
 
 const lineSchema = z.object({
@@ -127,14 +128,6 @@ export async function createPublicOrderAction(
     try {
       orderCode = await db.$transaction(
         async (transaction) => {
-          const duplicate = await transaction.order.findUnique({
-            where: {
-              boothId_idempotencyKey: { boothId, idempotencyKey },
-            },
-            select: { code: true },
-          });
-          if (duplicate) return duplicate.code;
-
           const booth = await transaction.booth.findFirst({
             where: { id: boothId, slug, status: "PUBLISHED" },
             include: {
@@ -152,6 +145,11 @@ export async function createPublicOrderAction(
           if (!booth) {
             throw new PublicOrderError(strings.cartActionStorefrontUnavailable);
           }
+          try {
+            assertBoothServiceAccess(booth.serviceState, "MUTATION");
+          } catch {
+            throw new PublicOrderError(strings.cartActionStorefrontUnavailable);
+          }
           if (booth.storefront?.publishedDocument) {
             const document = readStorefrontDocument(
               booth.storefront.publishedDocument,
@@ -160,6 +158,14 @@ export async function createPublicOrderAction(
             actionLocale = document.locale;
             strings = translate(actionLocale, "publicBooth");
           }
+
+          const duplicate = await transaction.order.findUnique({
+            where: {
+              boothId_idempotencyKey: { boothId, idempotencyKey },
+            },
+            select: { code: true },
+          });
+          if (duplicate) return duplicate.code;
 
           const paymentSnapshot = createOrderPaymentSnapshot(
             booth.paymentInstructions,

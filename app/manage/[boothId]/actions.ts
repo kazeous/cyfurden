@@ -5,7 +5,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
-import { requireBoothRole, requireUser } from "@/lib/authorization";
+import {
+  requireActiveBoothRole as requireBoothRole,
+  requireUser,
+} from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { compileGachaDocument } from "@/lib/gacha-document";
 import { parseGachaRatesInput } from "@/lib/gacha-rates";
@@ -47,6 +50,7 @@ import {
   synchronizeProductVariants,
 } from "@/lib/product-variants";
 import { MAX_PROMOTION_QUANTITY } from "@/lib/quantity-promotions";
+import { requireBoothServiceAccess } from "@/lib/platform-targets";
 import {
   acceptTeamInvitation,
   createTeamInvitation,
@@ -298,6 +302,7 @@ export async function saveBoothSettingsAction(
 
   try {
     await db.$transaction(async (transaction) => {
+      await requireBoothServiceAccess(boothId, "MUTATION", transaction);
       await transaction.storefrontConfig.upsert({
         where: { boothId },
         create: {
@@ -528,6 +533,7 @@ export async function saveStorefrontAction(
 
   try {
     await db.$transaction(async (transaction) => {
+      await requireBoothServiceAccess(boothId, "MUTATION", transaction);
       await transaction.storefrontConfig.upsert({
         where: { boothId },
         create: {
@@ -615,20 +621,21 @@ export async function publishStorefrontAction(formData: FormData) {
   }
 
   const document = storefrontDocumentSchema.parse(config.draftDocument);
-  await db.$transaction([
-    db.storefrontConfig.update({
+  await db.$transaction(async (transaction) => {
+    await requireBoothServiceAccess(boothId, "MUTATION", transaction);
+    await transaction.storefrontConfig.update({
       where: { boothId },
       data: {
         publishedDocument: document,
         publishedAt: new Date(),
         updatedById: session.user.id,
       },
-    }),
-    db.booth.update({
+    });
+    await transaction.booth.update({
       where: { id: boothId },
       data: { name: document.name, status: "PUBLISHED" },
-    }),
-    db.auditLog.create({
+    });
+    await transaction.auditLog.create({
       data: {
         boothId,
         actorUserId: session.user.id,
@@ -636,54 +643,12 @@ export async function publishStorefrontAction(formData: FormData) {
         entityType: "StorefrontConfig",
         entityId: boothId,
       },
-    }),
-  ]);
+    });
+  });
 
   revalidatePath(`/manage/${boothId}/storefront`);
   revalidatePath(`/s/${booth.slug}`);
   redirect(`/manage/${boothId}/storefront?published=1`);
-}
-
-export type DeleteBoothState = { error: string | null };
-
-export async function deleteBoothAction(
-  _previousState: DeleteBoothState,
-  formData: FormData,
-): Promise<DeleteBoothState> {
-  const boothId = requiredText(formData, "boothId");
-  const confirmation = requiredText(formData, "confirmation");
-  const { session, booth } = await requireBoothRole(boothId, ["OWNER"]);
-  const strings = await readActionStrings();
-
-  if (booth.ownerId !== session.user.id) {
-    return { error: strings.ownerDeleteOnly };
-  }
-  if (confirmation !== booth.slug) {
-    return { error: strings.confirmBoothSlug(booth.slug) };
-  }
-
-  const result = await db.$transaction(
-    async (transaction) => {
-      const orderCount = await transaction.order.count({ where: { boothId } });
-      if (orderCount > 0) {
-        return {
-          error: strings.boothHasOrders,
-        };
-      }
-
-      const deleted = await transaction.booth.deleteMany({
-        where: { id: boothId, ownerId: session.user.id },
-      });
-      return deleted.count
-        ? { error: null }
-        : { error: strings.boothUnavailable };
-    },
-    { isolationLevel: "Serializable" },
-  );
-
-  if (result.error) return result;
-  revalidatePath("/dashboard");
-  redirect("/dashboard?deleted=1");
 }
 
 const productStatusSchema = z.enum(["DRAFT", "LIVE", "SOLD_OUT", "HIDDEN"]);
@@ -930,6 +895,7 @@ async function saveProduct(
   try {
     savedProductId = await db.$transaction(
       async (transaction) => {
+        await requireBoothServiceAccess(boothId, "MUTATION", transaction);
         let nextProductId = productId;
         const auditAction = productId ? "product.saved" : "product.created";
 
@@ -1068,19 +1034,22 @@ export async function hideProductAction(formData: FormData) {
   const productId = requiredText(formData, "productId");
   const { session, booth } = await requireBoothRole(boothId, editorRoles);
   const strings = await readActionStrings();
-  const result = await db.product.updateMany({
-    where: { id: productId, boothId },
-    data: { status: "HIDDEN" },
-  });
-  if (!result.count) throw new Error(strings.productUnavailable);
-  await db.auditLog.create({
-    data: {
-      boothId,
-      actorUserId: session.user.id,
-      action: "product.hidden",
-      entityType: "Product",
-      entityId: productId,
-    },
+  await db.$transaction(async (transaction) => {
+    await requireBoothServiceAccess(boothId, "MUTATION", transaction);
+    const result = await transaction.product.updateMany({
+      where: { id: productId, boothId },
+      data: { status: "HIDDEN" },
+    });
+    if (!result.count) throw new Error(strings.productUnavailable);
+    await transaction.auditLog.create({
+      data: {
+        boothId,
+        actorUserId: session.user.id,
+        action: "product.hidden",
+        entityType: "Product",
+        entityId: productId,
+      },
+    });
   });
   revalidatePath(`/manage/${boothId}/products`);
   revalidatePath(`/s/${booth.slug}`);
@@ -1120,6 +1089,7 @@ export async function savePromotionAction(
 
   try {
     await db.$transaction(async (transaction) => {
+      await requireBoothServiceAccess(boothId, "MUTATION", transaction);
       const [promotion, matchingProductCount] = await Promise.all([
         parsed.data.promotionId
           ? transaction.quantityPromotion.findFirst({
@@ -1334,6 +1304,7 @@ export async function saveOrderEventAction(
       try {
         const result = await db.$transaction(
           async (transaction) => {
+            await requireBoothServiceAccess(boothId, "MUTATION", transaction);
             if (eventId) {
               const existing = await transaction.event.findFirst({
                 where: { id: eventId, boothId },
@@ -1526,6 +1497,7 @@ export async function saveGachaAction(formData: FormData) {
     .enum(["anemo", "ember", "starlight"])
     .parse(requiredText(formData, "gameTheme"));
   await db.$transaction(async (transaction) => {
+    await requireBoothServiceAccess(boothId, "MUTATION", transaction);
     await transaction.gachaConfig.upsert({
       where: { boothId },
       create: {
@@ -1597,6 +1569,7 @@ export async function saveGachaBannerAction(formData: FormData) {
 
   let savedBannerId = bannerId;
   await db.$transaction(async (transaction) => {
+    await requireBoothServiceAccess(boothId, "MUTATION", transaction);
     if (bannerId) {
       const result = await transaction.gachaBanner.updateMany({
         where: { id: bannerId, boothId },
@@ -1672,6 +1645,7 @@ export async function saveGachaPoolAction(formData: FormData) {
   });
 
   await db.$transaction(async (transaction) => {
+    await requireBoothServiceAccess(boothId, "MUTATION", transaction);
     await transaction.gachaPoolEntry.deleteMany({ where: { bannerId } });
     if (poolEntries.length) {
       await transaction.gachaPoolEntry.createMany({
@@ -1701,6 +1675,7 @@ export async function publishGachaAction(formData: FormData) {
   const publishedAt = new Date();
 
   await db.$transaction(async (transaction) => {
+    await requireBoothServiceAccess(boothId, "MUTATION", transaction);
     const [config, banners] = await Promise.all([
       transaction.gachaConfig.findUnique({ where: { boothId } }),
       transaction.gachaBanner.findMany({
@@ -1763,6 +1738,7 @@ export async function unpublishGachaAction(formData: FormData) {
   const { session, booth } = await requireBoothRole(boothId, editorRoles);
   const strings = await readActionStrings();
   await db.$transaction(async (transaction) => {
+    await requireBoothServiceAccess(boothId, "MUTATION", transaction);
     const config = await transaction.gachaConfig.findUnique({
       where: { boothId },
       select: { id: true },

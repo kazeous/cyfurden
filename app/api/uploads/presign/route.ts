@@ -5,6 +5,7 @@ import {
   createBoothUploadPresign,
   presignedUploadRequestSchema,
 } from "@/lib/oracle-presign";
+import { requireBoothServiceAccess } from "@/lib/platform-targets";
 
 export const runtime = "nodejs";
 
@@ -62,6 +63,8 @@ export async function POST(request: Request) {
         { status: 403 },
       );
     }
+
+    await requireBoothServiceAccess(parsed.data.boothId, "MUTATION");
 
     const presign = await createBoothUploadPresign(parsed.data);
     return NextResponse.json(presign, { status: 200 });

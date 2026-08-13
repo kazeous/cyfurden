@@ -24,6 +24,7 @@ export function PlatformAdminShell({
 }) {
   const strings = getPlatformAdminStrings(locale).shell;
   const userLabel = user.name || user.email;
+  const lifecycleEnabled = role !== "PLATFORM_VIEWER";
 
   return (
     <div className={styles.appShell}>
@@ -41,14 +42,18 @@ export function PlatformAdminShell({
         <div className={styles.consoleIdentity}>
           <span>{strings.consoleLabel}</span>
           <strong>{strings.roles[role]}</strong>
-          <small>{strings.readOnly}</small>
+          <small>
+            {lifecycleEnabled ? strings.mutationEnabled : strings.readOnly}
+          </small>
         </div>
 
         <nav aria-label={strings.navigationLabel}>
           <PlatformAdminNav locale={locale} />
         </nav>
 
-        <p className={styles.readOnlyNote}>{strings.readOnlyNote}</p>
+        <p className={styles.readOnlyNote}>
+          {lifecycleEnabled ? strings.mutationNote : strings.readOnlyNote}
+        </p>
 
         <div className={styles.sidebarUtilities}>
           <PlatformLocaleToggle locale={locale} />
@@ -82,7 +87,9 @@ export function PlatformAdminShell({
             </span>
             <span>
               <strong>Cyfurden</strong>
-              <small>{strings.readOnly}</small>
+              <small>
+                {lifecycleEnabled ? strings.mutationEnabled : strings.readOnly}
+              </small>
             </span>
           </Link>
           <PlatformMobileAccountMenu locale={locale} userLabel={userLabel} />

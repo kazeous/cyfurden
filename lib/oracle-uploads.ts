@@ -10,6 +10,7 @@ import {
   PaymentQrValidationError,
   validatePaymentQrBytes,
 } from "@/lib/payment-qr";
+import { requireBoothServiceAccess } from "@/lib/platform-targets";
 
 export type OracleUploadConfig = {
   accessKeyId: string;
@@ -84,6 +85,7 @@ export async function uploadPaymentQr({
   file: File;
 }) {
   try {
+    await requireBoothServiceAccess(boothId, "MUTATION");
     const image = validatePaymentQrBytes(
       new Uint8Array(await file.arrayBuffer()),
     );
@@ -137,4 +139,65 @@ export async function discardUploadedProductImage(objectKey: string) {
   } catch (error) {
     console.error("Could not discard unattached product image", error);
   }
+}
+
+export type OracleDeletionResult = {
+  deletedObjectKeys: string[];
+  failedObjectKeys: string[];
+  safeErrorCode: "ORACLE_DELETE_FAILED" | "ORACLE_NOT_CONFIGURED" | null;
+};
+
+export async function deleteOracleObjectsStrict(
+  objectKeys: Iterable<string>,
+): Promise<OracleDeletionResult> {
+  const uniqueKeys = [
+    ...new Set(
+      [...objectKeys]
+        .map((objectKey) => objectKey.trim())
+        .filter(
+          (objectKey) =>
+            objectKey.length > 0 &&
+            objectKey.length <= 1_024 &&
+            !/[\u0000-\u001f\u007f]/.test(objectKey),
+        ),
+    ),
+  ];
+  if (!uniqueKeys.length) {
+    return {
+      deletedObjectKeys: [],
+      failedObjectKeys: [],
+      safeErrorCode: null,
+    };
+  }
+
+  let config: OracleUploadConfig;
+  try {
+    config = getOracleUploadConfig();
+  } catch {
+    return {
+      deletedObjectKeys: [],
+      failedObjectKeys: uniqueKeys,
+      safeErrorCode: "ORACLE_NOT_CONFIGURED",
+    };
+  }
+
+  const client = createOracleClient(config);
+  const deletedObjectKeys: string[] = [];
+  const failedObjectKeys: string[] = [];
+  for (const objectKey of uniqueKeys) {
+    try {
+      await client.send(
+        new DeleteObjectCommand({ Bucket: config.bucket, Key: objectKey }),
+      );
+      deletedObjectKeys.push(objectKey);
+    } catch {
+      failedObjectKeys.push(objectKey);
+    }
+  }
+
+  return {
+    deletedObjectKeys,
+    failedObjectKeys,
+    safeErrorCode: failedObjectKeys.length ? "ORACLE_DELETE_FAILED" : null,
+  };
 }

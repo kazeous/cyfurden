@@ -92,9 +92,7 @@ export default async function SettingsPage({
 
       {membership.role === "OWNER" ? (
         <BoothDangerZone
-          boothId={booth.id}
           boothName={parseBilingual(booth.name, locale)}
-          boothSlug={booth.slug}
           locale={locale}
         />
       ) : null}

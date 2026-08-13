@@ -239,12 +239,12 @@ const englishWorkspaceCatalogue = {
   },
   danger: {
     eyebrow: "Booth lifecycle",
-    title: (boothName: string) => `Delete ${boothName}`,
+    title: (boothName: string) => `${boothName} deletion`,
     description:
-      "This permanently removes a booth that has no order history. Product, storefront, team, and configuration records are removed with it. Oracle bucket lifecycle rules should clean up unreferenced images.",
+      "Deletion is handled by platform operations with an impact preview, a seven-day cooling-off period, and provider-confirmed Oracle cleanup. Booth owners cannot bypass that workflow.",
     confirmation: (slug: string) => `Type ${slug} to confirm`,
     deleting: "Deleting booth…",
-    delete: "Delete booth",
+    delete: "Contact a platform operator to request or cancel deletion.",
   },
   storefront: {
     metadataTitle: "Storefront designer",
@@ -1446,10 +1446,10 @@ const vietnameseWorkspaceCatalogue: WorkspaceCatalogue = {
     eyebrow: "Vòng đời booth",
     title: (boothName) => `Xóa ${boothName}`,
     description:
-      "Thao tác này xóa vĩnh viễn booth chưa có lịch sử đơn hàng. Dữ liệu sản phẩm, storefront, đội ngũ và cấu hình cũng bị xóa. Quy tắc vòng đời của bucket Oracle nên dọn các ảnh không còn được tham chiếu.",
+      "Việc xóa do bộ phận vận hành nền tảng thực hiện với bản xem trước tác động, thời gian chờ bảy ngày và xác nhận dọn dẹp Oracle. Chủ booth không thể bỏ qua quy trình này.",
     confirmation: (slug) => `Nhập chính xác ${slug} để xác nhận`,
     deleting: "Đang xóa booth…",
-    delete: "Xóa booth",
+    delete: "Liên hệ quản trị viên nền tảng để yêu cầu hoặc hủy xóa.",
   },
   storefront: {
     metadataTitle: "Thiết kế storefront",

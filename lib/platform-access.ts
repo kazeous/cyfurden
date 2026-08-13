@@ -170,6 +170,105 @@ export async function authorizePlatformSession(input: {
   };
 }
 
+export async function authorizeTransactionalPlatformSession(
+  transaction: Prisma.TransactionClient,
+  input: {
+    userId: string;
+    sessionId: string;
+    permission: PlatformPermission;
+    now?: Date;
+  },
+): Promise<PlatformAccessResult> {
+  const now = input.now ?? new Date();
+  const [user, credential, verifiedTotp, grant, session, deletion] =
+    await Promise.all([
+      transaction.user.findUnique({
+        where: { id: input.userId },
+        select: {
+          id: true,
+          role: true,
+          banned: true,
+          banExpires: true,
+          twoFactorEnabled: true,
+        },
+      }),
+      transaction.account.findFirst({
+        where: {
+          userId: input.userId,
+          providerId: "credential",
+          password: { not: null },
+        },
+        select: { id: true },
+      }),
+      transaction.twoFactor.findFirst({
+        where: { userId: input.userId, verified: true },
+        select: { id: true },
+      }),
+      transaction.platformRoleGrant.findUnique({
+        where: { userId: input.userId },
+        select: { role: true, status: true },
+      }),
+      transaction.session.findUnique({
+        where: { id: input.sessionId },
+        select: {
+          id: true,
+          userId: true,
+          expiresAt: true,
+          platformAuthenticatedAt: true,
+        },
+      }),
+      transaction.platformDeletionRequest.findFirst({
+        where: {
+          targetType: "USER",
+          targetId: input.userId,
+          state: { in: ["PENDING", "FINALIZING", "BLOCKED"] },
+        },
+        select: { id: true },
+      }),
+    ]);
+
+  if (!user || deletion) {
+    return { allowed: false, reason: "ACCOUNT_UNAVAILABLE" };
+  }
+  const currentlyBanned =
+    user.banned === true &&
+    (!user.banExpires || user.banExpires.getTime() > now.getTime());
+  if (currentlyBanned) {
+    return { allowed: false, reason: "ACCOUNT_UNAVAILABLE" };
+  }
+  if (!grant || grant.status !== "ACTIVE") {
+    return { allowed: false, reason: "PLATFORM_GRANT_REQUIRED" };
+  }
+  if (user.role !== grant.role) {
+    return { allowed: false, reason: "PLATFORM_GRANT_INCONSISTENT" };
+  }
+  if (!credential) return { allowed: false, reason: "CREDENTIAL_REQUIRED" };
+  if (user.twoFactorEnabled !== true || !verifiedTotp) {
+    return { allowed: false, reason: "TOTP_REQUIRED" };
+  }
+  if (
+    !session ||
+    session.userId !== input.userId ||
+    session.expiresAt.getTime() <= now.getTime() ||
+    !session.platformAuthenticatedAt
+  ) {
+    return { allowed: false, reason: "PLATFORM_AUTH_REQUIRED" };
+  }
+
+  const role = grant.role as PlatformRoleName;
+  if (!platformRoleHasPermission(role, input.permission)) {
+    return { allowed: false, reason: "PERMISSION_DENIED" };
+  }
+  return {
+    allowed: true,
+    permission: input.permission,
+    role,
+    userId: user.id,
+    sessionId: session.id,
+    platformAuthenticatedAt: session.platformAuthenticatedAt,
+  };
+}
+
 export function requireRecentPlatformStepUp(
   access: Extract<PlatformAccessResult, { allowed: true }>,
   now = new Date(),
@@ -453,69 +552,18 @@ async function assertTransactionalRoleActor(
   transaction: Prisma.TransactionClient,
   input: { userId: string; sessionId: string; now: Date },
 ) {
-  const actor = await transaction.user.findUnique({
-    where: { id: input.userId },
-    select: {
-      role: true,
-      banned: true,
-      banExpires: true,
-      twoFactorEnabled: true,
-    },
+  const access = await authorizeTransactionalPlatformSession(transaction, {
+    userId: input.userId,
+    sessionId: input.sessionId,
+    permission: "platform_role.manage",
+    now: input.now,
   });
-  const credential = await transaction.account.findFirst({
-    where: {
-      userId: input.userId,
-      providerId: "credential",
-      password: { not: null },
-    },
-    select: { id: true },
-  });
-  const verifiedTotp = await transaction.twoFactor.findFirst({
-    where: { userId: input.userId, verified: true },
-    select: { id: true },
-  });
-  const grant = await transaction.platformRoleGrant.findUnique({
-    where: { userId: input.userId },
-    select: { role: true, status: true },
-  });
-  const session = await transaction.session.findUnique({
-    where: { id: input.sessionId },
-    select: {
-      userId: true,
-      expiresAt: true,
-      platformAuthenticatedAt: true,
-    },
-  });
-  const deletion = await transaction.platformDeletionRequest.findFirst({
-    where: {
-      targetType: "USER",
-      targetId: input.userId,
-      state: { in: ["PENDING", "FINALIZING", "BLOCKED"] },
-    },
-    select: { id: true },
-  });
-  const currentlyBanned =
-    actor?.banned === true &&
-    (!actor.banExpires || actor.banExpires.getTime() > input.now.getTime());
-  const stepUpAge = session?.platformAuthenticatedAt
-    ? input.now.getTime() - session.platformAuthenticatedAt.getTime()
-    : Number.POSITIVE_INFINITY;
-  if (
-    !actor ||
-    deletion ||
-    currentlyBanned ||
-    actor.role !== "PLATFORM_SUPER_ADMIN" ||
-    grant?.status !== "ACTIVE" ||
-    grant.role !== "PLATFORM_SUPER_ADMIN" ||
-    !credential ||
-    actor.twoFactorEnabled !== true ||
-    !verifiedTotp ||
-    !session ||
-    session.userId !== input.userId ||
-    session.expiresAt.getTime() <= input.now.getTime() ||
-    stepUpAge < 0 ||
-    stepUpAge > platformPolicy.auth.destructiveStepUpMaxAgeMs
-  ) {
+  if (!access.allowed || access.role !== "PLATFORM_SUPER_ADMIN") {
+    throw new PlatformSafetyError("ROLE_CHANGE_NOT_ALLOWED");
+  }
+  try {
+    requireRecentPlatformStepUp(access, input.now);
+  } catch {
     throw new PlatformSafetyError("ROLE_CHANGE_NOT_ALLOWED");
   }
 }

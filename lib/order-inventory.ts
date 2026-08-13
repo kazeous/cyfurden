@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { synchronizeProductInventoryStatusForVariants } from "@/lib/product-inventory";
+import { requireBoothServiceAccess } from "@/lib/platform-targets";
 
 export const ORDER_RESERVATION_TTL_MS = 7 * 24 * 60 * 60 * 1_000;
 
@@ -10,6 +11,7 @@ export async function expireStaleOrdersInTransaction(
   boothId: string,
   now: Date,
 ) {
+  await requireBoothServiceAccess(boothId, "MUTATION", transaction);
   const staleOrders = await transaction.order.findMany({
     where: {
       boothId,

@@ -12,6 +12,7 @@ import {
   releasesInventory,
 } from "@/lib/order-rules";
 import { synchronizeProductInventoryStatusForVariants } from "@/lib/product-inventory";
+import { requireBoothServiceAccess } from "@/lib/platform-targets";
 
 type TransactionClient = Parameters<Parameters<typeof db.$transaction>[0]>[0];
 
@@ -399,6 +400,7 @@ export async function saveOrderShipment(input: {
 
   return db.$transaction(
     async (transaction) => {
+      await requireBoothServiceAccess(input.boothId, "MUTATION", transaction);
       const membership = await transaction.boothMembership.findFirst({
         where: {
           boothId: input.boothId,
@@ -514,6 +516,7 @@ async function transitionOrderStatusInTransaction(
   });
 
   if (!order) return { kind: "missing" };
+  await requireBoothServiceAccess(input.boothId, "MUTATION", transaction);
 
   const currentStatus = order.status as OrderStatusName;
   if (currentStatus === input.nextStatus) {

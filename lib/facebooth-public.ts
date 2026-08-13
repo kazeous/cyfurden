@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { parseFaceboothPublicationDocument } from "@/lib/facebooth-documents";
 import { readStorefrontDocument } from "@/lib/storefront-document";
+import { assertBoothServiceAccess } from "@/lib/platform-targets";
 
 export async function readPublishedFaceboothBySlug(slug: string) {
   const booth = await db.booth.findUnique({
@@ -10,6 +11,7 @@ export async function readPublishedFaceboothBySlug(slug: string) {
       slug: true,
       name: true,
       status: true,
+      serviceState: true,
       storefront: { select: { publishedDocument: true } },
       faceboothPublication: {
         select: { revision: true, document: true },
@@ -22,6 +24,11 @@ export async function readPublishedFaceboothBySlug(slug: string) {
     !booth.storefront?.publishedDocument ||
     !booth.faceboothPublication
   ) {
+    return null;
+  }
+  try {
+    assertBoothServiceAccess(booth.serviceState, "PUBLIC_READ");
+  } catch {
     return null;
   }
   const publication = parseFaceboothPublicationDocument(

@@ -8,6 +8,7 @@ import {
   type BoothSectionId,
 } from "@/lib/booth-sections";
 import { db } from "@/lib/db";
+import { assertBoothServiceAccess } from "@/lib/platform-targets";
 
 export type BoothRoleName = "OWNER" | "ADMIN" | "STAFF";
 
@@ -42,7 +43,23 @@ export async function requireBoothMember(boothId: string) {
     notFound();
   }
 
-  return { session, membership, booth: membership.booth };
+  assertBoothServiceAccess(membership.booth.serviceState, "MEMBER_READ");
+
+  return {
+    session,
+    membership,
+    booth: membership.booth,
+    boothReadOnly: membership.booth.serviceState !== "ACTIVE",
+  };
+}
+
+export async function requireActiveBoothRole(
+  boothId: string,
+  allowedRoles: readonly BoothRoleName[],
+) {
+  const context = await requireBoothRole(boothId, allowedRoles);
+  assertBoothServiceAccess(context.booth.serviceState, "MUTATION");
+  return context;
 }
 
 export async function requireBoothRole(

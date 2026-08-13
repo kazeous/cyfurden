@@ -1,6 +1,6 @@
 "use server";
 
-import { requireBoothRole } from "@/lib/authorization";
+import { requireActiveBoothRole, requireBoothRole } from "@/lib/authorization";
 import {
   createFaceboothProject,
   deleteFaceboothProject,
@@ -22,7 +22,10 @@ export async function createFaceboothProjectAction(
   boothId: string,
   project: unknown,
 ) {
-  const { session } = await requireBoothRole(boothId, faceboothManagerRoles);
+  const { session } = await requireActiveBoothRole(
+    boothId,
+    faceboothManagerRoles,
+  );
   return createFaceboothProject({
     boothId,
     actorUserId: session.user.id,
@@ -54,7 +57,10 @@ export async function importFaceboothProjectAction(
   boothId: string,
   project: unknown,
 ) {
-  const { session } = await requireBoothRole(boothId, faceboothManagerRoles);
+  const { session } = await requireActiveBoothRole(
+    boothId,
+    faceboothManagerRoles,
+  );
   return importFaceboothProject({
     boothId,
     actorUserId: session.user.id,
@@ -67,7 +73,10 @@ export async function renameFaceboothProjectAction(
   projectId: string,
   rename: unknown,
 ) {
-  const { session } = await requireBoothRole(boothId, faceboothManagerRoles);
+  const { session } = await requireActiveBoothRole(
+    boothId,
+    faceboothManagerRoles,
+  );
   return renameFaceboothProject({
     boothId,
     projectId,
@@ -81,7 +90,10 @@ export async function duplicateFaceboothProjectAction(
   projectId: string,
   name: unknown,
 ) {
-  const { session } = await requireBoothRole(boothId, faceboothManagerRoles);
+  const { session } = await requireActiveBoothRole(
+    boothId,
+    faceboothManagerRoles,
+  );
   return duplicateFaceboothProject({
     boothId,
     projectId,
@@ -94,7 +106,10 @@ export async function deleteFaceboothProjectAction(
   boothId: string,
   projectId: string,
 ) {
-  const { session } = await requireBoothRole(boothId, faceboothManagerRoles);
+  const { session } = await requireActiveBoothRole(
+    boothId,
+    faceboothManagerRoles,
+  );
   return deleteFaceboothProject({
     boothId,
     projectId,
@@ -107,7 +122,10 @@ export async function saveFaceboothProjectAction(
   projectId: string,
   project: unknown,
 ) {
-  const { session } = await requireBoothRole(boothId, faceboothManagerRoles);
+  const { session } = await requireActiveBoothRole(
+    boothId,
+    faceboothManagerRoles,
+  );
   return saveFaceboothProject({
     boothId,
     projectId,
@@ -121,7 +139,10 @@ export async function verifyFaceboothUploadAction(
   purpose: FaceboothUploadPurpose,
   objectKey: string,
 ) {
-  const { session } = await requireBoothRole(boothId, faceboothManagerRoles);
+  const { session } = await requireActiveBoothRole(
+    boothId,
+    faceboothManagerRoles,
+  );
   return verifyFaceboothUploadForManager({
     boothId,
     actorUserId: session.user.id,
@@ -134,7 +155,10 @@ export async function publishFaceboothSnapshotAction(
   boothId: string,
   publication: unknown,
 ) {
-  const { session } = await requireBoothRole(boothId, faceboothManagerRoles);
+  const { session } = await requireActiveBoothRole(
+    boothId,
+    faceboothManagerRoles,
+  );
   return publishFaceboothSnapshot({
     boothId,
     actorUserId: session.user.id,
@@ -143,7 +167,10 @@ export async function publishFaceboothSnapshotAction(
 }
 
 export async function unpublishFaceboothSnapshotAction(boothId: string) {
-  const { session } = await requireBoothRole(boothId, faceboothManagerRoles);
+  const { session } = await requireActiveBoothRole(
+    boothId,
+    faceboothManagerRoles,
+  );
   return unpublishFaceboothSnapshot({
     boothId,
     actorUserId: session.user.id,
