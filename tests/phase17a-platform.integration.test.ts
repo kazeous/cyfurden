@@ -402,5 +402,10 @@ test(
         error instanceof PlatformSafetyError &&
         error.code === "LAST_SUPER_ADMIN",
     );
+
+    await db.booth.delete({ where: { id: booth.id } });
+    await db.user.deleteMany({
+      where: { id: { in: Object.values(ids) } },
+    });
   },
 );
