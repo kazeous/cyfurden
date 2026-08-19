@@ -15,18 +15,19 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function SignInPage({
   searchParams,
 }: {
-  searchParams: Promise<{ returnTo?: string }>;
+  searchParams: Promise<{ notice?: string; returnTo?: string }>;
 }) {
   const googleEnabled = Boolean(
     process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET,
   );
 
-  const { returnTo } = await searchParams;
+  const { notice, returnTo } = await searchParams;
   const locale = (await readLocaleCookie()) as Locale;
   return (
     <AuthPage
       googleEnabled={googleEnabled}
       mode="sign-in"
+      notice={notice === "email-changed" ? notice : undefined}
       returnTo={returnTo}
       locale={locale}
     />

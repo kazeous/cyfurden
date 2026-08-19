@@ -14,7 +14,7 @@
     "public Catalogue and admin Index-First shells",
     "N4 public command bar, N6 admin navigation, and Ft1 inline legal strip"
   ],
-  "package_refresh": "Phase 18A adds no dependency or design-system change; package.json changed only to register the new account unit/source tests.",
+  "package_refresh": "Phase 18B adds no dependency or design-system change; package.json changed only to register the credential unit, source, and opt-in integration tests.",
   "last_refresh": "2026-08-19",
-  "refresh_reason": "New personal-account shell; the locked Cyfurden tokens, font pairing, and application-page design system are unchanged."
+  "refresh_reason": "Stateful credential controls extend the Phase 18A personal-account shell; the locked Cyfurden tokens, font pairing, and application-page design system are unchanged."
 }

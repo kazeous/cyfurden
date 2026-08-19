@@ -33,10 +33,36 @@ export type AccountStrings = {
   emailUnverified: string;
   signInMethods: string;
   emailReadOnly: string;
+  newEmailLabel: string;
+  confirmEmailLabel: string;
+  secondFactorLabel: string;
+  secondFactorHelp: string;
+  secondFactorRequired: string;
+  changeEmailWarning: string;
+  changeEmail: string;
+  changingEmail: string;
+  emailRequired: string;
+  emailInvalid: string;
+  emailTooLong: string;
+  emailSame: string;
+  emailMismatch: string;
+  emailChangeFailed: string;
   passwordDescription: string;
   passwordCredentialReady: string;
   passwordProviderOwned: string;
-  passwordReadOnly: string;
+  currentPasswordLabel: string;
+  newPasswordLabel: string;
+  confirmPasswordLabel: string;
+  passwordHelp: string;
+  changePassword: string;
+  changingPassword: string;
+  passwordChanged: string;
+  passwordRequired: string;
+  passwordTooLong: string;
+  newPasswordTooShort: string;
+  newPasswordSame: string;
+  passwordMismatch: string;
+  passwordChangeFailed: string;
   twoFactorDescription: string;
   twoFactorEnabled: string;
   twoFactorDisabled: string;
@@ -86,14 +112,45 @@ const catalogues: Record<Locale, AccountStrings> = {
     emailUnverified: "Not verified",
     signInMethods: "Sign-in methods",
     emailReadOnly:
-      "Email changes are not available in this account workspace yet.",
+      "This sign-in email is managed by your connected provider. Cyfurden cannot change it or add a password credential.",
+    newEmailLabel: "New sign-in email",
+    confirmEmailLabel: "Confirm new email",
+    secondFactorLabel: "Authenticator or recovery code",
+    secondFactorHelp:
+      "Enter the current six-digit authenticator code or one unused recovery code.",
+    secondFactorRequired:
+      "Enter the current authenticator code or one unused recovery code.",
+    changeEmailWarning:
+      "Changing email signs out every browser, marks the new address unverified, and leaves pending team invitations at their original addresses.",
+    changeEmail: "Change email",
+    changingEmail: "Changing email…",
+    emailRequired: "Enter the new sign-in email in both fields.",
+    emailInvalid: "Enter a complete email address, such as name@example.com.",
+    emailTooLong: "Use an email address with 254 characters or fewer.",
+    emailSame: "Enter an address different from the current sign-in email.",
+    emailMismatch: "The two email entries do not match. Re-enter them.",
+    emailChangeFailed:
+      "The email was not changed. Check your credentials and try again.",
     passwordDescription:
       "Password controls depend on whether this account has a Cyfurden credential.",
     passwordCredentialReady: "This account has a Cyfurden password credential.",
     passwordProviderOwned:
       "This account signs in through a connected provider. Its password is managed there.",
-    passwordReadOnly:
-      "Password changes are not available in this account workspace yet.",
+    currentPasswordLabel: "Current password",
+    newPasswordLabel: "New password",
+    confirmPasswordLabel: "Confirm new password",
+    passwordHelp: "Use 8–128 characters and choose a different password.",
+    changePassword: "Change password",
+    changingPassword: "Changing password…",
+    passwordChanged:
+      "Password changed. Other signed-in browsers were signed out.",
+    passwordRequired: "Enter this password before continuing.",
+    passwordTooLong: "Use 128 characters or fewer.",
+    newPasswordTooShort: "Use at least 8 characters for the new password.",
+    newPasswordSame: "Choose a password different from the current one.",
+    passwordMismatch: "The two new-password entries do not match.",
+    passwordChangeFailed:
+      "The password was not changed. Check the current password and try again.",
     twoFactorDescription:
       "An authenticator app adds a second check to password sign-in and protected platform work.",
     twoFactorEnabled: "Authenticator protection is enabled.",
@@ -142,15 +199,47 @@ const catalogues: Record<Locale, AccountStrings> = {
     emailVerified: "Đã xác minh",
     emailUnverified: "Chưa xác minh",
     signInMethods: "Phương thức đăng nhập",
-    emailReadOnly: "Hiện chưa thể đổi email trong không gian tài khoản này.",
+    emailReadOnly:
+      "Email đăng nhập này do nhà cung cấp đã kết nối quản lý. Cyfurden không thể đổi email hoặc thêm thông tin đăng nhập bằng mật khẩu.",
+    newEmailLabel: "Email đăng nhập mới",
+    confirmEmailLabel: "Nhập lại email mới",
+    secondFactorLabel: "Mã xác thực hoặc mã khôi phục",
+    secondFactorHelp:
+      "Nhập mã sáu chữ số hiện tại hoặc một mã khôi phục chưa dùng.",
+    secondFactorRequired:
+      "Nhập mã xác thực hiện tại hoặc một mã khôi phục chưa dùng.",
+    changeEmailWarning:
+      "Đổi email sẽ đăng xuất mọi trình duyệt, đánh dấu địa chỉ mới là chưa xác minh và giữ nguyên địa chỉ của lời mời đội ngũ đang chờ.",
+    changeEmail: "Đổi email",
+    changingEmail: "Đang đổi email…",
+    emailRequired: "Nhập email đăng nhập mới vào cả hai ô.",
+    emailInvalid: "Nhập email đầy đủ, ví dụ ten@example.com.",
+    emailTooLong: "Dùng địa chỉ email có tối đa 254 ký tự.",
+    emailSame: "Nhập địa chỉ khác email đăng nhập hiện tại.",
+    emailMismatch: "Hai email chưa khớp. Hãy nhập lại.",
+    emailChangeFailed:
+      "Chưa đổi được email. Hãy kiểm tra thông tin xác thực và thử lại.",
     passwordDescription:
       "Quyền quản lý mật khẩu phụ thuộc vào việc tài khoản có thông tin đăng nhập Cyfurden hay không.",
     passwordCredentialReady:
       "Tài khoản này có thông tin đăng nhập bằng mật khẩu Cyfurden.",
     passwordProviderOwned:
       "Tài khoản này đăng nhập qua nhà cung cấp đã kết nối. Mật khẩu do nhà cung cấp đó quản lý.",
-    passwordReadOnly:
-      "Hiện chưa thể đổi mật khẩu trong không gian tài khoản này.",
+    currentPasswordLabel: "Mật khẩu hiện tại",
+    newPasswordLabel: "Mật khẩu mới",
+    confirmPasswordLabel: "Nhập lại mật khẩu mới",
+    passwordHelp: "Dùng 8–128 ký tự và chọn mật khẩu khác mật khẩu hiện tại.",
+    changePassword: "Đổi mật khẩu",
+    changingPassword: "Đang đổi mật khẩu…",
+    passwordChanged:
+      "Đã đổi mật khẩu. Các trình duyệt đăng nhập khác đã bị đăng xuất.",
+    passwordRequired: "Nhập mật khẩu này để tiếp tục.",
+    passwordTooLong: "Dùng tối đa 128 ký tự.",
+    newPasswordTooShort: "Mật khẩu mới cần ít nhất 8 ký tự.",
+    newPasswordSame: "Chọn mật khẩu khác mật khẩu hiện tại.",
+    passwordMismatch: "Hai mật khẩu mới chưa khớp.",
+    passwordChangeFailed:
+      "Chưa đổi được mật khẩu. Hãy kiểm tra mật khẩu hiện tại và thử lại.",
     twoFactorDescription:
       "Ứng dụng xác thực thêm một bước kiểm tra cho đăng nhập bằng mật khẩu và thao tác nền tảng được bảo vệ.",
     twoFactorEnabled: "Bảo vệ bằng ứng dụng xác thực đang bật.",

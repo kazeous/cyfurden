@@ -552,6 +552,7 @@ export const enCatalogue: Catalogue = {
     errorGeneric: "Something went wrong. Try again.",
     errorGoogleUnavailable:
       "Google sign-in is not configured for this deployment.",
+    emailChangedNotice: "Email updated. Sign in again with the new address.",
     twoFactorTitle: "Verify your sign-in",
     twoFactorBody:
       "Enter the six-digit code from your authenticator app to finish signing in.",

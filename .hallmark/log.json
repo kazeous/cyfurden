@@ -1,6 +1,28 @@
 [
   {
     "date": "2026-08-19",
+    "scope": "Phase 18B account credential changes",
+    "macrostructure": "Index-First personal record (locked; stateful email and password controls extend the Phase 18A identity and security records)",
+    "theme": "Cyfurden locked editorial-utilitarian",
+    "enrichment": "none; credential state, consequences, and validation are the visual material",
+    "brief": "Let credential-backed users safely change their sign-in email or password while keeping provider-only accounts explicitly read-only",
+    "critique": {
+      "philosophy": 5,
+      "hierarchy": 5,
+      "execution": 5,
+      "specificity": 5,
+      "restraint": 5,
+      "variety": 4
+    },
+    "slop_test": "pass (1-58); locked tokens, native credential controls, stable helper slots, explicit destructive consequences, and no decorative enrichment",
+    "verified_viewports": [320, 375, 390, 414, 768, 1280],
+    "contrast": "pass (40-41); reuses the previously measured Cyfurden token pairs and explicit action/error ink tokens",
+    "browser_diagnostics": "zero warning or error logs across credential success/failure, Google-only read-only, EN/VI, validation, and responsive checks",
+    "navigation": "N3 local account section rail with the existing compact Cyfurden account header",
+    "footer": "none in the personal account workspace"
+  },
+  {
+    "date": "2026-08-19",
     "scope": "Phase 18A personal account profile workspace",
     "macrostructure": "Index-First personal record (N3 local section rail + vertically stacked identity and security records; delta from the Phase 17B operator ledger)",
     "theme": "Cyfurden locked editorial-utilitarian",

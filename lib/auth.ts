@@ -3,6 +3,11 @@ import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
 import { admin, twoFactor } from "better-auth/plugins";
+import { accountCredentialsPlugin } from "@/lib/account-auth-plugin";
+import {
+  ACCOUNT_PASSWORD_MAX_LENGTH,
+  validatePasswordReplacement,
+} from "@/lib/account-credentials-validation";
 import { validateAccountDisplayName } from "@/lib/account-profile";
 import { db } from "@/lib/db";
 import {
@@ -66,6 +71,14 @@ export const auth = betterAuth({
     session: {
       create: {
         async before(session, context) {
+          if (context?.path === "/change-password") {
+            return {
+              data: {
+                ...session,
+                platformAuthenticatedAt: null,
+              },
+            };
+          }
           if (context?.path !== "/two-factor/verify-totp") return;
           const existingSession = context.context.session?.session as
             | { platformAuthenticatedAt?: Date | string | null }
@@ -86,6 +99,30 @@ export const auth = betterAuth({
   },
   hooks: {
     before: createAuthMiddleware(async (context) => {
+      if (context.path === "/change-password" && context.body) {
+        const body = context.body as {
+          currentPassword?: unknown;
+          newPassword?: unknown;
+          revokeOtherSessions?: unknown;
+        };
+        const validation = validatePasswordReplacement({
+          currentPassword: body.currentPassword,
+          newPassword: body.newPassword,
+          confirmationPassword: body.newPassword,
+        });
+        if (
+          !validation.ok ||
+          body.revokeOtherSessions !== true ||
+          validation.value.currentPassword.length > ACCOUNT_PASSWORD_MAX_LENGTH
+        ) {
+          throw APIError.from("BAD_REQUEST", {
+            code: "INVALID_ACCOUNT_PASSWORD_REPLACEMENT",
+            message: "The account password could not be changed.",
+          });
+        }
+        return;
+      }
+
       if (
         context.path !== "/update-user" ||
         !context.body ||
@@ -119,6 +156,7 @@ export const auth = betterAuth({
       }
     : {},
   plugins: [
+    accountCredentialsPlugin(),
     admin({
       ac: platformAuthAccessControl,
       roles: platformAuthRoles,

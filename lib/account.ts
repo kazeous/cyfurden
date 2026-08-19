@@ -33,6 +33,16 @@ export async function readCurrentAccount(
       accounts: {
         select: { providerId: true },
       },
+      _count: {
+        select: {
+          accounts: {
+            where: {
+              providerId: "credential",
+              password: { not: null },
+            },
+          },
+        },
+      },
       platformRoleGrant: {
         select: { status: true },
       },
@@ -52,7 +62,7 @@ export async function readCurrentAccount(
     email: user.email,
     emailVerified: user.emailVerified,
     providerKinds,
-    credentialEnabled: providerKinds.includes("credential"),
+    credentialEnabled: user._count.accounts > 0,
     twoFactorEnabled: user.twoFactorEnabled === true,
     platformGrantActive: user.platformRoleGrant?.status === "ACTIVE",
   };

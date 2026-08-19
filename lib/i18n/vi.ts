@@ -541,6 +541,8 @@ export const viCatalogue: Catalogue = {
     errorGeneric: "Có lỗi xảy ra. Vui lòng thử lại.",
     errorGoogleUnavailable:
       "Đăng nhập Google chưa được cấu hình cho bản triển khai này.",
+    emailChangedNotice:
+      "Đã cập nhật email. Hãy đăng nhập lại bằng địa chỉ mới.",
     twoFactorTitle: "Xác minh phiên đăng nhập",
     twoFactorBody:
       "Nhập mã sáu chữ số trong ứng dụng xác thực để hoàn tất đăng nhập.",

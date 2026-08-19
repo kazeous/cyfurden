@@ -9,6 +9,7 @@ import styles from "./auth.module.css";
 interface AuthPageProps {
   googleEnabled: boolean;
   mode: "sign-in" | "sign-up";
+  notice?: "email-changed";
   returnTo?: string;
   locale?: Locale;
 }
@@ -16,13 +17,14 @@ interface AuthPageProps {
 export function AuthPage({
   googleEnabled,
   mode,
+  notice,
   returnTo,
   locale = "en",
 }: AuthPageProps) {
   const t = translate(locale, "publicAuth");
   const destination = safeReturnTo(returnTo, "/dashboard");
   const currentPath = mode === "sign-up" ? "/sign-up" : "/sign-in";
-  const localizedRedirect = `${currentPath}?returnTo=${encodeURIComponent(destination)}`;
+  const localizedRedirect = `${currentPath}?returnTo=${encodeURIComponent(destination)}${notice ? `&notice=${notice}` : ""}`;
 
   return (
     <main className={styles.page}>
@@ -75,6 +77,7 @@ export function AuthPage({
             googleEnabled={googleEnabled}
             locale={locale}
             mode={mode}
+            notice={notice}
             returnTo={returnTo}
           />
         </section>

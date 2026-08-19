@@ -354,6 +354,7 @@ export type PublicAuthStrings = {
   errorPasswordMismatch: string;
   errorGeneric: string;
   errorGoogleUnavailable: string;
+  emailChangedNotice: string;
   twoFactorTitle: string;
   twoFactorBody: string;
   twoFactorEyebrow: string;

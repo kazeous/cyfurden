@@ -13,6 +13,7 @@ type AuthMode = "sign-in" | "sign-up";
 interface AuthFormProps {
   googleEnabled: boolean;
   mode: AuthMode;
+  notice?: "email-changed";
   returnTo?: string;
   locale?: Locale;
 }
@@ -43,6 +44,7 @@ function GoogleIcon() {
 export function AuthForm({
   googleEnabled,
   mode,
+  notice,
   returnTo,
   locale = "en",
 }: AuthFormProps) {
@@ -169,6 +171,12 @@ export function AuthForm({
         <h1>{heading}</h1>
         <p>{body}</p>
       </div>
+
+      {!isSignUp && notice === "email-changed" ? (
+        <p aria-live="polite" className={styles.notice} role="status">
+          {t.emailChangedNotice}
+        </p>
+      ) : null}
 
       {googleEnabled ? (
         <>

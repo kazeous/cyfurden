@@ -6,6 +6,8 @@ import { requireUser } from "@/lib/authorization";
 import { getAccountStrings } from "@/lib/i18n/account";
 import { readLocaleCookie } from "@/lib/i18n/server-locale";
 import styles from "./account.module.css";
+import { EmailForm } from "./email-form";
+import { PasswordForm } from "./password-form";
 import { ProfileForm } from "./profile-form";
 
 export const dynamic = "force-dynamic";
@@ -164,7 +166,33 @@ export default async function AccountPage() {
                   <dd>{providerLabels.join(" · ")}</dd>
                 </div>
               </dl>
-              <p className={styles.readOnlyNote}>{strings.emailReadOnly}</p>
+              {account.credentialEnabled ? (
+                <EmailForm
+                  currentEmail={account.email}
+                  strings={{
+                    newEmailLabel: strings.newEmailLabel,
+                    confirmEmailLabel: strings.confirmEmailLabel,
+                    currentPasswordLabel: strings.currentPasswordLabel,
+                    secondFactorLabel: strings.secondFactorLabel,
+                    secondFactorHelp: strings.secondFactorHelp,
+                    changeEmailWarning: strings.changeEmailWarning,
+                    changeEmail: strings.changeEmail,
+                    changingEmail: strings.changingEmail,
+                    emailRequired: strings.emailRequired,
+                    emailInvalid: strings.emailInvalid,
+                    emailTooLong: strings.emailTooLong,
+                    emailSame: strings.emailSame,
+                    emailMismatch: strings.emailMismatch,
+                    passwordRequired: strings.passwordRequired,
+                    passwordTooLong: strings.passwordTooLong,
+                    secondFactorRequired: strings.secondFactorRequired,
+                    emailChangeFailed: strings.emailChangeFailed,
+                  }}
+                  twoFactorRequired={account.twoFactorEnabled}
+                />
+              ) : (
+                <p className={styles.readOnlyNote}>{strings.emailReadOnly}</p>
+              )}
             </section>
 
             <section
@@ -186,9 +214,23 @@ export default async function AccountPage() {
                   : strings.passwordProviderOwned}
               </p>
               {account.credentialEnabled ? (
-                <p className={styles.readOnlyNote}>
-                  {strings.passwordReadOnly}
-                </p>
+                <PasswordForm
+                  strings={{
+                    currentPasswordLabel: strings.currentPasswordLabel,
+                    newPasswordLabel: strings.newPasswordLabel,
+                    confirmPasswordLabel: strings.confirmPasswordLabel,
+                    passwordHelp: strings.passwordHelp,
+                    changePassword: strings.changePassword,
+                    changingPassword: strings.changingPassword,
+                    passwordChanged: strings.passwordChanged,
+                    passwordRequired: strings.passwordRequired,
+                    passwordTooLong: strings.passwordTooLong,
+                    newPasswordTooShort: strings.newPasswordTooShort,
+                    newPasswordSame: strings.newPasswordSame,
+                    passwordMismatch: strings.passwordMismatch,
+                    passwordChangeFailed: strings.passwordChangeFailed,
+                  }}
+                />
               ) : null}
             </section>
 
