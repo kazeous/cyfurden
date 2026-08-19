@@ -1,7 +1,9 @@
 import { prismaAdapter } from "@better-auth/prisma-adapter";
 import { betterAuth } from "better-auth";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
 import { admin, twoFactor } from "better-auth/plugins";
+import { validateAccountDisplayName } from "@/lib/account-profile";
 import { db } from "@/lib/db";
 import {
   platformAuthAccessControl,
@@ -81,6 +83,26 @@ export const auth = betterAuth({
         },
       },
     },
+  },
+  hooks: {
+    before: createAuthMiddleware(async (context) => {
+      if (
+        context.path !== "/update-user" ||
+        !context.body ||
+        !("name" in context.body)
+      ) {
+        return;
+      }
+
+      const result = validateAccountDisplayName(context.body.name);
+      if (!result.ok) {
+        throw APIError.from("BAD_REQUEST", {
+          code: "INVALID_ACCOUNT_DISPLAY_NAME",
+          message: "The account display name is invalid.",
+        });
+      }
+      context.body.name = result.value;
+    }),
   },
   emailAndPassword: {
     enabled: true,

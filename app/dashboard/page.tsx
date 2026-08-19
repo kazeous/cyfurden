@@ -124,7 +124,7 @@ export default async function DashboardPage({
           <Link
             aria-label={strings.accountSecurity}
             className={styles.securityLink}
-            href="/account/security"
+            href="/account"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 3.5 19 6v5.2c0 4.2-2.8 7.8-7 9.3-4.2-1.5-7-5.1-7-9.3V6l7-2.5Z" />

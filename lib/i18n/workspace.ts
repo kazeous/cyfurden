@@ -97,7 +97,7 @@ const englishWorkspaceCatalogue = {
     manageBooth: "Manage booth",
     continueSetup: "Continue setup",
     viewStorefront: "View storefront",
-    accountSecurity: "Account security",
+    accountSecurity: "Account",
     emptyTitle: "Create your first booth",
     emptyBody:
       "Start with a private draft, add products and payment details, then publish when everything is ready.",
@@ -1304,7 +1304,7 @@ const vietnameseWorkspaceCatalogue: WorkspaceCatalogue = {
     manageBooth: "Quản lý booth",
     continueSetup: "Tiếp tục thiết lập",
     viewStorefront: "Xem storefront",
-    accountSecurity: "Bảo mật tài khoản",
+    accountSecurity: "Tài khoản",
     emptyTitle: "Tạo booth đầu tiên",
     emptyBody:
       "Bắt đầu bằng bản nháp riêng tư, thêm sản phẩm và thông tin thanh toán, rồi xuất bản khi mọi thứ đã sẵn sàng.",

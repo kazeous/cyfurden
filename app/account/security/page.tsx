@@ -69,7 +69,7 @@ export default async function AccountSecurityPage({
   return (
     <main className={styles.page}>
       <section className={styles.card}>
-        <Link className={styles.back} href={returnTo ?? "/dashboard"}>
+        <Link className={styles.back} href={returnTo ?? "/account#two-factor"}>
           ← {returnTo ? t.securityBackPlatform : t.securityBack}
         </Link>
         <header className={styles.heading}>

@@ -133,6 +133,7 @@ export function AdminShell({
   locale,
   productCount,
   role,
+  user,
   children,
 }: {
   booth: {
@@ -146,10 +147,12 @@ export function AdminShell({
   locale: Locale;
   productCount: number;
   role: string;
+  user: { name: string; email: string };
   children: ReactNode;
 }) {
   const strings = getAdminShellStrings(locale);
   const canManageSettings = role === "OWNER" || role === "ADMIN";
+  const userLabel = user.name || user.email;
 
   return (
     <div className={styles.adminApp}>
@@ -178,6 +181,7 @@ export function AdminShell({
             boothId={booth.id}
             canManageSettings={canManageSettings}
             locale={locale}
+            userLabel={userLabel}
           />
         </div>
 
@@ -231,6 +235,7 @@ export function AdminShell({
               boothId={booth.id}
               canManageSettings={canManageSettings}
               locale={locale}
+              userLabel={userLabel}
             />
           </div>
         </header>

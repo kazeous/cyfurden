@@ -29,10 +29,12 @@ export function AdminOverflowMenu({
   boothId,
   canManageSettings,
   locale,
+  userLabel,
 }: {
   boothId: string;
   canManageSettings: boolean;
   locale: Locale;
+  userLabel: string;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -76,6 +78,19 @@ export function AdminOverflowMenu({
             ))}
           </form>
         </section>
+
+        <Link className={styles.menuLink} href="/account">
+          <span className={styles.menuItemIcon} aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <circle cx="12" cy="8" r="3.5" />
+              <path d="M5.5 20a6.5 6.5 0 0 1 13 0" />
+            </svg>
+          </span>
+          <span>
+            <strong>{strings.account}</strong>
+            <small>{userLabel}</small>
+          </span>
+        </Link>
 
         {canManageSettings ? (
           <Link

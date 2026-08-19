@@ -31,6 +31,7 @@ export type AdminShellStrings = {
   boothWorkspaceAria: string;
   boothManagementAria: string;
   language: string;
+  account: string;
   settings: string;
   settingsDescription: string;
   alerts: string;
@@ -97,6 +98,7 @@ const catalogues: Record<Locale, AdminShellStrings> = {
     boothWorkspaceAria: "Booth workspace",
     boothManagementAria: "Booth management",
     language: "Language",
+    account: "Account",
     settings: "Settings",
     settingsDescription: "Booth details and payment",
     alerts: "Order alerts",
@@ -151,6 +153,7 @@ const catalogues: Record<Locale, AdminShellStrings> = {
     boothWorkspaceAria: "Không gian làm việc của booth",
     boothManagementAria: "Quản lý booth",
     language: "Ngôn ngữ",
+    account: "Tài khoản",
     settings: "Cài đặt",
     settingsDescription: "Thông tin booth và thanh toán",
     alerts: "Báo đơn mới",

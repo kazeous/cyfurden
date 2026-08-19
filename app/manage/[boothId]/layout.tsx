@@ -53,6 +53,7 @@ export default async function ManageLayout({
       locale={locale}
       productCount={productCount}
       role={membership.role}
+      user={{ name: session.user.name, email: session.user.email }}
     >
       {children}
     </AdminShell>

@@ -1,5 +1,5 @@
 {
-  "date": "2026-08-10",
+  "date": "2026-08-19",
   "framework": "Next.js 16 App Router",
   "font_stack": "Bundled Manrope Variable display with IBM Plex Sans Variable body/UI",
   "palette": "Locked warm paper and navy ink with coral selection and forest action tokens",
@@ -14,7 +14,7 @@
     "public Catalogue and admin Index-First shells",
     "N4 public command bar, N6 admin navigation, and Ft1 inline legal strip"
   ],
-  "package_refresh": "Phase 15 uses only the approved Three.js, React Three Fiber, and Drei runtime installed in 15A; 15F adds no dependency or design-system change.",
-  "last_refresh": "2026-08-11",
-  "refresh_reason": "Full-viewport Facebooth scene-editor redesign; the locked design system and dependencies are unchanged."
+  "package_refresh": "Phase 18A adds no dependency or design-system change; package.json changed only to register the new account unit/source tests.",
+  "last_refresh": "2026-08-19",
+  "refresh_reason": "New personal-account shell; the locked Cyfurden tokens, font pairing, and application-page design system are unchanged."
 }

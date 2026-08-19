@@ -79,7 +79,7 @@ test("Phase 17A schema and migration contain the complete approved foundation", 
   assert.match(environment, /PLATFORM_SUPER_ADMIN_USER_ID=""/);
 });
 
-test("Phase 17A exposes only account-security and TOTP challenge UI", async () => {
+test("Phase 17A retains bounded account-security and TOTP challenge UI", async () => {
   const [challenge, settings, dashboard, dashboardStyles, signOut] =
     await Promise.all([
       readSource("components/auth/two-factor-form.tsx"),
@@ -92,7 +92,7 @@ test("Phase 17A exposes only account-security and TOTP challenge UI", async () =
   assert.match(challenge, /trustDevice: false/);
   assert.match(settings, /twoFactor\.enable/);
   assert.match(settings, /securityBackupTitle/);
-  assert.match(dashboard, /href="\/account\/security"/);
+  assert.match(dashboard, /href="\/account"/);
   assert.match(dashboard, /aria-label=\{strings\.accountSecurity\}/);
   assert.match(signOut, /aria-label=\{pending \? strings\.signingOut/);
   assert.match(dashboardStyles, /\.securityLink span,/);

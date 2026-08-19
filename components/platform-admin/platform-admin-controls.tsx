@@ -99,7 +99,7 @@ export function PlatformMobileAccountMenu({
           </svg>
           <span>{strings.dashboard}</span>
         </Link>
-        <Link className={styles.utilityLink} href="/account/security">
+        <Link className={styles.utilityLink} href="/account">
           <svg aria-hidden="true" viewBox="0 0 24 24">
             <path d="M12 3.5 19 6v5.2c0 4.2-2.8 7.8-7 9.3-4.2-1.5-7-5.1-7-9.3V6l7-2.5Z" />
             <path d="M9.5 11.8 11.2 13.5l3.5-3.8" />
