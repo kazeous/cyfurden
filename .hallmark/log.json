@@ -1,6 +1,28 @@
 [
   {
     "date": "2026-08-19",
+    "scope": "Phase 18C complete TOTP lifecycle",
+    "macrostructure": "Index-First personal record (locked; staged authenticator lifecycle controls extend the account security record)",
+    "theme": "Cyfurden locked editorial-utilitarian",
+    "enrichment": "none; factor state, setup QR, recovery codes, and destructive consequences are functional content",
+    "brief": "Let credential-backed users safely enable, replace, verify, and ordinarily disable an authenticator without creating a lockout path",
+    "critique": {
+      "philosophy": 5,
+      "hierarchy": 5,
+      "execution": 5,
+      "specificity": 5,
+      "restraint": 5,
+      "variety": 4
+    },
+    "slop_test": "pass (1-58); locked tokens, staged native controls, one-time recovery-code handoff, explicit platform constraint, and no decorative enrichment",
+    "verified_viewports": [320, 375, 390, 414, 768, 1280],
+    "contrast": "pass (40-41); reuses the previously measured Cyfurden token pairs and explicit action, error, and focus tokens",
+    "browser_diagnostics": "zero warning or error logs across enable, resynchronization, old-factor rejection, platform step-up, ordinary disable, provider-only, EN/VI, and responsive checks",
+    "navigation": "N3 local account section rail with the existing compact Cyfurden account header",
+    "footer": "none in the personal account workspace"
+  },
+  {
+    "date": "2026-08-19",
     "scope": "Phase 18B account credential changes",
     "macrostructure": "Index-First personal record (locked; stateful email and password controls extend the Phase 18A identity and security records)",
     "theme": "Cyfurden locked editorial-utilitarian",

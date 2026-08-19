@@ -1,8 +1,6 @@
 import { createOTP } from "@better-auth/utils/otp";
 import {
-  parseEnvelope,
   symmetricDecrypt,
-  symmetricEncrypt,
   verifyPassword,
   type SecretConfig,
 } from "better-auth/crypto";
@@ -10,6 +8,11 @@ import {
   validateEmailReplacement,
   type EmailReplacementInput,
 } from "@/lib/account-credentials-validation";
+import {
+  accountBackupCodesAreEncrypted,
+  decryptAccountBackupCodes,
+  encryptAccountBackupCodes,
+} from "@/lib/account-totp";
 import { runSerializableTransaction } from "@/lib/serializable-transaction";
 
 export type AccountEmailChangeFailure =
@@ -86,10 +89,11 @@ async function verifyAccountSecondFactor(input: {
     }
   }
 
-  const encrypted = parseEnvelope(input.backupCodes) !== null;
-  const serialized = encrypted
-    ? await symmetricDecrypt({ data: input.backupCodes, key: input.secret })
-    : input.backupCodes;
+  const encrypted = accountBackupCodesAreEncrypted(input.backupCodes);
+  const serialized = await decryptAccountBackupCodes(
+    input.backupCodes,
+    input.secret,
+  );
   const backupCodes = readBackupCodes(serialized);
   if (!backupCodes?.includes(input.code)) return { ok: false as const };
 
@@ -99,7 +103,7 @@ async function verifyAccountSecondFactor(input: {
   return {
     ok: true as const,
     backupCodes: encrypted
-      ? await symmetricEncrypt({ data: remaining, key: input.secret })
+      ? await encryptAccountBackupCodes(remaining, input.secret)
       : remaining,
   };
 }

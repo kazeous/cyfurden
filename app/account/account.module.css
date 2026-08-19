@@ -32,6 +32,7 @@
 
 .brand,
 .dashboardLink,
+.primaryButton,
 .secondaryAction,
 .sectionNavigation a {
   text-decoration: none;
@@ -317,6 +318,11 @@
   background: var(--color-error-soft);
 }
 
+.field input[aria-invalid="true"] {
+  border-color: var(--color-error);
+  background: var(--color-error-soft);
+}
+
 .field input:disabled {
   cursor: not-allowed;
   opacity: 0.55;
@@ -327,6 +333,10 @@
   color: var(--color-muted);
   font-size: var(--text-sm);
   line-height: 1.5;
+}
+
+.fieldHelp[data-state="error"] {
+  color: var(--color-error-ink);
 }
 
 .formFooter {
@@ -350,6 +360,175 @@
   font-size: var(--text-sm);
   font-weight: 700;
   cursor: pointer;
+}
+
+.twoFactorControls {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-md);
+}
+
+.controlGrid {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-md);
+}
+
+.controlBlock {
+  min-width: 0;
+  padding-block-start: var(--space-md);
+  border-top: var(--rule-hairline);
+}
+
+.controlBlock h3,
+.controlBlock > p,
+.setupKeyLabel,
+.destructiveNote {
+  margin: 0;
+}
+
+.controlBlock h3 {
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.controlBlock > p {
+  max-width: 64ch;
+  margin-block-start: var(--space-xs);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+
+.twoFactorSetup {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-md);
+  padding-block-start: var(--space-md);
+}
+
+.twoFactorSetup > div {
+  min-width: 0;
+}
+
+.twoFactorQr {
+  display: block;
+  width: min(11.25rem, 100%);
+  height: auto;
+  padding: var(--space-xs);
+  border: var(--rule-hairline);
+  border-radius: var(--radius-input);
+  background: var(--color-panel);
+}
+
+.setupKeyLabel {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+.setupKey {
+  display: block;
+  max-width: 100%;
+  margin-block: var(--space-2xs) var(--space-xs);
+  overflow-wrap: anywhere;
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.confirmationField {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  color: var(--color-ink-2);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.confirmationField input {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex: 0 0 auto;
+  margin-block-start: var(--space-2xs);
+  accent-color: var(--color-action);
+}
+
+.confirmationField input:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+.confirmationField input:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.destructiveNote {
+  color: var(--color-error-ink);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.textButton,
+.dangerButton {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  padding-inline: var(--space-md);
+  border-radius: var(--radius-button);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.textButton {
+  border: 1px solid var(--color-rule-strong);
+  color: var(--color-ink);
+  background: var(--color-paper-2);
+}
+
+.dangerButton {
+  border: 1px solid var(--color-error-line);
+  color: var(--color-error-ink);
+  background: var(--color-error-soft);
+}
+
+.textButton:disabled,
+.dangerButton:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.recoveryCodes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-xs);
+  margin: var(--space-md) 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recoveryCodes li {
+  min-width: 0;
+  padding: var(--space-xs) var(--space-sm);
+  border: var(--rule-hairline);
+  border-radius: var(--radius-input);
+  background: var(--color-paper-2);
+  text-align: center;
+}
+
+.recoveryCodes code {
+  overflow-wrap: anywhere;
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+  font-weight: 700;
 }
 
 .primaryButton {
@@ -475,6 +654,14 @@
   .primaryButton:hover:not(:disabled) {
     background: var(--color-action-hover);
   }
+
+  .textButton:hover:not(:disabled) {
+    background: var(--color-paper-3);
+  }
+
+  .dangerButton:hover:not(:disabled) {
+    border-color: var(--color-error);
+  }
 }
 
 @media (min-width: 40rem) {
@@ -490,6 +677,11 @@
     grid-template-columns: minmax(10rem, 0.45fr) minmax(0, 1fr);
     align-items: baseline;
     gap: var(--space-md);
+  }
+
+  .twoFactorSetup {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
   }
 }
 
@@ -509,6 +701,11 @@
   .section {
     padding: var(--space-xl);
   }
+
+  .controlGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
 }
 
 @media (pointer: coarse) {
@@ -517,6 +714,8 @@
   .sectionNavigation a,
   .primaryButton,
   .secondaryAction,
+  .textButton,
+  .dangerButton,
   .field input {
     min-height: 2.75rem;
   }
@@ -527,5 +726,11 @@
   .dashboardLink,
   .secondaryAction {
     transition: none;
+  }
+}
+
+@media (max-width: 24rem) {
+  .recoveryCodes {
+    grid-template-columns: 1fr;
   }
 }

@@ -9,6 +9,7 @@ import styles from "./account.module.css";
 import { EmailForm } from "./email-form";
 import { PasswordForm } from "./password-form";
 import { ProfileForm } from "./profile-form";
+import { TwoFactorSettings } from "./security/two-factor-settings";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -243,24 +244,16 @@ export default async function AccountPage() {
                 <h2 id="two-factor-heading">{strings.sections.twoFactor}</h2>
                 <p>{strings.twoFactorDescription}</p>
               </header>
-              <p className={styles.stateLine}>
-                <span
-                  aria-hidden="true"
-                  data-state={account.twoFactorEnabled ? "ready" : "neutral"}
-                />
-                {account.twoFactorEnabled
-                  ? strings.twoFactorEnabled
-                  : strings.twoFactorDisabled}
-              </p>
-              {account.platformGrantActive ? (
-                <p className={styles.constraintNote}>
-                  {strings.twoFactorPlatformConstraint}
-                </p>
-              ) : null}
-              <Link className={styles.secondaryAction} href="/account/security">
-                {strings.manageTwoFactor}
-                <span aria-hidden="true">→</span>
-              </Link>
+              <TwoFactorSettings
+                credentialEnabled={account.credentialEnabled}
+                initialEnabled={account.twoFactorEnabled}
+                locale={locale}
+                platformGrantActive={account.platformGrantActive}
+                platformSessionAuthenticated={Boolean(
+                  session.session.platformAuthenticatedAt,
+                )}
+                returnTo={null}
+              />
             </section>
           </div>
         </div>

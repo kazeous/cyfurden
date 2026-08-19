@@ -41,6 +41,9 @@ export async function readCurrentAccount(
               password: { not: null },
             },
           },
+          twoFactors: {
+            where: { verified: true },
+          },
         },
       },
       platformRoleGrant: {
@@ -63,7 +66,8 @@ export async function readCurrentAccount(
     emailVerified: user.emailVerified,
     providerKinds,
     credentialEnabled: user._count.accounts > 0,
-    twoFactorEnabled: user.twoFactorEnabled === true,
+    twoFactorEnabled:
+      user.twoFactorEnabled === true && user._count.twoFactors > 0,
     platformGrantActive: user.platformRoleGrant?.status === "ACTIVE",
   };
 }

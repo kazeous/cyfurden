@@ -18,6 +18,7 @@ test("Phase 17A installs bounded Better Auth admin and TOTP capabilities", async
   assert.match(auth, /twoFactor\(\{/);
   assert.match(auth, /trustDeviceMaxAge: 0/);
   assert.match(auth, /context\?\.path !== "\/two-factor\/verify-totp"/);
+  assert.match(auth, /context\?\.path !== "\/two-factor\/verify-backup-code"/);
   assert.match(
     auth,
     /existingSession && !existingSession\.platformAuthenticatedAt/,
@@ -28,10 +29,7 @@ test("Phase 17A installs bounded Better Auth admin and TOTP capabilities", async
   assert.match(authRoute, /blockedAdminPrefix = "\/api\/auth\/admin\/"/);
   assert.match(authRoute, /PLATFORM_TOTP_REQUIRED/);
   assert.match(authRoute, /platformAuthenticatedAt: new Date\(\)/);
-  assert.match(
-    authRoute,
-    /existingSession\?\.session\.platformAuthenticatedAt/,
-  );
+  assert.match(authRoute, /recordAccountTotpFactorProof/);
   assert.match(access, /user: \["ban"\]/);
   assert.match(access, /session: \["revoke"\]/);
   for (const prohibited of [
@@ -90,8 +88,9 @@ test("Phase 17A retains bounded account-security and TOTP challenge UI", async (
     ]);
   assert.match(challenge, /verifyTotp/);
   assert.match(challenge, /trustDevice: false/);
-  assert.match(settings, /twoFactor\.enable/);
-  assert.match(settings, /securityBackupTitle/);
+  assert.match(settings, /\/account\/totp\/begin/);
+  assert.match(settings, /twoFactorRecoveryTitle/);
+  assert.doesNotMatch(settings, /twoFactor\.enable/);
   assert.match(dashboard, /href="\/account"/);
   assert.match(dashboard, /aria-label=\{strings\.accountSecurity\}/);
   assert.match(signOut, /aria-label=\{pending \? strings\.signingOut/);

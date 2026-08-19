@@ -9,6 +9,12 @@ import {
   validatePasswordReplacement,
 } from "@/lib/account-credentials-validation";
 import { validateAccountDisplayName } from "@/lib/account-profile";
+import { accountTotpPlugin } from "@/lib/account-totp-plugin";
+import {
+  cyfurdenAuthSecret,
+  decryptAccountBackupCodes,
+  encryptAccountBackupCodes,
+} from "@/lib/account-totp";
 import { db } from "@/lib/db";
 import {
   platformAuthAccessControl,
@@ -54,7 +60,7 @@ export const auth = betterAuth({
   appName: "Cyfurden",
   baseURL: process.env.BETTER_AUTH_URL,
   ...(trustedOrigins.length ? { trustedOrigins } : {}),
-  secret: process.env.BETTER_AUTH_SECRET,
+  secret: cyfurdenAuthSecret,
   database: prismaAdapter(db, {
     provider: "postgresql",
   }),
@@ -79,7 +85,12 @@ export const auth = betterAuth({
               },
             };
           }
-          if (context?.path !== "/two-factor/verify-totp") return;
+          if (
+            context?.path !== "/two-factor/verify-totp" &&
+            context?.path !== "/two-factor/verify-backup-code"
+          ) {
+            return;
+          }
           const existingSession = context.context.session?.session as
             | { platformAuthenticatedAt?: Date | string | null }
             | null
@@ -157,6 +168,7 @@ export const auth = betterAuth({
     : {},
   plugins: [
     accountCredentialsPlugin(),
+    accountTotpPlugin(),
     admin({
       ac: platformAuthAccessControl,
       roles: platformAuthRoles,
@@ -166,6 +178,12 @@ export const auth = betterAuth({
     twoFactor({
       issuer: "Cyfurden",
       trustDeviceMaxAge: 0,
+      backupCodeOptions: {
+        storeBackupCodes: {
+          encrypt: encryptAccountBackupCodes,
+          decrypt: decryptAccountBackupCodes,
+        },
+      },
     }),
     nextCookies(),
   ],

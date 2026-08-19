@@ -30,7 +30,7 @@ export function normalizePlatformSecurityReturnTo(value: unknown) {
     ) {
       return null;
     }
-    return `${parsed.pathname}${parsed.search}`;
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
   } catch {
     return null;
   }
@@ -55,6 +55,11 @@ export default async function AccountSecurityPage({
     where: { id: session.user.id },
     select: {
       twoFactorEnabled: true,
+      twoFactors: {
+        where: { verified: true },
+        select: { id: true },
+        take: 1,
+      },
       accounts: {
         where: { providerId: "credential", password: { not: null } },
         select: { id: true },
@@ -79,7 +84,9 @@ export default async function AccountSecurityPage({
         </header>
         <TwoFactorSettings
           credentialEnabled={user.accounts.length > 0}
-          initialEnabled={user.twoFactorEnabled === true}
+          initialEnabled={
+            user.twoFactorEnabled === true && user.twoFactors.length > 0
+          }
           locale={locale}
           platformGrantActive={user.platformRoleGrant?.status === "ACTIVE"}
           platformSessionAuthenticated={Boolean(
