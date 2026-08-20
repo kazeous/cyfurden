@@ -68,10 +68,14 @@ test("Phase 18C exposes account controls while hiding native lifecycle bypasses"
 });
 
 test("Phase 18C preserves the complete validated platform return target", async () => {
-  const securityPage = await read("app/account/security/page.tsx");
-  assert.match(securityPage, /\^\\\/admin\(\?:\\\/\|\$\)/);
+  const [securityPage, returnTarget] = await Promise.all([
+    read("app/account/security/page.tsx"),
+    read("lib/platform-security-return.ts"),
+  ]);
+  assert.match(securityPage, /normalizePlatformSecurityReturnTo/);
+  assert.match(returnTarget, /\^\\\/admin\(\?:\\\/\|\$\)/);
   assert.match(
-    securityPage,
+    returnTarget,
     /`\$\{parsed\.pathname\}\$\{parsed\.search\}\$\{parsed\.hash\}`/,
   );
 });

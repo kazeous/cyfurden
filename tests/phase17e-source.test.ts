@@ -31,19 +31,22 @@ test("Phase 17E keeps current dependency health private, bounded, and normalized
 });
 
 test("Phase 17E provides bounded TOTP step-up recovery back to platform operations", async () => {
-  const [actions, controls, securityPage, settings] = await Promise.all([
-    read("app/admin/actions.ts"),
-    read("components/platform-admin/platform-lifecycle-controls.tsx"),
-    read("app/account/security/page.tsx"),
-    read("app/account/security/two-factor-settings.tsx"),
-  ]);
+  const [actions, controls, securityPage, settings, returnTarget] =
+    await Promise.all([
+      read("app/admin/actions.ts"),
+      read("components/platform-admin/platform-lifecycle-controls.tsx"),
+      read("app/account/security/page.tsx"),
+      read("app/account/security/two-factor-settings.tsx"),
+      read("lib/platform-security-return.ts"),
+    ]);
 
   assert.match(actions, /code: error instanceof PlatformLifecycleError/);
   assert.match(controls, /state\.code === "STEP_UP_REQUIRED"/);
   assert.match(controls, /\/account\/security\?returnTo=/);
-  assert.match(securityPage, /\^\\\/admin\(\?:\\\/\|\$\)/);
+  assert.match(securityPage, /normalizePlatformSecurityReturnTo/);
+  assert.match(returnTarget, /\^\\\/admin\(\?:\\\/\|\$\)/);
   assert.match(
-    securityPage,
+    returnTarget,
     /parsed\.origin !== "https:\/\/cyfurden\.invalid"/,
   );
   assert.match(settings, /router\.push\(returnTo\)/);

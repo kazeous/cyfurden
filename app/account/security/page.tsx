@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { translate, type Locale } from "@/lib/i18n";
 import { readLocaleCookie } from "@/lib/i18n/server-locale";
+import { normalizePlatformSecurityReturnTo } from "@/lib/platform-security-return";
 import styles from "./security.module.css";
 import { TwoFactorSettings } from "./two-factor-settings";
 
@@ -11,29 +12,6 @@ export async function generateMetadata(): Promise<Metadata> {
   const locale = (await readLocaleCookie()) as Locale;
   const t = translate(locale, "publicAuth");
   return { title: t.securityTitle, description: t.securityBody };
-}
-
-export function normalizePlatformSecurityReturnTo(value: unknown) {
-  if (
-    typeof value !== "string" ||
-    value.length > 500 ||
-    !value.startsWith("/admin") ||
-    /[\u0000-\u001f\u007f]/.test(value)
-  ) {
-    return null;
-  }
-  try {
-    const parsed = new URL(value, "https://cyfurden.invalid");
-    if (
-      parsed.origin !== "https://cyfurden.invalid" ||
-      !/^\/admin(?:\/|$)/.test(parsed.pathname)
-    ) {
-      return null;
-    }
-    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
-  } catch {
-    return null;
-  }
 }
 
 export default async function AccountSecurityPage({
