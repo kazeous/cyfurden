@@ -332,6 +332,7 @@ export function FaceboothLibrary({
                         {strings.projectUpdated} ·{" "}
                         {new Intl.DateTimeFormat(locale, {
                           dateStyle: "medium",
+                          timeZone: "Asia/Ho_Chi_Minh",
                         }).format(new Date(project.updatedAt))}
                       </span>
                     </div>

@@ -41,6 +41,16 @@ test("Facebooth keeps function-valued catalogues inside client boundaries", asyn
   }
 });
 
+test("Facebooth manager timestamps hydrate in the Vietnam time zone", async () => {
+  const [library, publicationPanel] = await Promise.all([
+    readSource("components/facebooth/facebooth-library.tsx"),
+    readSource("components/facebooth/facebooth-publication-panel.tsx"),
+  ]);
+
+  assert.match(library, /timeZone: "Asia\/Ho_Chi_Minh"/);
+  assert.match(publicationPanel, /timeZone: "Asia\/Ho_Chi_Minh"/);
+});
+
 test("Phase 15D keeps autosave, recovery, thumbnails, and PNG work in the browser", async () => {
   const [
     autosave,

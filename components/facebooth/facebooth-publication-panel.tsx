@@ -119,6 +119,7 @@ export function FaceboothPublicationPanel({
             {new Intl.DateTimeFormat(locale, {
               dateStyle: "medium",
               timeStyle: "short",
+              timeZone: "Asia/Ho_Chi_Minh",
             }).format(new Date(publication.publishedAt))}
           </time>
         ) : null}
