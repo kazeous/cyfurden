@@ -23,6 +23,24 @@ test("Phase 15D adds the manager-only Facebooth hub without widening STAFF acces
   assert.match(route, /requireBoothRole\(boothId, \["OWNER", "ADMIN"\]\)/);
 });
 
+test("Facebooth keeps function-valued catalogues inside client boundaries", async () => {
+  const [libraryRoute, projectRoute, library, standeeEditor, sceneEditor] =
+    await Promise.all([
+      readSource("app/manage/[boothId]/facebooth/page.tsx"),
+      readSource("app/manage/[boothId]/facebooth/[projectId]/page.tsx"),
+      readSource("components/facebooth/facebooth-library.tsx"),
+      readSource("components/facebooth/standee-editor.tsx"),
+      readSource("components/facebooth/scene-editor.tsx"),
+    ]);
+
+  assert.doesNotMatch(libraryRoute, /strings=\{/);
+  assert.doesNotMatch(projectRoute, /strings=\{/);
+  for (const clientComponent of [library, standeeEditor, sceneEditor]) {
+    assert.match(clientComponent, /^"use client";/);
+    assert.match(clientComponent, /getFaceboothStrings\(locale\)/);
+  }
+});
+
 test("Phase 15D keeps autosave, recovery, thumbnails, and PNG work in the browser", async () => {
   const [
     autosave,

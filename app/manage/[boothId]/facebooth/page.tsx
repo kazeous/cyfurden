@@ -95,7 +95,6 @@ export default async function FaceboothLibraryPage({
       }
       locale={locale}
       projects={projects}
-      strings={getFaceboothStrings(locale)}
     />
   );
 }

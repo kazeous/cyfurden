@@ -20,8 +20,8 @@ import {
   type AcrylicStandeeDocument,
 } from "@/lib/facebooth-documents";
 import { resizeStandeePreservingAspect } from "@/lib/facebooth-geometry";
-import type { FaceboothStrings } from "@/lib/i18n/facebooth";
 import type { Locale } from "@/lib/i18n";
+import { getFaceboothStrings } from "@/lib/i18n/facebooth";
 import {
   faceboothBackgroundModes,
   type FaceboothBackgroundMode,
@@ -119,15 +119,14 @@ export function StandeeEditor({
   initialProject,
   initialArtworkUrl,
   previewUploadsEnabled,
-  strings,
 }: {
   boothId: string;
   locale: Locale;
   initialProject: EditorProject;
   initialArtworkUrl: string | null;
   previewUploadsEnabled: boolean;
-  strings: FaceboothStrings;
 }) {
+  const strings = getFaceboothStrings(locale);
   const autosave = useFaceboothAutosave({
     boothId,
     kind: "MERCH",

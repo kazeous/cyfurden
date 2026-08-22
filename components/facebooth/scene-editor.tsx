@@ -36,7 +36,7 @@ import {
   type SceneSelection,
 } from "@/lib/facebooth-scene";
 import type { Locale } from "@/lib/i18n";
-import type { FaceboothStrings } from "@/lib/i18n/facebooth";
+import { getFaceboothStrings } from "@/lib/i18n/facebooth";
 import standeeStyles from "./standee-editor.module.css";
 import styles from "./scene-editor.module.css";
 
@@ -106,7 +106,6 @@ export function SceneEditor({
   merchLibrary,
   initialSnapshotArtworkUrls,
   previewUploadsEnabled,
-  strings,
 }: {
   boothId: string;
   locale: Locale;
@@ -114,8 +113,8 @@ export function SceneEditor({
   merchLibrary: SceneMerchProject[];
   initialSnapshotArtworkUrls: Record<string, string | null>;
   previewUploadsEnabled: boolean;
-  strings: FaceboothStrings;
 }) {
+  const strings = getFaceboothStrings(locale);
   const autosave = useFaceboothAutosave({
     boothId,
     kind: "SCENE",

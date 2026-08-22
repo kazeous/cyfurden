@@ -38,7 +38,6 @@ export default async function FaceboothProjectPage({
     actorUserId: session.user.id,
   });
   if (result.kind !== "found") notFound();
-  const strings = getFaceboothStrings(locale);
   if (result.project.document.kind === "MERCH") {
     const artworkUrl = result.project.document.artwork.objectKey
       ? (resolveOracleObjectUrl(result.project.document.artwork.objectKey) ??
@@ -57,7 +56,6 @@ export default async function FaceboothProjectPage({
         }}
         locale={locale}
         previewUploadsEnabled={isOracleQrUploadConfigured()}
-        strings={strings}
       />
     );
   }
@@ -118,7 +116,6 @@ export default async function FaceboothProjectPage({
       locale={locale}
       merchLibrary={merchLibrary}
       previewUploadsEnabled={isOracleQrUploadConfigured()}
-      strings={strings}
     />
   );
 }

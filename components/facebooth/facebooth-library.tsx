@@ -30,8 +30,8 @@ import {
   FaceboothPublicationPanel,
   type FaceboothManagerPublication,
 } from "@/components/facebooth/facebooth-publication-panel";
-import type { FaceboothStrings } from "@/lib/i18n/facebooth";
 import type { Locale } from "@/lib/i18n";
+import { getFaceboothStrings } from "@/lib/i18n/facebooth";
 import styles from "./facebooth-library.module.css";
 
 export type FaceboothLibraryProject = {
@@ -82,14 +82,13 @@ export function FaceboothLibrary({
   initialPublication,
   locale,
   projects,
-  strings,
 }: {
   boothId: string;
   initialPublication: FaceboothManagerPublication;
   locale: Locale;
   projects: FaceboothLibraryProject[];
-  strings: FaceboothStrings;
 }) {
+  const strings = getFaceboothStrings(locale);
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [busyId, setBusyId] = useState<string | null>(null);
