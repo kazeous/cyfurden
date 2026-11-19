@@ -1,3 +1,4 @@
+import { BOOTH_TIME_ZONE } from "../booth-time";
 import { parseLocale } from "./locales";
 import type { Locale } from "./locales";
 
@@ -29,12 +30,30 @@ export function formatMoney(
   }).format(Number(value) / 100);
 }
 
+export type BoothDateTimeFormatOptions = Omit<
+  Intl.DateTimeFormatOptions,
+  "timeZone"
+>;
+
+/**
+ * The only supported way to build a date formatter. It always renders booth
+ * time, so server output, browser hydration, and every host agree.
+ */
+export function createBoothDateTimeFormat(
+  locale: Locale | string | undefined,
+  options: BoothDateTimeFormatOptions,
+): Intl.DateTimeFormat {
+  return new Intl.DateTimeFormat(intlLocale(locale), {
+    ...options,
+    timeZone: BOOTH_TIME_ZONE,
+  });
+}
+
 export function formatDateTime(
   date: Date,
   locale: Locale | string | undefined = "en",
 ): string {
-  const tag = intlLocale(locale);
-  return new Intl.DateTimeFormat(tag, {
+  return createBoothDateTimeFormat(locale, {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -47,8 +66,7 @@ export function formatDate(
   date: Date,
   locale: Locale | string | undefined = "en",
 ): string {
-  const tag = intlLocale(locale);
-  return new Intl.DateTimeFormat(tag, {
+  return createBoothDateTimeFormat(locale, {
     day: "2-digit",
     month: "short",
     year: "numeric",

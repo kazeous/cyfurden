@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isNewPendingOrder, type LatestOrderSignal } from "@/lib/order-alerts";
 import type { Locale } from "@/lib/i18n";
+import { createBoothDateTimeFormat } from "@/lib/i18n/intl";
 import { getWorkspaceStrings } from "@/lib/i18n/workspace";
 import {
   playOrderAlertSound,
@@ -87,7 +88,7 @@ export function OrdersLiveRefresh({
   );
 
   const refreshedAt = lastRefresh
-    ? new Intl.DateTimeFormat(locale === "vi" ? "vi-VN" : "en-GB", {
+    ? createBoothDateTimeFormat(locale, {
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",

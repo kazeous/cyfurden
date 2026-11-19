@@ -9,6 +9,7 @@ import {
 import type { FaceboothLibraryProject } from "@/components/facebooth/facebooth-library";
 import type { FaceboothStrings } from "@/lib/i18n/facebooth";
 import type { Locale } from "@/lib/i18n";
+import { createBoothDateTimeFormat } from "@/lib/i18n/intl";
 import styles from "./facebooth-publication-panel.module.css";
 
 export type FaceboothManagerPublication = {
@@ -116,10 +117,9 @@ export function FaceboothPublicationPanel({
         </div>
         {publication ? (
           <time dateTime={publication.publishedAt}>
-            {new Intl.DateTimeFormat(locale, {
+            {createBoothDateTimeFormat(locale, {
               dateStyle: "medium",
               timeStyle: "short",
-              timeZone: "Asia/Ho_Chi_Minh",
             }).format(new Date(publication.publishedAt))}
           </time>
         ) : null}

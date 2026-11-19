@@ -12,6 +12,7 @@ import { compileGachaDocument } from "@/lib/gacha-document";
 import { DEFAULT_GACHA_RATES, readGachaRates } from "@/lib/gacha-rates";
 import { parseBilingual } from "@/lib/i18n";
 import { localizeGachaCompilationError } from "@/lib/i18n/gacha-errors";
+import { formatDateTime } from "@/lib/i18n/intl";
 import { readLocaleCookie } from "@/lib/i18n/server-locale";
 import { getWorkspaceStrings } from "@/lib/i18n/workspace";
 import { eventDateInput } from "@/lib/order-events";
@@ -678,12 +679,7 @@ export default async function GachaPage({
           </strong>
           <span>
             {isPublished && config?.publishedAt
-              ? strings.publishedAt(
-                  config.publishedAt.toLocaleString(
-                    locale === "vi" ? "vi-VN" : "en-GB",
-                    { timeZone: "Asia/Ho_Chi_Minh" },
-                  ),
-                )
+              ? strings.publishedAt(formatDateTime(config.publishedAt, locale))
               : strings.publishSnapshot}
           </span>
         </div>

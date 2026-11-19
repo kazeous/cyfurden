@@ -1,3 +1,4 @@
+import { createBoothDateTimeFormat } from "./intl";
 import { parseLocale, type Locale } from "./locales";
 
 type WidenCatalogue<Value> = Value extends (...args: infer Args) => infer Result
@@ -905,10 +906,9 @@ export function formatPlatformDateTime(
   locale: Locale,
 ) {
   if (!value) return getPlatformAdminStrings(locale).common.notAvailable;
-  return new Intl.DateTimeFormat(platformLocaleTag(locale), {
+  return createBoothDateTimeFormat(locale, {
     dateStyle: "medium",
     timeStyle: "short",
-    timeZone: "Asia/Ho_Chi_Minh",
   }).format(new Date(value));
 }
 

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { requireBoothSection } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { parseBilingual, type Locale } from "@/lib/i18n";
+import { createBoothDateTimeFormat, formatDateTime } from "@/lib/i18n/intl";
 import { readLocaleCookie } from "@/lib/i18n/server-locale";
 import { getWorkspaceStrings } from "@/lib/i18n/workspace";
 import {
@@ -50,15 +51,6 @@ const formatMoney = (
     maximumFractionDigits: 0,
   }).format(BigInt(priceCents) / BigInt(100));
 
-const formatDate = (date: Date, locale: Locale) =>
-  new Intl.DateTimeFormat(locale === "vi" ? "vi-VN" : "en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
-
 const firstValue = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
 
@@ -99,15 +91,11 @@ const buildOrdersHref = (
 };
 
 const formatEventRange = (startsAt: Date, endsAt: Date, locale: Locale) => {
-  const formatter = new Intl.DateTimeFormat(
-    locale === "vi" ? "vi-VN" : "en-GB",
-    {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      timeZone: "Asia/Ho_Chi_Minh",
-    },
-  );
+  const formatter = createBoothDateTimeFormat(locale, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
   return `${formatter.format(startsAt)} – ${formatter.format(
     new Date(endsAt.getTime() - 1),
   )}`;
@@ -713,7 +701,7 @@ export default async function OrdersPage({
                       ) : null}
                     </th>
                     <td className={styles.dateCell}>
-                      {formatDate(order.placedAt, locale)}
+                      {formatDateTime(order.placedAt, locale)}
                     </td>
                     <td>
                       <OrderDetails order={order} locale={locale} />
@@ -774,7 +762,7 @@ export default async function OrdersPage({
                 <dl className={styles.mobileDetails}>
                   <div>
                     <dt>{strings.placedColumn}</dt>
-                    <dd>{formatDate(order.placedAt, locale)}</dd>
+                    <dd>{formatDateTime(order.placedAt, locale)}</dd>
                   </div>
                   <div>
                     <dt>{strings.totalColumn}</dt>
@@ -993,22 +981,25 @@ function OrderDetails({
             <div>
               <dt>{strings.timeline}</dt>
               <dd>
-                {strings.timelinePlaced} {formatDate(order.placedAt, locale)}
+                {strings.timelinePlaced}{" "}
+                {formatDateTime(order.placedAt, locale)}
               </dd>
               {order.expiresAt ? (
                 <dd>
                   {strings.reservationLimit}{" "}
-                  {formatDate(order.expiresAt, locale)}
+                  {formatDateTime(order.expiresAt, locale)}
                 </dd>
               ) : null}
               {order.confirmedAt ? (
                 <dd>
-                  {strings.confirmed} {formatDate(order.confirmedAt, locale)}
+                  {strings.confirmed}{" "}
+                  {formatDateTime(order.confirmedAt, locale)}
                 </dd>
               ) : null}
               {order.fulfilledAt ? (
                 <dd>
-                  {strings.fulfilled} {formatDate(order.fulfilledAt, locale)}
+                  {strings.fulfilled}{" "}
+                  {formatDateTime(order.fulfilledAt, locale)}
                 </dd>
               ) : null}
             </div>

@@ -32,6 +32,7 @@ import {
 } from "@/components/facebooth/facebooth-publication-panel";
 import type { Locale } from "@/lib/i18n";
 import { getFaceboothStrings } from "@/lib/i18n/facebooth";
+import { createBoothDateTimeFormat } from "@/lib/i18n/intl";
 import styles from "./facebooth-library.module.css";
 
 export type FaceboothLibraryProject = {
@@ -330,9 +331,8 @@ export function FaceboothLibrary({
                       <h3>{project.name}</h3>
                       <span>
                         {strings.projectUpdated} ·{" "}
-                        {new Intl.DateTimeFormat(locale, {
+                        {createBoothDateTimeFormat(locale, {
                           dateStyle: "medium",
-                          timeZone: "Asia/Ho_Chi_Minh",
                         }).format(new Date(project.updatedAt))}
                       </span>
                     </div>

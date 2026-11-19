@@ -5,6 +5,7 @@ import {
 } from "@/components/admin/admin-shell";
 import { requireBoothSection } from "@/lib/authorization";
 import { db } from "@/lib/db";
+import { formatDate } from "@/lib/i18n/intl";
 import { readLocaleCookie } from "@/lib/i18n/server-locale";
 import { getWorkspaceStrings } from "@/lib/i18n/workspace";
 import {
@@ -49,7 +50,6 @@ export default async function TeamPage({
   const workspaceStrings = getWorkspaceStrings(locale);
   const strings = workspaceStrings.team;
   const common = workspaceStrings.common;
-  const dateLocale = locale === "vi" ? "vi-VN" : "en-GB";
   const activeMembers = members.filter((member) => member.status === "ACTIVE");
   const usedSlots = activeMembers.length + invitations.length;
   const remainingSlots = Math.max(0, 10 - usedSlots);
@@ -110,7 +110,7 @@ export default async function TeamPage({
                       <span>
                         {strings.roleExpires(
                           common.roleLabels[invitation.role],
-                          invitation.expiresAt.toLocaleDateString(dateLocale),
+                          formatDate(invitation.expiresAt, locale),
                         )}
                       </span>
                     </div>

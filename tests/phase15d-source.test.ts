@@ -47,8 +47,10 @@ test("Facebooth manager timestamps hydrate in the Vietnam time zone", async () =
     readSource("components/facebooth/facebooth-publication-panel.tsx"),
   ]);
 
-  assert.match(library, /timeZone: "Asia\/Ho_Chi_Minh"/);
-  assert.match(publicationPanel, /timeZone: "Asia\/Ho_Chi_Minh"/);
+  // createBoothDateTimeFormat pins booth time; tests/i18n-intl.test.ts proves
+  // it, and the no-restricted-syntax lint rule forbids raw date formatters.
+  assert.match(library, /createBoothDateTimeFormat\(locale/);
+  assert.match(publicationPanel, /createBoothDateTimeFormat\(locale/);
 });
 
 test("Phase 15D keeps autosave, recovery, thumbnails, and PNG work in the browser", async () => {

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentSession } from "@/lib/authorization";
+import { parseBoothLocalDateTime } from "@/lib/booth-time";
 import { getPlatformAdminStrings } from "@/lib/i18n/platform-admin";
 import { readLocaleCookie } from "@/lib/i18n/server-locale";
 import { deleteOracleObjectsStrict } from "@/lib/oracle-uploads";
@@ -70,8 +71,8 @@ function optionalStorageBytes(formData: FormData) {
 function optionalDateTime(formData: FormData, key: string) {
   const value = text(formData, key);
   if (!value) return null;
-  const parsed = new Date(value);
-  return Number.isFinite(parsed.getTime()) ? parsed : new Date(Number.NaN);
+  // An invalid Date lets the lifecycle service reject it as INVALID_EXPIRY.
+  return parseBoothLocalDateTime(value) ?? new Date(Number.NaN);
 }
 
 async function actionContext() {

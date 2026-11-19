@@ -10,6 +10,7 @@ import {
 } from "@/lib/gacha-document";
 import { drawGachaReward } from "@/lib/gacha-game";
 import { parseBilingual, translate, type Locale } from "@/lib/i18n";
+import { createBoothDateTimeFormat } from "@/lib/i18n/intl";
 import styles from "./free-gacha.module.css";
 
 type DrawDisplay = {
@@ -130,10 +131,9 @@ export function FreeGacha({
     )
     .slice(0, banner.featuredCount);
   const formatDate = (value: string) =>
-    new Intl.DateTimeFormat(locale === "vi" ? "vi-VN" : "en-GB", {
-      dateStyle: "medium",
-      timeZone: "Asia/Ho_Chi_Minh",
-    }).format(new Date(value));
+    createBoothDateTimeFormat(locale, { dateStyle: "medium" }).format(
+      new Date(value),
+    );
   const schedule =
     availability === "upcoming" && banner.startsAt
       ? t.gachaOpens(formatDate(banner.startsAt))

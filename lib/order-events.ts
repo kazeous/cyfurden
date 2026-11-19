@@ -1,4 +1,4 @@
-const HO_CHI_MINH_UTC_OFFSET_MILLISECONDS = 7 * 60 * 60 * 1000;
+import { BOOTH_UTC_OFFSET_MILLISECONDS } from "@/lib/booth-time";
 const DAY_MILLISECONDS = 24 * 60 * 60 * 1000;
 const DATE_INPUT_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
@@ -40,22 +40,16 @@ export function parseEventDateRange(
   if (!localStart || !localEnd || localEnd < localStart) return null;
 
   return {
-    startsAt: new Date(
-      localStart.getTime() - HO_CHI_MINH_UTC_OFFSET_MILLISECONDS,
-    ),
+    startsAt: new Date(localStart.getTime() - BOOTH_UTC_OFFSET_MILLISECONDS),
     endsAt: new Date(
-      localEnd.getTime() -
-        HO_CHI_MINH_UTC_OFFSET_MILLISECONDS +
-        DAY_MILLISECONDS,
+      localEnd.getTime() - BOOTH_UTC_OFFSET_MILLISECONDS + DAY_MILLISECONDS,
     ),
   };
 }
 
 export function eventDateInput(date: Date, exclusiveEnd = false) {
   const localTime = new Date(
-    date.getTime() +
-      HO_CHI_MINH_UTC_OFFSET_MILLISECONDS -
-      (exclusiveEnd ? 1 : 0),
+    date.getTime() + BOOTH_UTC_OFFSET_MILLISECONDS - (exclusiveEnd ? 1 : 0),
   );
   return [
     localTime.getUTCFullYear(),
